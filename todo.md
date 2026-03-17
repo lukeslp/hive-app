@@ -1,0 +1,108 @@
+# Hexpand Migration TODO
+
+- [x] Migrate client components (HexCanvas, Modal, ConfirmationModal, SettingsModal, Minimap, FloatingActionBar, WelcomeModal, InspectPanel, EditModal, SessionsModal, TemplatesModal, TemplateContextModal, ContextPromptModal, ShareModal, Toolbar, KeyboardShortcutsModal)
+- [x] Migrate client hooks (useAIGeneration, useComposition, usePersistFn, useProviderSettings, useSessionManagement, useTemplates, useAccessibilityLabels)
+- [x] Migrate client types (hivemind.d.ts, hexmind.ts)
+- [x] Migrate client libs (api.ts, hexConstants.ts, hexGrid.ts, icons.ts, nodeTypes.ts, sanitize.ts, templates.ts)
+- [x] Migrate client styles (index.css with all hex grid styles)
+- [x] Port LLM proxy as Express routes with multi-provider support (Manus built-in, OpenAI, Gemini, Anthropic, Grok, Mistral, Ollama)
+- [x] Implement smart provider fallback logic (auto-fallback to Manus built-in on provider failure)
+- [x] Wire up App.tsx with dark theme and HexpandApp route
+- [x] Add Manus as default built-in provider (works out of the box, no API key needed)
+- [x] Client-side API key management with localStorage persistence
+- [x] Settings modal with provider cards, API key inputs, creativity slider, "built-in" badge for Manus
+- [x] Session management (save/load/export/import)
+- [x] Templates system
+- [x] Share functionality
+- [x] Welcome modal with sample templates
+- [x] Keyboard shortcuts and accessibility
+- [x] Touch interactions (pan, zoom, drag)
+- [x] Minimap navigation
+- [x] Vitest tests for LLM proxy (7 tests passing)
+- [x] Build verification and deployment
+- [x] Fix: LLM providers not working - was port conflict with old standalone server on 3000
+- [x] Replace WelcomeModal with canvas-based onboarding tour
+- [x] Step 0: Dim screen with pulsing ring and "Tap to begin" indicator
+- [x] Step 1: Minimal input field — "Start with an idea", type anything, press Enter
+- [x] Step 2: "Expanding..." spinner while nodes generate
+- [x] Step 3: "Tap any node to expand it" pill hint, auto-dismisses after 4s
+- [x] Remember tour completion in localStorage so it only shows once
+- [x] Keep it minimal and clean — no modal, no heavy UI
+- [x] Redesign onboarding: much lighter dim (subtle, not heavy overlay)
+- [x] Change initial tap indicator to a gentle, average-sized tap hint
+- [x] Change prompt text to "What are you thinking about?"
+- [x] Add multi-step tutorial after idea input explaining:
+  - [x] How hexes spread outward from the center
+  - [x] How to highlight/pin key nodes
+  - [x] Why some nodes auto-expand (smart expansion)
+  - [x] Other key features (pan/zoom, settings, templates)
+- [x] Keep tutorial minimal and clean per user preference
+- [x] Restore large, prominent intro text entry prompt (like previous WelcomeModal)
+- [x] Keep lighter onboarding overlay but with bigger, bolder input experience
+- [x] Ensure tutorial steps complete naturally after node generation
+- [x] Add tour reset via NEW BOARD button
+- [x] Test full onboarding flow end-to-end
+- [x] BUG: Onboarding overlay not showing on published site
+- [x] BUG: Nothing happens after entering text in the onboarding input
+- [x] FIX: Tour not showing on published site because localStorage remembers completion — always show when board is empty
+- [x] Restore old onboarding: hex grid visible immediately (no full-screen modal)
+- [x] Subtle tap indicator on the canvas center
+- [x] On tap, show large minimalist inline text entry on canvas (not modal)
+- [x] Keep tutorial steps after brainstorm starts
+- [x] Ensure pinch-to-zoom and drag-to-pan work seamlessly on mobile (onboarding must not block touch events)
+- [x] Replace circle indicator with hex tile that fits the grid
+- [x] Use existing node context modal for all text entry (including initial brainstorm)
+- [x] Remove custom inline input from OnboardingTour
+- [x] Fix: new hex click should use ContextPromptModal consistently (not a different entry method)
+- [x] Audit and remove duplicate/conflicting/dead styles
+- [x] Audit and remove duplicate/conflicting/dead code (unused components, imports, functions)
+- [x] Fix: remove duplicate "Expanding..." overlay (keep only on tile, not full-page)
+- [x] Replace hex indicator with simple SVG tap animation (just a visual tap hint)
+- [x] Redesign tap indicator with delay (500ms+) and cleaner visual
+- [x] Document auto-expansion logic for user
+- [x] Fix mobile viewport: toolbar layout and overflow
+- [x] Fix mobile viewport: modals (ContextPromptModal, SettingsPanel, etc.) sizing and positioning
+- [x] Fix mobile viewport: inspect panel and node detail panel
+- [x] Fix mobile viewport: hex grid canvas touch interactions (pinch zoom, pan, tap)
+- [x] Fix mobile viewport: onboarding tap indicator and tutorial cards
+- [x] Fix mobile viewport: minimap sizing
+- [x] Fix mobile viewport: overall responsive layout and safe areas
+- [x] Simplify key ideas indication in inspect panel (evaluate if popup is overly large/complex)
+- [x] Restore export as image functionality (was already wired in toolbar)
+- [x] Restore export as JSON functionality (was already wired in toolbar)
+- [x] Implement drag tiles onto each other to combine/merge ideas (touch drag via long-press + desktop HTML5 drag)
+- [x] Fix: canvas stays gripped/panning after drag-drop merge — must release
+- [x] Add visual merge animation (pulse/glow on target tile after combine)
+- [x] Add haptic feedback throughout the app for mobile (tap, long-press, merge, expand, star, etc.)
+- [x] Persist sessions to the database (schema, tRPC procedures, client wiring for cross-device access)
+- [x] Add drag-hover haptic feedback when dragged tile passes over valid drop target
+- [x] Undo/redo for merges — store pre-merge snapshot so merged tiles can be cleanly split back
+- [x] Auto-save to cloud — periodically sync autosave snapshot to database for authenticated users
+- [x] Session rename/overwrite — let users update an existing cloud session in-place
+- [x] Collaborative real-time editing via WebSocket — multiple users can brainstorm on the same board simultaneously
+- [x] Presence indicators on nodes — show collaborator color rings on tiles they are hovering/editing
+- [x] Session sharing via auto-join link — generate a URL that auto-joins a collab room (no manual code entry)
+- [x] Add skip and cancel buttons to ContextPromptModal when clicking a hex that requests context
+- [x] Restore minimalist intro tutorial with tips about combining nodes and starting new unconnected sections
+- [x] BUG: Drag-to-combine not working on Chrome mobile
+- [x] BUG: Haptics not firing on Chrome mobile
+- [x] Weighted board context in AI generation — use starred/user-expanded nodes as weighted context so new tiles are influenced by the broader board state, enabling disconnected clusters to grow toward each other and illuminate potential connections
+- [x] Visual bridge indicators — dotted connection lines between cross-cluster bridge tiles on the canvas
+- [x] Configurable bridging intensity slider — controls how aggressively AI bridges clusters (0=focused, 1=max cross-pollination)
+- [x] Redesign input modals to transparent minimalist style with dimmed backdrop
+- [x] First-click prompt: minimalist 'What are you thinking?' text entry bar
+- [x] Audit merge logic — document which tiles can merge and why
+- [x] Fix tour text: desktop should say click/double-click, not tap/double-tap
+- [x] Cleanup pass: dead code, unused imports, conflicts, quick improvements
+- [x] Remove tap indicator dot from onboarding — hex tiles are sufficient entry point
+- [x] Auto-show 'What are you thinking?' prompt when board is empty (600ms delay)
+- [x] Smart merge suggestions — detect when clusters grow close, find thematic overlap, show suggestion prompt
+- [x] Replace collab room codes with invite links — generate shareable URLs instead of manual code entry
+- [x] Generate canvas snapshots as session thumbnails for visual previews in sessions modal
+- [x] Upload thumbnails to S3 for persistence
+- [x] Add OG meta tags with dynamic thumbnail for social sharing
+- [x] BUG: Collaborate doesn't generate a link when clicking Start Live Session
+- [x] BUG: Fixed "0/100" display — now hidden until first generation, shows Zap icon + count
+- [x] BUG: Collab invite link opens a blank page for the joining user — should receive shared board state
+- [x] BUG: Too easy to accidentally create new nodes while panning/zooming on mobile — need pan/zoom vs tap discrimination
+- [x] UX: Text input modal (ContextPromptModal) should dismiss when tapping outside, not just via Cancel button
