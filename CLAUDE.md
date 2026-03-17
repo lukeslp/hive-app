@@ -2,11 +2,17 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
-## What Is Hexpand
+## What Is Hexpandroid
 
-Hexpand is a spatial brainstorming tool built on a hexagonal grid. Users place an idea at the center, then expand it outward — each hex tile can be AI-expanded into 6 contextual neighbors. The app supports multi-provider LLM generation, real-time collaboration via WebSocket, session persistence to MySQL, and S3-backed thumbnails.
+Android PoC of Hexpand — a spatial brainstorming tool on a hexagonal grid. This repo wraps the existing React web app in a Capacitor 8.2 native shell with on-device Gemma 3n E4B inference via MediaPipe.
 
-Design language: "Cyber-Hive Dark Mode" — deep dark backgrounds, glassmorphic panels, hex geometry as visual foundation, electric accent colors per node type.
+The original web-only Hexpand lives at `github.com/lukeslp/hexpand`. This repo adds:
+- Capacitor Android shell (WebView wrapper — hex UX runs unchanged)
+- On-device LLM via GemmaPlugin (Kotlin/MediaPipe)
+- Offline session storage via Dexie.js (IndexedDB)
+- Platform detection and offline-first API routing
+
+Design: "Cyber-Hive Dark Mode" — deep dark backgrounds, glassmorphic panels, hex geometry, electric accent colors per node type.
 
 ## Commands
 
@@ -18,6 +24,8 @@ pnpm check            # TypeScript type-check (noEmit)
 pnpm test             # Run all tests (vitest)
 pnpm format           # Prettier format entire project
 pnpm db:push          # Generate + apply Drizzle migrations (requires DATABASE_URL)
+pnpm cap:build        # Build web + sync to Android project
+pnpm cap:open         # Open Android project in Android Studio
 ```
 
 Run a single test file:
@@ -25,6 +33,67 @@ Run a single test file:
 npx vitest run server/llmProxy.test.ts
 npx vitest run client/src/hooks/useCanvasInteraction.test.ts
 ```
+
+## Android / Capacitor
+
+### Project Structure
+
+```
+android/                              Capacitor-generated Android project
+  app/src/main/java/dev/dreamer/hexpand/
+    MainActivity.java                 Registers GemmaPlugin
+    GemmaPlugin.kt                    MediaPipe LLM Inference wrapper
+  app/build.gradle                    Includes mediapipe:tasks-genai:0.10.27
+  build.gradle                        Kotlin plugin configured
+capacitor.config.ts                   App ID: dev.dreamer.hexpand, webDir: dist/public
+```
+
+### Capacitor Integration Files (client-side)
+
+| File | Purpose |
+|------|---------|
+| `client/src/lib/platform.ts` | `isCapacitor()`, `isOffline()`, `getApiBaseUrl()` |
+| `client/src/lib/gemmaPlugin.ts` | JS bridge to native GemmaPlugin (downloadModel, isModelReady, generate) |
+| `client/src/lib/localDb.ts` | Dexie.js IndexedDB for offline sessions |
+
+### Data Flow
+
+```
+User taps node → useAIGeneration hook
+  ↓
+isCapacitor() && isOffline()?
+  YES → Gemma.generate({prompt, temperature, maxTokens})
+        → parseBranches() → buildNeighborNodes()
+  NO  → fetch('/api/generate') to cloud server
+        → parseBranches() → buildNeighborNodes()
+  ↓
+Render 6 hex neighbor nodes (same path either way)
+```
+
+### Offline Guards
+
+- `useAuth.ts` — auth query disabled in Capacitor (`enabled: !isCapacitor()`)
+- `useSessionManagement.ts` — cloud session listing disabled (`enabled: isAuthenticated && !isCapacitor()`)
+- `HexpandApp.tsx` — collab button/modal hidden in Capacitor mode
+- `api.ts` — routes to `dr.eamer.dev/hexpand/api` when in Capacitor
+
+### Building the APK
+
+1. `pnpm cap:build` (builds web + syncs to android/)
+2. Open in Android Studio: `pnpm cap:open`
+3. Build > Make Project (downloads MediaPipe dependency)
+4. Run on device/emulator with 6GB+ RAM
+
+### Gemma Model
+
+The GemmaPlugin expects the model at: `{app_internal_storage}/gemma-models/gemma3n-e4b.task`
+
+For PoC, sideload via adb:
+```bash
+adb push gemma3n-e4b.task /data/data/dev.dreamer.hexpand/files/gemma-models/
+```
+
+Production: download on first launch from dr.eamer.dev or Google Cloud Storage.
 
 ## Architecture
 
@@ -166,3 +235,6 @@ No browser/DOM test environment — client tests use direct function testing or 
 - **Cross-cluster bridging**: AI can generate "bridge" tiles that connect thematically related but spatially distant clusters, controlled by a bridging intensity slider
 - **Touch discrimination**: Mobile taps must be < 12px movement and < 350ms duration to count as intentional (vs. pan/zoom gestures)
 - **In-memory share store**: `/api/share` uses a `Map<string, string>` — ephemeral, does not survive server restarts
+- **Extracted response parsing**: `parseBranches()` and `buildNeighborNodes()` are shared between Gemma and cloud paths — same sanitization pipeline for both
+- **Gemma JSON workaround**: Gemma has no native JSON mode. Prompt instructs "Return ONLY valid JSON", existing `sanitizeJson()` + regex fallback handles ~10% malformed responses
+- **Lazy model loading**: GemmaPlugin.kt loads the model on first `generate()` call, not on app start — avoids blocking the UI thread during initialization
