@@ -18,6 +18,7 @@ interface UseTemplatesProps {
   setInspectedNodeId: (id: string | null) => void;
   setShowWelcome: (value: boolean) => void;
   announceTemplateLoaded: (name: string) => void;
+  getRequestHeaders?: () => Record<string, string>;
 }
 
 export function useTemplates({
@@ -27,6 +28,7 @@ export function useTemplates({
   setInspectedNodeId,
   setShowWelcome,
   announceTemplateLoaded,
+  getRequestHeaders,
 }: UseTemplatesProps) {
   const [showTemplates, setShowTemplates] = useState(false);
   const [selectedCategory, setSelectedCategory] = useState("all");
@@ -89,7 +91,7 @@ Example format:
     try {
       const response = await fetch(buildApiUrl("generate"), {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: getRequestHeaders ? getRequestHeaders() : { "Content-Type": "application/json" },
         body: JSON.stringify({
           model: GEMINI_TEXT_MODEL,
           contents: [{ parts: [{ text: prompt }] }],
@@ -144,6 +146,7 @@ Example format:
     setSelectedNodeId,
     setInspectedNodeId,
     setShowWelcome,
+    getRequestHeaders,
   ]);
 
   const handleUseDefault = useCallback(() => {

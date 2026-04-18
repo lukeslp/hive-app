@@ -356,6 +356,7 @@ export default function HexpandApp() {
     setInspectedNodeId,
     setShowWelcome: () => {},
     announceTemplateLoaded: announcer.announceTemplateLoaded,
+    getRequestHeaders: providerSettings.getRequestHeaders,
   });
 
   // ── Effects ─────────────────────────────────────────────────────────────

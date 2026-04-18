@@ -17,8 +17,6 @@ import type { HexNode } from '@/types/hivemind';
 import { haptics } from '@/lib/haptics';
 import { getNodeKey } from '@/types/hexmind';
 import type { NodeTypeStyle } from '@/types/hexmind';
-import { isCapacitor, isOffline } from '@/lib/platform';
-import { Gemma } from '@/lib/gemmaPlugin';
 
 // Constants
 const MAX_REQUEST_SIZE = 50000; // 50KB limit
@@ -386,46 +384,7 @@ Generate 6 neighbor nodes.`;
 
     const temperature = 0.7 + (creativity * 0.6); // 0.7-1.3
 
-    // ── On-device Gemma path (Capacitor + offline or no cloud subscription) ──
-    if (isCapacitor() && isOffline()) {
-      try {
-        const { ready } = await Gemma.isModelReady();
-        if (!ready) {
-          const errorMsg = "Gemma model not downloaded — check Settings";
-          setError(errorMsg);
-          toast.error(errorMsg);
-          setIsGenerating(false);
-          return null;
-        }
-
-        // Gemma has no separate system instruction — concatenate
-        const gemmaPrompt = `${systemPrompt}\n\n${userQuery}`;
-
-        const { text: gemmaText } = await Gemma.generate({
-          prompt: gemmaPrompt,
-          temperature,
-          maxTokens: 2048,
-        });
-
-        const branches = parseBranches(gemmaText);
-        const newNodes = buildNeighborNodes(branches, centerNode, nodes, NODE_TYPES, forceRefresh);
-
-        setIsGenerating(false);
-        haptics.expand();
-        return newNodes;
-      } catch (err) {
-        console.error("Gemma inference error:", err);
-        const errorMsg = err instanceof Error ? err.message : "On-device generation failed";
-        setError(errorMsg);
-        setIsGenerating(false);
-
-        // Placeholder fallback
-        const newNodes = buildNeighborNodes([], centerNode, nodes, NODE_TYPES, forceRefresh);
-        return newNodes;
-      }
-    }
-
-    // ── Cloud path (existing flow) ───────────────────────────────────────────
+    // ── Cloud path for both web and native mobile shells ───────────────────
     const requestPayload = {
       model: GEMINI_TEXT_MODEL,
       contents: [{ parts: [{ text: userQuery }] }],

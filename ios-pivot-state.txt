@@ -1,0 +1,3 @@
+Repository root contains: android/, capacitor.config.ts, client/, server/, shared/, package.json, but no ios/ directory.
+The package manifest includes @capacitor/android, @capacitor/cli, and @capacitor/core, but no @capacitor/ios dependency.
+The capacitor config declares appId dev.dreamer.hexpand, appName Hexpand, and webDir dist/public.
