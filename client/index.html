@@ -44,6 +44,7 @@
         var overlay = document.getElementById('boot-overlay');
         var status = document.getElementById('boot-status');
         var detail = document.getElementById('boot-detail');
+        var consoleBuffer = [];
         function show(label, msg) {
           overlay.style.display = 'block';
           status.textContent = label;
@@ -57,21 +58,48 @@
           }
           try { return JSON.stringify(e, null, 2); } catch (_) { return String(e); }
         }
+        // Checkpoint API for the bundle to call as it makes progress.
+        // The 5s timeout uses __lastCheckpoint so we know where things died.
+        window.__lastCheckpoint = 'inline script ran';
+        window.__checkpoint = function(msg) {
+          window.__lastCheckpoint = msg;
+        };
+        // Buffer console output so the timeout overlay can dump it. The
+        // app is still calling the originals — we just shadow them.
+        ['log', 'warn', 'error', 'info'].forEach(function(level) {
+          var orig = console[level];
+          console[level] = function() {
+            try {
+              var args = Array.prototype.map.call(arguments, function(a) {
+                if (typeof a === 'string') return a;
+                try { return JSON.stringify(a); } catch (_) { return String(a); }
+              });
+              consoleBuffer.push('[' + level + '] ' + args.join(' '));
+              if (consoleBuffer.length > 80) consoleBuffer.shift();
+            } catch (_) {}
+            return orig.apply(console, arguments);
+          };
+        });
         window.addEventListener('error', function(ev) {
           show('Window error',
                describe(ev.error) +
-               '\n\nat ' + (ev.filename || '?') + ':' + (ev.lineno || '?') + ':' + (ev.colno || '?'));
+               '\n\nat ' + (ev.filename || '?') + ':' + (ev.lineno || '?') + ':' + (ev.colno || '?') +
+               '\n\nlast checkpoint: ' + window.__lastCheckpoint);
         });
         window.addEventListener('unhandledrejection', function(ev) {
-          show('Unhandled promise rejection', describe(ev.reason));
+          show('Unhandled promise rejection',
+               describe(ev.reason) +
+               '\n\nlast checkpoint: ' + window.__lastCheckpoint);
         });
-        // 5-second timeout: if React still hasn't replaced #root, show a
-        // hint so a silent mount failure isn't just a blank screen.
+        // 5-second timeout: if React still hasn't replaced #root, show
+        // the last checkpoint reached + the recent console buffer.
         setTimeout(function() {
           var root = document.getElementById('root');
           if (root && root.children.length === 0 && overlay.style.display === 'none') {
             show('React did not mount within 5s',
-                 'Bundle loaded but #root is still empty. Check the Capacitor log for any errors logged before this.');
+                 'last checkpoint: ' + window.__lastCheckpoint +
+                 '\n\n--- recent console output ---\n' +
+                 (consoleBuffer.length ? consoleBuffer.slice(-30).join('\n') : '(empty — bundle may not be evaluating)'));
           }
         }, 5000);
       })();

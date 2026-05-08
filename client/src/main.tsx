@@ -1,3 +1,12 @@
+declare global {
+    interface Window {
+        __checkpoint?: (msg: string) => void;
+        __lastCheckpoint?: string;
+    }
+}
+const cp = (msg: string) => window.__checkpoint?.(msg);
+cp("main.tsx: top of file");
+
 import { trpc } from "@/lib/trpc";
 import { UNAUTHED_ERR_MSG } from '@shared/const';
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
@@ -9,6 +18,8 @@ import { getLoginUrl } from "./const";
 import { getTrpcUrl, isCapacitor } from "@/lib/platform";
 import { BootErrorBoundary } from "@/lib/BootErrorBoundary";
 import "./index.css";
+
+cp("main.tsx: imports done");
 
 // ── Analytics: web only, only when env vars are set ─────────────────
 // Previously this was a static <script> tag with %VITE_ANALYTICS_*%
@@ -54,7 +65,10 @@ if (isCapacitor()) {
     });
 }
 
+cp("main.tsx: side-effect blocks done");
+
 const queryClient = new QueryClient();
+cp("main.tsx: queryClient created");
 
 const redirectToLoginIfUnauthorized = (error: unknown) => {
   if (!(error instanceof TRPCClientError)) return;
@@ -130,10 +144,16 @@ queryClient.getMutationCache().subscribe(event => {
   }
 });
 
+cp("main.tsx: cache subscriptions wired");
+
+cp("main.tsx: about to call getTrpcUrl()");
+const trpcUrl = getTrpcUrl();
+cp("main.tsx: getTrpcUrl() returned " + trpcUrl);
+
 const trpcClient = trpc.createClient({
   links: [
     httpBatchLink({
-      url: getTrpcUrl(),
+      url: trpcUrl,
       transformer: superjson,
       fetch(input, init) {
         return globalThis.fetch(input, {
@@ -144,8 +164,20 @@ const trpcClient = trpc.createClient({
     }),
   ],
 });
+cp("main.tsx: trpcClient created");
 
-createRoot(document.getElementById("root")!).render(
+const rootEl = document.getElementById("root");
+cp("main.tsx: rootEl is " + (rootEl ? "present" : "MISSING"));
+if (!rootEl) {
+  document.body.appendChild(Object.assign(document.createElement("div"), {
+    textContent: "FATAL: #root element not found",
+    style: "color:red;font:18px monospace;padding:20px",
+  }));
+  throw new Error("#root element not found");
+}
+
+cp("main.tsx: calling createRoot.render()");
+createRoot(rootEl).render(
   <BootErrorBoundary>
     <trpc.Provider client={trpcClient} queryClient={queryClient}>
       <QueryClientProvider client={queryClient}>
@@ -154,3 +186,4 @@ createRoot(document.getElementById("root")!).render(
     </trpc.Provider>
   </BootErrorBoundary>
 );
+cp("main.tsx: render() returned");
