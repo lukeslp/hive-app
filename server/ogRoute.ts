@@ -60,7 +60,7 @@ export function createOGRouter(): Router {
   <title>Hexpand — Hexagonal Brainstorming</title>
   <meta property="og:type" content="website" />
   <meta property="og:title" content="Hexpand — Hexagonal Brainstorming" />
-  <meta property="og:description" content="Explore ideas on an infinite hex grid. Expand, merge, and discover connections between thoughts with AI-powered brainstorming." />
+  <meta property="og:description" content="Explore ideas on an infinite hex grid. Expand, merge, and discover connections between thoughts with LLM-assisted brainstorming." />
   <meta property="og:url" content="${req.protocol}://${req.get("host")}/" />
   <meta name="twitter:card" content="summary_large_image" />
   <meta name="twitter:title" content="Hexpand — Hexagonal Brainstorming" />

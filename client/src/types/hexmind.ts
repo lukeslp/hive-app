@@ -2,8 +2,8 @@
  * HexMind Type Definitions
  *
  * Comprehensive TypeScript types for the HiveMind spatial brainstorming application.
- * These types support hexagonal grid navigation, AI-powered node expansion, and
- * session management.
+ * These types support hexagonal grid navigation, LLM-assisted node expansion,
+ * and session management.
  *
  * @module types/hexmind
  */

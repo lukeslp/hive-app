@@ -85,10 +85,11 @@ public class FoundationModelsPlugin: CAPPlugin, CAPBridgedPlugin {
                     // round-trip independently — this is the second guard
                     // for the case where Capacitor's bridge swallows the
                     // rejection.
-                    let response = try await Self.withTimeout(seconds: 15) {
-                        try await session.respond(to: prompt, options: options)
+                    let text = try await Self.withTimeout(seconds: 15) {
+                        let response = try await session.respond(to: prompt, options: options)
+                        return response.content
                     }
-                    call.resolve(["text": response.content])
+                    call.resolve(["text": text])
                 } catch is FoundationModelsTimeout {
                     call.reject("FoundationModels generation timed out after 15s")
                 } catch {

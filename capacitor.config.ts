@@ -4,10 +4,11 @@ const config: CapacitorConfig = {
   appId: 'dev.dreamer.hexpand',
   appName: 'Hexpand',
   webDir: 'dist/public',
-  // Force-forward all JS console levels (log/warn/info/debug) to the
-  // native log. Capacitor 8's default for some configs hides log/info,
-  // which is why our [AI] diagnostics didn't show up in Xcode's console.
-  loggingBehavior: 'debug',
+  // Production: ship info/warn/error to the native log but suppress the
+  // debug-level bridge chatter (`⚡️ To Native ->` plugin call traces and
+  // JS↔native message bodies) that we used during the FoundationModels
+  // dispatch bisect. Switch back to 'debug' for diagnostic sessions.
+  loggingBehavior: 'production',
   plugins: {
     // Patch fetch + XMLHttpRequest in the WebView to route through
     // native HTTP. Bypasses WKWebView's CORS entirely — the live
