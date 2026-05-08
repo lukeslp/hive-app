@@ -7,6 +7,7 @@ import superjson from "superjson";
 import App from "./App";
 import { getLoginUrl } from "./const";
 import { getTrpcUrl, isCapacitor } from "@/lib/platform";
+import { BootErrorBoundary } from "@/lib/BootErrorBoundary";
 import "./index.css";
 
 // ── Analytics: web only, only when env vars are set ─────────────────
@@ -145,9 +146,11 @@ const trpcClient = trpc.createClient({
 });
 
 createRoot(document.getElementById("root")!).render(
-  <trpc.Provider client={trpcClient} queryClient={queryClient}>
-    <QueryClientProvider client={queryClient}>
-      <App />
-    </QueryClientProvider>
-  </trpc.Provider>
+  <BootErrorBoundary>
+    <trpc.Provider client={trpcClient} queryClient={queryClient}>
+      <QueryClientProvider client={queryClient}>
+        <App />
+      </QueryClientProvider>
+    </trpc.Provider>
+  </BootErrorBoundary>
 );

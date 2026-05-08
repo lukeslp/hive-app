@@ -30,6 +30,53 @@
 
   <body>
     <script>!function(){var t=localStorage.getItem('theme');document.documentElement.className=t||'dark'}()</script>
+
+    <!-- On-screen boot/error overlay. Renders errors visibly when React
+         can't mount, the JS bundle can't load, or anything throws before
+         the React Error Boundary can catch it. Updated by the inline
+         handler below; React tears it down once mount succeeds. -->
+    <div id="boot-overlay" style="position:fixed;inset:0;z-index:99999;background:#0a0a0a;color:#fafafa;font:13px/1.5 ui-monospace,Menlo,monospace;padding:20px;overflow:auto;white-space:pre-wrap;display:none;">
+      <div id="boot-status" style="font-weight:600;margin-bottom:12px;color:#fbbf24;"></div>
+      <div id="boot-detail" style="color:#fca5a5;"></div>
+    </div>
+    <script>
+      (function(){
+        var overlay = document.getElementById('boot-overlay');
+        var status = document.getElementById('boot-status');
+        var detail = document.getElementById('boot-detail');
+        function show(label, msg) {
+          overlay.style.display = 'block';
+          status.textContent = label;
+          detail.textContent = msg;
+        }
+        function describe(e) {
+          if (!e) return 'no error object';
+          if (e instanceof Error || (e && typeof e.message === 'string')) {
+            return (e.name || 'Error') + ': ' + (e.message || '(no message)') +
+                   (e.stack ? '\n\n' + String(e.stack).split('\n').slice(0, 12).join('\n') : '');
+          }
+          try { return JSON.stringify(e, null, 2); } catch (_) { return String(e); }
+        }
+        window.addEventListener('error', function(ev) {
+          show('Window error',
+               describe(ev.error) +
+               '\n\nat ' + (ev.filename || '?') + ':' + (ev.lineno || '?') + ':' + (ev.colno || '?'));
+        });
+        window.addEventListener('unhandledrejection', function(ev) {
+          show('Unhandled promise rejection', describe(ev.reason));
+        });
+        // 5-second timeout: if React still hasn't replaced #root, show a
+        // hint so a silent mount failure isn't just a blank screen.
+        setTimeout(function() {
+          var root = document.getElementById('root');
+          if (root && root.children.length === 0 && overlay.style.display === 'none') {
+            show('React did not mount within 5s',
+                 'Bundle loaded but #root is still empty. Check the Capacitor log for any errors logged before this.');
+          }
+        }, 5000);
+      })();
+    </script>
+
     <div id="root"></div>
     <script type="module" src="/src/main.tsx"></script>
   </body>
