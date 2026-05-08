@@ -17,6 +17,7 @@
 		50B271D11FEDC1A000F3C39B /* public in Resources */ = {isa = PBXBuildFile; fileRef = 50B271D01FEDC1A000F3C39B /* public */; };
 		9F1AAA0001AAAAAAAAAAAA01 /* PrivacyInfo.xcprivacy in Resources */ = {isa = PBXBuildFile; fileRef = 9F1AAA0001AAAAAAAAAAAA02 /* PrivacyInfo.xcprivacy */; };
 		9F1AAA0001AAAAAAAAAAAA04 /* FoundationModelsPlugin.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9F1AAA0001AAAAAAAAAAAA05 /* FoundationModelsPlugin.swift */; };
+		9F1AAA0001AAAAAAAAAAAA10 /* AppViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9F1AAA0001AAAAAAAAAAAA11 /* AppViewController.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -33,6 +34,7 @@
 		9F1AAA0001AAAAAAAAAAAA02 /* PrivacyInfo.xcprivacy */ = {isa = PBXFileReference; lastKnownFileType = text.xml; path = PrivacyInfo.xcprivacy; sourceTree = "<group>"; };
 		9F1AAA0001AAAAAAAAAAAA03 /* App.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = App.entitlements; sourceTree = "<group>"; };
 		9F1AAA0001AAAAAAAAAAAA05 /* FoundationModelsPlugin.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FoundationModelsPlugin.swift; sourceTree = "<group>"; };
+		9F1AAA0001AAAAAAAAAAAA11 /* AppViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppViewController.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -78,6 +80,7 @@
 				9F1AAA0001AAAAAAAAAAAA02 /* PrivacyInfo.xcprivacy */,
 				9F1AAA0001AAAAAAAAAAAA03 /* App.entitlements */,
 				9F1AAA0001AAAAAAAAAAAA05 /* FoundationModelsPlugin.swift */,
+				9F1AAA0001AAAAAAAAAAAA11 /* AppViewController.swift */,
 			);
 			path = App;
 			sourceTree = "<group>";
@@ -189,6 +192,7 @@
 			files = (
 				504EC3081FED79650016851F /* AppDelegate.swift in Sources */,
 				9F1AAA0001AAAAAAAAAAAA04 /* FoundationModelsPlugin.swift in Sources */,
+				9F1AAA0001AAAAAAAAAAAA10 /* AppViewController.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
