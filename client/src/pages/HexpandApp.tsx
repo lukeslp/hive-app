@@ -26,6 +26,7 @@ import { useTemplates } from "@/hooks/useTemplates";
 import { useProviderSettings } from "@/hooks/useProviderSettings";
 import { useTouchDrag } from "@/hooks/useTouchDrag";
 import { haptics } from "@/lib/haptics";
+import { synthesizeMerge } from "@/lib/synthesizeMerge";
 import { useAuth } from "@/_core/hooks/useAuth";
 import { useCollaboration } from "@/hooks/useCollaboration";
 import { useMergeSuggestions } from "@/hooks/useMergeSuggestions";
@@ -999,6 +1000,36 @@ Generate 6 diverse related ideas. Connect to key themes when relevant.`;
         },
       },
       duration: 5000,
+    });
+
+    // Round 1.1 — Capacitor-only LLM synthesis upgrade.
+    // synthesizeMerge returns null on web (isCapacitor=false), so the
+    // existing literal-concat above is preserved exactly for hivemind.cx.
+    // On iOS Capacitor: tries Apple Foundation Models first, falls
+    // through to /api/generate, returns null on failure → silently
+    // keeps the literal concat. Fire-and-forget; we already committed
+    // the merged node so the user has instant feedback regardless.
+    void synthesizeMerge(
+      { text: sourceNode.text, description: sourceNode.description, type: sourceNode.type },
+      { text: targetNode.text, description: targetNode.description, type: targetNode.type },
+      providerSettings.getRequestHeaders()
+    ).then((synth) => {
+      if (!synth) return;
+      // Read the latest committed nodes (history may have advanced) and
+      // patch the merged tile in place. Skip if the user has since
+      // deleted/undone — getNodeKey on targetKey will miss.
+      const latest = nodesRef.current;
+      if (!latest[targetKey]) return;
+      commitNodes({
+        ...latest,
+        [targetKey]: {
+          ...latest[targetKey],
+          text: synth.title,
+          description: synth.description || latest[targetKey].description,
+          // Only adopt the LLM's reclassified type if it's a valid type.
+          type: NODE_TYPES[synth.type] ? synth.type : latest[targetKey].type,
+        },
+      });
     });
   };
 
