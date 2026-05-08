@@ -10,8 +10,13 @@ type UseAuthOptions = {
 };
 
 export function useAuth(options?: UseAuthOptions) {
-  const { redirectOnUnauthenticated = false, redirectPath = getLoginUrl() } =
+  const { redirectOnUnauthenticated = false, redirectPath: redirectPathOpt } =
     options ?? {};
+  // Lazy: getLoginUrl reads import.meta.env and constructs a new URL,
+  // and on Capacitor builds VITE_OAUTH_PORTAL_URL is unset which used
+  // to crash the whole app at this default-param expression. Resolve
+  // only when actually redirecting.
+  const redirectPath = redirectPathOpt;
   const utils = trpc.useUtils();
 
   const meQuery = trpc.auth.me.useQuery(undefined, {
@@ -67,9 +72,12 @@ export function useAuth(options?: UseAuthOptions) {
     if (meQuery.isLoading || logoutMutation.isPending) return;
     if (state.user) return;
     if (typeof window === "undefined") return;
-    if (window.location.pathname === redirectPath) return;
 
-    window.location.href = redirectPath
+    const target = redirectPath ?? getLoginUrl();
+    if (!target) return; // No OAuth portal configured (e.g. Capacitor builds).
+    if (window.location.pathname === target) return;
+
+    window.location.href = target;
   }, [
     redirectOnUnauthenticated,
     redirectPath,
