@@ -22,6 +22,10 @@ export default defineConfig({
   build: {
     outDir: path.resolve(import.meta.dirname, "dist/public"),
     emptyOutDir: true,
+    // Inline sourcemaps so iOS/Android stack traces resolve to real file:line
+    // instead of minified positions like "index-XYZ.js:443:5796". Adds a few
+    // hundred KB to the bundle but only loaded when DevTools is attached.
+    sourcemap: "inline",
   },
   server: {
     host: true,

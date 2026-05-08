@@ -88,6 +88,25 @@ function describeError(error: unknown): Record<string, unknown> {
   return { value: String(error) };
 }
 
+// Catch render-time and async-unhandled errors that the React Query
+// handlers below don't see. Without this, exceptions during React
+// commit phase show up as anonymous stack frames in the Capacitor log
+// with no message attached.
+if (typeof window !== "undefined") {
+    window.addEventListener("error", (event) => {
+        console.error("[Window Error]", JSON.stringify({
+            message: event.message,
+            source: event.filename,
+            line: event.lineno,
+            col: event.colno,
+            ...describeError(event.error),
+        }));
+    });
+    window.addEventListener("unhandledrejection", (event) => {
+        console.error("[Unhandled Promise]", JSON.stringify(describeError(event.reason)));
+    });
+}
+
 queryClient.getQueryCache().subscribe(event => {
   if (event.type === "updated" && event.action.type === "error") {
     const error = event.query.state.error;
