@@ -1,17 +1,34 @@
 /**
  * useProviderSettings Hook
  *
- * Manages LLM provider selection and API key storage.
- * "Manus" (built-in) is the default provider and always works without any key.
- * Users can optionally switch to other providers and supply their own API keys.
- * Keys are stored in localStorage (never sent to any third party).
+ * Manages LLM provider selection and API key storage. Apple Intelligence
+ * is the on-device default on iOS Capacitor builds — it shows up as a
+ * first-class provider option, marked as zero-network, and is auto-
+ * selected when Foundation Models reports `available: true`. Cloud
+ * providers (Gemini / Claude / GPT / Grok / Mistral / Ollama) are the
+ * fallback for older devices and the only options on web.
+ *
+ * No more "manus" / "built-in AI" entry — that routed to Manus Forge
+ * cloud and was misleadingly labeled as built-in.
+ *
+ * Keys are stored in localStorage (never sent to any third party except
+ * the provider whose key it is).
  */
 
 import { useState, useCallback, useEffect } from "react";
 import { API_KEYS_STORAGE_KEY, PROVIDER_STORAGE_KEY } from "@/lib/hexConstants";
 import { buildApiUrl } from "@/lib/api";
+import { isCapacitor, getPlatform } from "@/lib/platform";
+import { FoundationModels } from "@/lib/foundationModelsPlugin";
 
-export type Provider = "manus" | "gemini" | "anthropic" | "openai" | "grok" | "mistral" | "ollama";
+export type Provider =
+  | "apple"
+  | "gemini"
+  | "anthropic"
+  | "openai"
+  | "grok"
+  | "mistral"
+  | "ollama";
 
 export interface ProviderConfig {
   id: Provider;
@@ -20,22 +37,25 @@ export interface ProviderConfig {
   keyPlaceholder: string;
   keyPrefix: string;
   requiresKey: boolean;
+  /** True for providers that aren't applicable on the current platform. Hidden in the picker. */
+  iosOnly?: boolean;
   extraFields?: { key: string; label: string; placeholder: string }[];
 }
 
 export const PROVIDERS: ProviderConfig[] = [
   {
-    id: "manus",
-    name: "Built-in AI",
-    description: "Works out of the box, no API key needed",
+    id: "apple",
+    name: "Apple Intelligence",
+    description: "On-device. No network, no API key. Requires iPhone 15 Pro / 16+ / iPad with M-series, iOS 26+, Apple Intelligence enabled.",
     keyPlaceholder: "",
     keyPrefix: "",
     requiresKey: false,
+    iosOnly: true,
   },
   {
     id: "gemini",
     name: "Google Gemini",
-    description: "Fast, capable, and free tier available",
+    description: "Fast, capable, free tier available",
     keyPlaceholder: "AIzaSy...",
     keyPrefix: "AIza",
     requiresKey: true,
@@ -98,7 +118,7 @@ export interface ApiKeys {
 }
 
 export interface ServerProviderInfo {
-  default: string;
+  default: string | null;
   available: Record<string, boolean>;
 }
 
@@ -111,9 +131,15 @@ export interface UseProviderSettingsReturn {
   clearKeys: () => void;
   getRequestHeaders: () => Record<string, string>;
   serverProviders: ServerProviderInfo | null;
+  /** Apple Intelligence available on this device. Cached per-session. */
+  appleIntelligenceAvailable: boolean;
+  /** Filtered provider list — drops `iosOnly: true` entries on non-Capacitor builds. */
+  visibleProviders: ProviderConfig[];
 }
 
 export function useProviderSettings(): UseProviderSettingsReturn {
+  const [appleIntelligenceAvailable, setAppleIntelligenceAvailable] = useState(false);
+
   const [provider, setProviderState] = useState<Provider>(() => {
     try {
       const saved = localStorage.getItem(PROVIDER_STORAGE_KEY);
@@ -121,7 +147,10 @@ export function useProviderSettings(): UseProviderSettingsReturn {
         return saved as Provider;
       }
     } catch {}
-    return "manus"; // Default to built-in
+    // Default: Apple Intelligence on iOS Capacitor (it'll be confirmed
+    // available below and unselected if not). Otherwise the first
+    // server-configured provider, set after the /api/providers fetch.
+    return isCapacitor() && getPlatform() === "ios" ? "apple" : "gemini";
   });
 
   const [apiKeys, setApiKeys] = useState<ApiKeys>(() => {
@@ -134,6 +163,22 @@ export function useProviderSettings(): UseProviderSettingsReturn {
 
   const [serverProviders, setServerProviders] = useState<ServerProviderInfo | null>(null);
 
+  // Probe Foundation Models availability once on mount. The result is
+  // cached for the session in component state and used for both the
+  // visible-providers filter and the auto-default fallback.
+  useEffect(() => {
+    if (!isCapacitor() || getPlatform() !== "ios") return;
+    let cancelled = false;
+    FoundationModels.isAvailable()
+      .then(({ available }) => {
+        if (!cancelled) setAppleIntelligenceAvailable(available);
+      })
+      .catch(() => {
+        if (!cancelled) setAppleIntelligenceAvailable(false);
+      });
+    return () => { cancelled = true; };
+  }, []);
+
   // Fetch server-side provider availability on mount
   useEffect(() => {
     fetch(buildApiUrl("providers"))
@@ -142,9 +187,20 @@ export function useProviderSettings(): UseProviderSettingsReturn {
         setServerProviders(data);
       })
       .catch(() => {
-        // Server unavailable — manus built-in still works
+        // Server unavailable — silent. The picker shows what client knows.
       });
   }, []);
+
+  // If the user picked "apple" on a build where Foundation Models isn't
+  // available (older iPhone, simulator without AI, web), drop them onto
+  // the first server-configured provider so they don't get stuck.
+  useEffect(() => {
+    if (provider !== "apple") return;
+    if (appleIntelligenceAvailable) return;
+    if (!serverProviders) return; // Wait for the probe.
+    const fallback = (serverProviders.default || "gemini") as Provider;
+    setProviderState(fallback);
+  }, [provider, appleIntelligenceAvailable, serverProviders]);
 
   // Persist provider selection
   useEffect(() => {
@@ -180,8 +236,8 @@ export function useProviderSettings(): UseProviderSettingsReturn {
     const config = PROVIDERS.find((p) => p.id === provider);
     if (!config) return false;
 
-    // Manus built-in is always configured
-    if (provider === "manus") return true;
+    // Apple Intelligence is configured iff Foundation Models reports available.
+    if (provider === "apple") return appleIntelligenceAvailable;
 
     // Server has a key for this provider? Then it's configured.
     if (serverProviders?.available?.[provider]) return true;
@@ -190,22 +246,32 @@ export function useProviderSettings(): UseProviderSettingsReturn {
       // Ollama needs at least a model name
       return !!(apiKeys.ollamaModel || apiKeys.ollamaHost);
     }
-    return !!(apiKeys[provider as keyof ApiKeys] && (apiKeys[provider as keyof ApiKeys] as string).trim().length > 0);
+    return !!(
+      apiKeys[provider as keyof ApiKeys] &&
+      (apiKeys[provider as keyof ApiKeys] as string).trim().length > 0
+    );
   })();
 
-  // Build headers to send with API requests
+  // Build headers to send with API requests. Apple Intelligence never
+  // calls the server, so we don't include x-provider:apple — those calls
+  // are handled client-side via FoundationModels.generate.
   const getRequestHeaders = useCallback((): Record<string, string> => {
     const headers: Record<string, string> = {
       "Content-Type": "application/json",
-      "X-Provider": provider,
     };
 
-    // Only send client key if user has explicitly set one
-    if (provider !== "manus") {
-      const key = apiKeys[provider as keyof ApiKeys] as string | undefined;
-      if (key && key.trim()) {
-        headers["X-API-Key"] = key;
-      }
+    if (provider === "apple") {
+      // No server call should be reaching this point with provider="apple".
+      // If it does (e.g. a fallback path), don't send x-provider — let the
+      // server pick its own default.
+      return headers;
+    }
+
+    headers["X-Provider"] = provider;
+
+    const key = apiKeys[provider as keyof ApiKeys] as string | undefined;
+    if (key && key.trim()) {
+      headers["X-API-Key"] = key;
     }
 
     // Ollama extra fields
@@ -218,6 +284,16 @@ export function useProviderSettings(): UseProviderSettingsReturn {
     return headers;
   }, [provider, apiKeys]);
 
+  // Filter providers shown in the picker:
+  // - On non-Capacitor / non-iOS: hide iosOnly entries (so web users
+  //   don't see "Apple Intelligence" they can't use).
+  // - On iOS: keep "apple" in the list; let isConfigured + the Settings
+  //   UI surface whether it's actually available.
+  const visibleProviders = PROVIDERS.filter((p) => {
+    if (p.iosOnly && (!isCapacitor() || getPlatform() !== "ios")) return false;
+    return true;
+  });
+
   return {
     provider,
     setProvider,
@@ -227,5 +303,7 @@ export function useProviderSettings(): UseProviderSettingsReturn {
     clearKeys,
     getRequestHeaders,
     serverProviders,
+    appleIntelligenceAvailable,
+    visibleProviders,
   };
 }

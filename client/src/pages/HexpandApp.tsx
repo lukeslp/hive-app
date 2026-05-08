@@ -1781,6 +1781,8 @@ Generate 6 diverse related ideas. Connect to key themes when relevant.`;
         isProviderConfigured={providerSettings.isConfigured}
         clearKeys={providerSettings.clearKeys}
         serverProviders={providerSettings.serverProviders}
+        appleIntelligenceAvailable={providerSettings.appleIntelligenceAvailable}
+        visibleProviders={providerSettings.visibleProviders}
       />
 
       {/* Minimap */}

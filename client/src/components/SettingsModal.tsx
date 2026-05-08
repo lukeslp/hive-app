@@ -20,8 +20,7 @@ import {
   Moon, Sun, Type, Sparkles, Activity, Save, Zap,
   Key, Eye, EyeOff, Shield, Check, AlertTriangle, Server,
 } from "@/lib/icons";
-import type { Provider, ApiKeys, ServerProviderInfo } from "@/hooks/useProviderSettings";
-import { PROVIDERS } from "@/hooks/useProviderSettings";
+import type { Provider, ApiKeys, ServerProviderInfo, ProviderConfig } from "@/hooks/useProviderSettings";
 
 export interface SettingsModalProps {
   isOpen: boolean;
@@ -48,6 +47,8 @@ export interface SettingsModalProps {
   isProviderConfigured: boolean;
   clearKeys: () => void;
   serverProviders: ServerProviderInfo | null;
+  appleIntelligenceAvailable: boolean;
+  visibleProviders: ProviderConfig[];
 }
 
 export const SettingsModal = ({
@@ -74,6 +75,8 @@ export const SettingsModal = ({
   isProviderConfigured,
   clearKeys,
   serverProviders,
+  appleIntelligenceAvailable,
+  visibleProviders,
 }: SettingsModalProps) => {
   const [showKeys, setShowKeys] = useState<Record<string, boolean>>({});
   const [activeTab, setActiveTab] = useState<"general" | "ai">("ai");
@@ -95,7 +98,7 @@ export const SettingsModal = ({
     return key.slice(0, 4) + "••••" + key.slice(-4);
   };
 
-  const currentProviderConfig = PROVIDERS.find((p) => p.id === provider);
+  const currentProviderConfig = visibleProviders.find((p) => p.id === provider);
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
@@ -166,13 +169,15 @@ export const SettingsModal = ({
                   AI Provider
                 </Label>
                 <div className="grid grid-cols-2 gap-2">
-                  {PROVIDERS.map((p) => {
-                    const isBuiltIn = p.id === "manus";
+                  {visibleProviders.map((p) => {
+                    const isApple = p.id === "apple";
                     const hasClientKey = p.requiresKey
                       ? !!(apiKeys[p.id as keyof ApiKeys] as string)?.trim()
                       : !!(apiKeys.ollamaModel || apiKeys.ollamaHost);
                     const hasServerKey = !!serverProviders?.available?.[p.id];
-                    const isReady = isBuiltIn || hasClientKey || hasServerKey;
+                    const isReady = isApple
+                      ? appleIntelligenceAvailable
+                      : hasClientKey || hasServerKey;
                     return (
                       <button
                         key={p.id}
@@ -181,15 +186,18 @@ export const SettingsModal = ({
                           provider === p.id
                             ? "border-primary bg-primary/5 ring-1 ring-primary/20"
                             : "border-border hover:border-muted-foreground/30"
-                        }`}
+                        } ${isApple && !appleIntelligenceAvailable ? "opacity-60" : ""}`}
                       >
                         <div className="flex items-center gap-2 w-full">
                           <span className="text-sm font-medium text-foreground">{p.name}</span>
                           <span className="ml-auto flex items-center gap-1">
-                            {isBuiltIn && (
-                              <span className="text-[10px] px-1.5 py-0.5 rounded bg-emerald-500/15 text-emerald-400 font-medium">built-in</span>
+                            {isApple && appleIntelligenceAvailable && (
+                              <span className="text-[10px] px-1.5 py-0.5 rounded bg-emerald-500/15 text-emerald-400 font-medium">on-device</span>
                             )}
-                            {!isBuiltIn && hasServerKey && !hasClientKey && (
+                            {isApple && !appleIntelligenceAvailable && (
+                              <span className="text-[10px] px-1.5 py-0.5 rounded bg-amber-500/15 text-amber-400 font-medium">unavailable</span>
+                            )}
+                            {!isApple && hasServerKey && !hasClientKey && (
                               <span className="text-[10px] px-1.5 py-0.5 rounded bg-emerald-500/15 text-emerald-400 font-medium">hosted</span>
                             )}
                             {isReady && (
@@ -214,10 +222,18 @@ export const SettingsModal = ({
                     {currentProviderConfig.requiresKey ? "API Key" : "Configuration"}
                   </Label>
 
-                  {provider === "manus" ? (
-                    <div className="flex items-start gap-2 text-xs text-muted-foreground bg-emerald-500/5 border border-emerald-500/20 rounded-lg p-3">
-                      <Zap className="w-3.5 h-3.5 mt-0.5 flex-shrink-0 text-emerald-400" />
-                      <span>Built-in AI works out of the box. No API key needed.</span>
+                  {provider === "apple" ? (
+                    <div className={`flex items-start gap-2 text-xs rounded-lg p-3 ${
+                      appleIntelligenceAvailable
+                        ? "text-muted-foreground bg-emerald-500/5 border border-emerald-500/20"
+                        : "text-muted-foreground bg-amber-500/5 border border-amber-500/20"
+                    }`}>
+                      <Zap className={`w-3.5 h-3.5 mt-0.5 flex-shrink-0 ${appleIntelligenceAvailable ? "text-emerald-400" : "text-amber-400"}`} />
+                      <span>
+                        {appleIntelligenceAvailable
+                          ? "Apple Intelligence is active on this device. Generation runs entirely on-device — no network, no API key, no data leaves the device."
+                          : "Apple Intelligence isn't available here. Needs iPhone 15 Pro / 16+ / iPad with M-series, iOS 26+, and Apple Intelligence enabled in Settings → Apple Intelligence & Siri. Pick a cloud provider below to fall back."}
+                      </span>
                     </div>
                   ) : currentProviderConfig.requiresKey ? (
                     <div className="relative">
