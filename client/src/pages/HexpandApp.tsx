@@ -312,6 +312,11 @@ export default function HexpandApp() {
   // mergeRef for touch drag (defined before mergeNodes, updated via ref)
   const mergeRef = useRef<(src: string, tgt: string) => void>(() => {});
 
+  // Track recent regenerations per node so a 2nd / 3rd refresh avoids
+  // earlier outputs and produces meaningfully different angles. Bounded
+  // to last 3 per node so the AVOID clause doesn't bloat the prompt.
+  const refreshHistoryRef = useRef<Map<string, Array<{ title: string; description?: string }>>>(new Map());
+
   // ── Touch drag (mobile drag-to-combine) ────────────────────────────────
   const { touchDragState, handleTouchStart: touchDragStart, handleTouchMove: touchDragMove, handleTouchEnd: touchDragEnd } = useTouchDrag({
     nodes,
@@ -815,6 +820,21 @@ Generate 6 diverse related ideas. Connect to key themes when relevant.`;
     const parent = node.parentId ? nodes[node.parentId] : null;
     const parentContext = parent ? `Related to: "${parent.text}"` : "Root concept";
 
+    // Build AVOID clause from recent regenerations of this node so the
+    // LLM produces a genuinely different angle on the 2nd / 3rd refresh.
+    // First refresh has no prior history → empty AVOID → behavior unchanged.
+    const history = refreshHistoryRef.current.get(key) ?? [];
+    const seen = [
+      { title: node.text, description: node.description },
+      ...history,
+    ];
+    const avoidClause = seen.length > 0
+      ? `\nAVOID these previous titles/descriptions (a paraphrase doesn't count — find a different angle):\n${seen
+          .slice(0, 3)
+          .map((s, i) => `  ${i + 1}. "${s.title}"${s.description ? ` — ${s.description}` : ""}`)
+          .join("\n")}`
+      : "";
+
     try {
       const response = await fetch(buildApiUrl("generate"), {
         method: "POST",
@@ -825,7 +845,7 @@ Generate 6 diverse related ideas. Connect to key themes when relevant.`;
             {
               parts: [
                 {
-                  text: `Current title: "${node.text}"\nCurrent description: ${node.description || "None"}\n${parentContext}\nNode type: ${node.type}\nRegenerate with a fresh perspective.`,
+                  text: `Current title: "${node.text}"\nCurrent description: ${node.description || "None"}\n${parentContext}\nNode type: ${node.type}\nRegenerate with a fresh perspective.${avoidClause}`,
                 },
               ],
             },
@@ -839,7 +859,9 @@ Generate 6 diverse related ideas. Connect to key themes when relevant.`;
           },
           generationConfig: {
             responseMimeType: "application/json",
-            temperature: 0.8 + aiGeneration.creativity * 0.5,
+            // Slightly higher temperature for refresh than first-pass
+            // generation, since we want divergence from the existing tile.
+            temperature: 0.9 + aiGeneration.creativity * 0.4,
           },
         }),
       });
@@ -851,14 +873,20 @@ Generate 6 diverse related ideas. Connect to key themes when relevant.`;
       if (text) text = text.replace(/^```json\s*/, "").replace(/\s*```$/, "").trim();
 
       const parsed = text ? JSON.parse(text) : {};
+      const newTitle = parsed.title || node.text;
+      const newDescription = parsed.description || node.description;
       const newNodes = { ...nodesRef.current };
       newNodes[key] = {
         ...node,
-        text: parsed.title || node.text,
-        description: parsed.description || node.description,
+        text: newTitle,
+        description: newDescription,
         type: parsed.type && NODE_TYPES[parsed.type] ? parsed.type : node.type,
       };
       commitNodes(newNodes);
+      // Append the previous tile to history (bounded to last 3) so the
+      // NEXT refresh AVOIDs both this one and any earlier output.
+      const updated = [{ title: node.text, description: node.description }, ...history].slice(0, 3);
+      refreshHistoryRef.current.set(key, updated);
       haptics.expand();
     } catch (error) {
       console.error("Refresh node error:", error);
