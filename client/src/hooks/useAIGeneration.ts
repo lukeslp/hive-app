@@ -429,7 +429,9 @@ Generate 6 neighbor nodes.`;
 
     // ── Try Apple on-device inference first (iOS 26+ with Apple Intelligence) ──
     // Falls through to the cloud fetch on failure, unavailable, or non-iOS.
-    if (await checkFoundationModels()) {
+    const fmAvailable = await checkFoundationModels();
+    console.log("[AI] FoundationModels available:", fmAvailable);
+    if (fmAvailable) {
       try {
         const fm = await FoundationModels.generate({
           prompt: userQuery,
@@ -437,6 +439,7 @@ Generate 6 neighbor nodes.`;
           temperature,
           maxTokens: 2048,
         });
+        console.log("[AI] FoundationModels returned text length:", fm.text?.length ?? 0);
         const branches = parseBranches(fm.text);
         if (branches.length > 0) {
           const newNodes = buildNeighborNodes(branches, centerNode, nodes, NODE_TYPES, forceRefresh);
@@ -444,13 +447,12 @@ Generate 6 neighbor nodes.`;
           haptics.expand();
           return newNodes;
         }
-        // Empty response from on-device — fall through to cloud rather than
-        // returning a placeholder hex.
+        console.log("[AI] FoundationModels empty branches; falling through to cloud");
       } catch (fmErr) {
-        console.warn("FoundationModels generation failed, falling back to cloud:", fmErr);
-        // Don't disable for the rest of the session — a transient failure
-        // shouldn't punish later calls. (The first availability check is
-        // cached separately.)
+        console.warn("[AI] FoundationModels generation failed, falling back to cloud:", JSON.stringify({
+          name: fmErr instanceof Error ? fmErr.name : 'unknown',
+          message: fmErr instanceof Error ? fmErr.message : String(fmErr),
+        }));
       }
     }
 
@@ -459,8 +461,11 @@ Generate 6 neighbor nodes.`;
     abortControllerRef.current = controller;
     const timeoutId = setTimeout(() => controller.abort(), REQUEST_TIMEOUT);
 
+    const fetchUrl = buildApiUrl("generate");
+    console.log("[AI] cloud fetch starting:", fetchUrl, "payload bytes:", requestSize);
+
     try {
-      const response = await fetch(buildApiUrl("generate"), {
+      const response = await fetch(fetchUrl, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(requestPayload),
@@ -468,27 +473,30 @@ Generate 6 neighbor nodes.`;
       });
 
       clearTimeout(timeoutId);
+      console.log("[AI] cloud fetch response:", response.status, response.statusText);
 
       const result = await response.json();
 
       if (!response.ok) {
-        console.error("HTTP Error:", response.status, response.statusText);
+        console.error("[AI] HTTP Error:", JSON.stringify({ status: response.status, statusText: response.statusText, body: result }));
         throw new Error(`HTTP ${response.status}: ${response.statusText}`);
       }
 
       if (result.error) {
-        console.error("API Error:", result.error);
+        console.error("[AI] API Error:", JSON.stringify(result.error));
         throw new Error(result.error.message || "API request failed");
       }
 
       const text = result.candidates?.[0]?.content?.parts?.[0]?.text;
 
       if (!text) {
-        console.error("No text in API response. Full result:", JSON.stringify(result, null, 2));
+        console.error("[AI] No text in API response. Top-level keys:", JSON.stringify(Object.keys(result ?? {})));
         throw new Error("API returned no content");
       }
 
+      console.log("[AI] cloud text length:", text.length);
       const branches = parseBranches(text);
+      console.log("[AI] parsed branches:", branches.length);
       const newNodes = buildNeighborNodes(branches, centerNode, nodes, NODE_TYPES, forceRefresh);
 
       setIsGenerating(false);
@@ -504,7 +512,11 @@ Generate 6 neighbor nodes.`;
         return null;
       }
 
-      console.error("AI Error:", err);
+      console.error("[AI] generate failed:", JSON.stringify({
+        name: err instanceof Error ? err.name : 'unknown',
+        message: err instanceof Error ? err.message : String(err),
+        stack: err instanceof Error ? err.stack?.split('\n').slice(0, 5).join('\n') : undefined,
+      }));
       const errorMsg = err instanceof Error ? err.message : "Failed to generate ideas";
       setError(errorMsg);
       setIsGenerating(false);
