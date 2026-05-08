@@ -430,9 +430,15 @@ Generate 6 neighbor nodes.`;
     // ── Try Apple on-device inference first (iOS 26+ with Apple Intelligence) ──
     // Primary path on supported iOS devices. Falls through to cloud on
     // failure / unavailable / non-iOS. The whole point of the iOS port.
+    //
+    // Diagnostic toasts: every branch surfaces a user-visible signal so we
+    // can verify on real hardware which path actually fires without needing
+    // Xcode attached. Once on-device is confirmed working end-to-end these
+    // can be downgraded back to console.log.
     const fmAvailable = await checkFoundationModels();
     console.log("[AI] FoundationModels available:", fmAvailable);
     if (fmAvailable) {
+      toast.info("✦ Trying on-device…", { duration: 800 });
       try {
         const fm = await FoundationModels.generate({
           prompt: userQuery,
@@ -446,8 +452,6 @@ Generate 6 neighbor nodes.`;
           const newNodes = buildNeighborNodes(branches, centerNode, nodes, NODE_TYPES, forceRefresh);
           setIsGenerating(false);
           haptics.expand();
-          // Visible signal that on-device fired. Brief, dismissable, only
-          // when FM actually produced usable output.
           toast("✦ Apple Intelligence", {
             description: "Generated on-device",
             duration: 1500,
@@ -455,11 +459,14 @@ Generate 6 neighbor nodes.`;
           return newNodes;
         }
         console.log("[AI] FoundationModels empty branches; falling through to cloud");
+        toast.warning("On-device returned 0 branches — using cloud", { duration: 2500 });
       } catch (fmErr) {
+        const errMsg = fmErr instanceof Error ? fmErr.message : String(fmErr);
         console.warn("[AI] FoundationModels generation failed, falling back to cloud:", JSON.stringify({
           name: fmErr instanceof Error ? fmErr.name : 'unknown',
-          message: fmErr instanceof Error ? fmErr.message : String(fmErr),
+          message: errMsg,
         }));
+        toast.error("On-device threw: " + errMsg, { duration: 4000 });
       }
     }
 
