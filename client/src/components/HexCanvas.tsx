@@ -199,6 +199,22 @@ const HexNode = React.memo<{
           ${isDragged ? 'opacity-50' : ''}
           ${isDropTarget ? 'ring-4 ring-indigo-500 ring-opacity-75' : ''}
         `}
+        style={{
+          // iOS Safari / Capacitor WKWebView fires its own long-press menu
+          // (Copy/Define/Look Up) on tiles before our 400 ms long-press
+          // timer in useTouchDrag fires — that's why drag-to-merge has been
+          // dead on iPhone/iPad. These three rules prevent the system's
+          // touch-handling from intercepting:
+          //   touchAction: none           — disables browser scroll/zoom on the tile
+          //   WebkitTouchCallout: 'none'  — disables the iOS "Copy/Define" menu
+          //   WebkitUserSelect: 'none'    — prevents text selection on long-press
+          // No effect on desktop browsers (the WebKit-prefixed properties
+          // are no-ops there). Adapted from geepers-chat-demo's HexTile.
+          touchAction: 'none',
+          WebkitTouchCallout: 'none',
+          WebkitUserSelect: 'none',
+          userSelect: 'none',
+        }}
       >
         <svg
           className={`absolute inset-0 w-full h-full transition-all duration-200 ${shadowClass}`}
