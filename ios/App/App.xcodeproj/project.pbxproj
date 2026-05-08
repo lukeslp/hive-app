@@ -89,6 +89,7 @@
 			isa = PBXNativeTarget;
 			buildConfigurationList = 504EC3161FED79650016851F /* Build configuration list for PBXNativeTarget "App" */;
 			buildPhases = (
+				9F1AAA0001AAAAAAAAAAAA06 /* Sync web assets */,
 				504EC3001FED79650016851F /* Sources */,
 				504EC3011FED79650016851F /* Frameworks */,
 				504EC3021FED79650016851F /* Resources */,
@@ -158,6 +159,28 @@
 			runOnlyForDeploymentPostprocessing = 0;
 		};
 /* End PBXResourcesBuildPhase section */
+
+/* Begin PBXShellScriptBuildPhase section */
+		9F1AAA0001AAAAAAAAAAAA06 /* Sync web assets */ = {
+			isa = PBXShellScriptBuildPhase;
+			alwaysOutOfDate = 1;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			inputFileListPaths = (
+			);
+			inputPaths = (
+			);
+			name = "Sync web assets";
+			outputFileListPaths = (
+			);
+			outputPaths = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+			shellPath = /bin/sh;
+			shellScript = "# Auto-rebuild + sync the web bundle into the iOS app before each\n# Xcode build, so editing JS doesn't require remembering 'pnpm cap:sync:ios'.\n# Falls through silently when the toolchain isn't present (CI, fresh\n# checkout). The native build still runs whatever's already in public/.\nset -e\nexport PATH=\"/opt/homebrew/bin:/usr/local/bin:$HOME/.nvm/versions/node/$(ls -1 \"$HOME/.nvm/versions/node\" 2>/dev/null | tail -1)/bin:$PATH\"\nREPO_ROOT=\"${SRCROOT}/..\"\nif command -v pnpm >/dev/null 2>&1 && [ -f \"$REPO_ROOT/package.json\" ] && [ -d \"$REPO_ROOT/node_modules\" ]; then\n  cd \"$REPO_ROOT\"\n  echo \"Running pnpm cap:sync:ios from $PWD\"\n  pnpm cap:sync:ios\nelse\n  echo \"pnpm not found or no node_modules — skipping web-asset sync. Run 'pnpm install && pnpm cap:sync:ios' manually if web changes don't appear.\"\nfi\n";
+		};
+/* End PBXShellScriptBuildPhase section */
 
 /* Begin PBXSourcesBuildPhase section */
 		504EC3001FED79650016851F /* Sources */ = {
