@@ -19,6 +19,21 @@ const config: CapacitorConfig = {
     CapacitorHttp: {
       enabled: true,
     },
+    // Splash plugin keeps the native LaunchScreen visible until JS calls
+    // SplashScreen.hide() in main.tsx after React mounts. Without this,
+    // the launch storyboard disappears the instant Capacitor mounts the
+    // WKWebView, leaving a blank screen for the rest of the boot
+    // (~7-16s on cold launch per Xcode console traces).
+    SplashScreen: {
+      launchAutoHide: false,
+      launchShowDuration: 0,
+      backgroundColor: '#0a0a0a',
+      showSpinner: true,
+      iosSpinnerStyle: 'large',
+      spinnerColor: '#ffffff',
+      splashFullScreen: true,
+      splashImmersive: true,
+    },
   },
 };
 

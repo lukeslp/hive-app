@@ -189,3 +189,19 @@ createRoot(rootEl).render(
   </BootErrorBoundary>
 );
 cp("main.tsx: render() returned");
+
+// Hide the native splash once React has rendered its first frame. The
+// double-rAF waits for the React commit + browser paint to land so the
+// user never sees a blank frame between splash and app. No-op on web.
+if (isCapacitor()) {
+    void import("@capacitor/splash-screen").then(({ SplashScreen }) => {
+        requestAnimationFrame(() => {
+            requestAnimationFrame(() => {
+                void SplashScreen.hide({ fadeOutDuration: 200 });
+                cp("main.tsx: SplashScreen.hide() called");
+            });
+        });
+    }).catch((e) => {
+        console.warn("Could not load @capacitor/splash-screen", e);
+    });
+}
