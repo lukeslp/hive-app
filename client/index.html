@@ -5,7 +5,7 @@
     <meta charset="UTF-8" />
     <meta
       name="viewport"
-      content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
+      content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover, interactive-widget=resizes-content" />
     <title>Hexpand</title>
 
     <!-- Open Graph / Social Share -->
@@ -30,6 +30,24 @@
 
   <body>
     <script>!function(){var t=localStorage.getItem('theme');document.documentElement.className=t||'dark'}()</script>
+    <script>
+      // Track the iOS keyboard's visual height into a CSS variable so
+      // fixed-position modals can pad-bottom by it and the input stays
+      // visible above the keyboard. Pure web — no Capacitor plugin
+      // required. visualViewport is supported on iOS 13+.
+      (function () {
+        if (typeof window === 'undefined' || !window.visualViewport) return;
+        var root = document.documentElement;
+        function sync() {
+          var vv = window.visualViewport;
+          var kb = Math.max(0, window.innerHeight - vv.height - vv.offsetTop);
+          root.style.setProperty('--kb-h', kb + 'px');
+        }
+        window.visualViewport.addEventListener('resize', sync);
+        window.visualViewport.addEventListener('scroll', sync);
+        sync();
+      })();
+    </script>
 
     <!-- On-screen boot/error overlay. Renders errors visibly when React
          can't mount, the JS bundle can't load, or anything throws before

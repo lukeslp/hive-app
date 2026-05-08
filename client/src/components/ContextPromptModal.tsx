@@ -96,6 +96,12 @@ export const ContextPromptModal = ({
       className="fixed inset-0 z-[9998] flex items-center justify-center animate-in fade-in duration-200"
       onClick={handleBackdropClick}
       onTouchEnd={handleBackdropClick}
+      // Keyboard-aware padding: --kb-h is set by the visualViewport
+      // listener in index.html. When iOS's keyboard slides up, the flex
+      // container's effective height shrinks by the keyboard height, so
+      // items-center re-centers the prompt in the remaining viewport
+      // (above the keyboard) instead of behind it. 0 on web/desktop.
+      style={{ paddingBottom: "var(--kb-h, 0px)" }}
     >
       {/* Dimmed frosted backdrop */}
       <div className="absolute inset-0 bg-black/60 backdrop-blur-sm pointer-events-none" />
