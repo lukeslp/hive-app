@@ -25,7 +25,21 @@
 
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
+    <!-- Inter loaded non-blocking so cold launch (especially Capacitor on
+         iOS) doesn't wait on a Google Fonts round-trip before first paint.
+         The print-media trick lets the browser fetch the stylesheet
+         lazily; onload swaps it to "all" once it arrives. The <noscript>
+         fallback covers the (rare) JS-disabled case. CSS already declares
+         system-ui as the fallback so the page renders immediately and Inter
+         swaps in when ready. -->
+    <link
+      rel="stylesheet"
+      href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap"
+      media="print"
+      onload="this.media='all'" />
+    <noscript>
+      <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" />
+    </noscript>
   </head>
 
   <body>
