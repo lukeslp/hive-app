@@ -2,17 +2,21 @@
  * LLM Proxy Routes for Hexpand
  *
  * Provides /api/generate, /api/providers, /api/share endpoints.
- * Uses the scaffold's built-in invokeLLM as the default provider,
- * with optional support for user-provided API keys for direct provider calls.
+ * Routes generation requests to the configured provider based on either
+ * a client-supplied x-provider header + x-api-key, or server-side env
+ * keys (GEMINI_API_KEY, ANTHROPIC_API_KEY, etc.).
+ *
+ * No Manus / Manus Forge / built-in provider — that path was removed.
+ * Apple Foundation Models on iOS handles "no key needed" via the
+ * client-side foundationModelsPlugin, NOT through this server proxy.
  */
 
 import { Router, Request, Response } from "express";
-import { invokeLLM } from "./_core/llm";
 import { nanoid } from "nanoid";
 
 // ─── Types ──────────────────────────────────────────────────────────────────
 
-type Provider = "gemini" | "anthropic" | "openai" | "grok" | "mistral" | "ollama" | "manus";
+type Provider = "gemini" | "anthropic" | "openai" | "grok" | "mistral" | "ollama";
 
 interface NormalizedRequest {
   system: string;
@@ -41,20 +45,6 @@ function extractRequest(body: any): NormalizedRequest {
 
 function wrapResponse(text: string): object {
   return { candidates: [{ content: { parts: [{ text }] } }] };
-}
-
-/** Use the scaffold's built-in LLM (Manus Forge) - works out of the box */
-async function callManus(req: NormalizedRequest): Promise<string> {
-  const messages: Array<{ role: "system" | "user"; content: string }> = [];
-  if (req.system) messages.push({ role: "system", content: req.system });
-  messages.push({ role: "user", content: req.userText });
-
-  const result = await invokeLLM({
-    messages,
-    maxTokens: req.maxTokens,
-  });
-
-  return result.choices?.[0]?.message?.content as string ?? "";
 }
 
 async function callGemini(req: NormalizedRequest, apiKey: string): Promise<string> {
@@ -240,35 +230,31 @@ function resolveProvider(req: Request): {
       case "grok": return process.env.XAI_API_KEY;
       case "mistral": return process.env.MISTRAL_API_KEY;
       case "ollama": return process.env.OLLAMA_API_KEY;
-      case "manus": return "built-in"; // Always available
       default: return undefined;
     }
   };
 
-  const validProviders: Provider[] = ["gemini", "anthropic", "openai", "grok", "mistral", "ollama", "manus"];
+  const validProviders: Provider[] = ["gemini", "anthropic", "openai", "grok", "mistral", "ollama"];
   let provider: Provider;
   let apiKey: string | undefined;
 
   if (validProviders.includes(clientProvider as Provider)) {
     provider = clientProvider as Provider;
     apiKey = clientApiKey || getEnvKey(provider);
-
-    // If the client-requested provider can't be used, fall back
-    const needsFallback = provider === "ollama"
-      ? !(ollamaModel || process.env.OLLAMA_MODEL)
-      : provider === "manus"
-        ? false // Manus is always available
-        : !apiKey;
-
-    if (needsFallback) {
-      // Fall back to manus (built-in) which always works
-      provider = "manus";
-      apiKey = "built-in";
-    }
   } else {
-    // No valid provider specified, use manus as default
-    provider = "manus";
-    apiKey = "built-in";
+    // No valid provider chosen; fall back to whichever has a server env
+    // key configured. No more Manus default.
+    const fallback = validProviders.find((p) => {
+      if (p === "ollama") return !!(ollamaModel || process.env.OLLAMA_MODEL);
+      return !!getEnvKey(p);
+    });
+    if (!fallback) {
+      throw new Error(
+        "No LLM provider configured. Set one of GEMINI_API_KEY, ANTHROPIC_API_KEY, OPENAI_API_KEY, XAI_API_KEY, MISTRAL_API_KEY, or OLLAMA_HOST/OLLAMA_MODEL."
+      );
+    }
+    provider = fallback;
+    apiKey = getEnvKey(provider);
   }
 
   return {
@@ -286,7 +272,6 @@ async function callProviderWithContext(
 ): Promise<string> {
   const req = extractRequest(body);
   switch (resolved.provider) {
-    case "manus":     return callManus(req);
     case "gemini":    return callGemini(req, resolved.apiKey || "");
     case "anthropic": return callAnthropic(req, resolved.apiKey || "");
     case "openai":    return callOpenAI(req, resolved.apiKey || "");
@@ -314,22 +299,10 @@ export function createLlmProxyRouter(): Router {
         return res.status(400).json({ error: "Missing required field: contents" });
       }
       const resolved = resolveProvider(req);
-      let text: string;
-      try {
-        text = await callProviderWithContext(req.body, resolved);
-      } catch (providerError) {
-        // If the chosen provider fails and it's not already manus, fall back to manus
-        if (resolved.provider !== "manus") {
-          console.warn(`Provider ${resolved.provider} failed, falling back to manus:`, providerError);
-          text = await callProviderWithContext(req.body, {
-            ...resolved,
-            provider: "manus",
-            apiKey: "built-in",
-          });
-        } else {
-          throw providerError;
-        }
-      }
+      // No fallback. If the chosen provider fails the error propagates and
+      // the client gets a 500 — the client knows to try Apple Foundation
+      // Models on iOS or surface an actionable error on web.
+      const text = await callProviderWithContext(req.body, resolved);
       res.json(wrapResponse(text));
     } catch (error) {
       console.error("Error in /api/generate:", error);
@@ -338,10 +311,12 @@ export function createLlmProxyRouter(): Router {
     }
   });
 
-  // Provider info endpoint
+  // Provider info endpoint. The "default" is whichever provider has a
+  // server env key configured (preference order matches the type list).
+  // No Manus / built-in entry — Apple Foundation Models is the iOS
+  // equivalent and it lives client-side, not here.
   apiRouter.get("/providers", (_req: Request, res: Response) => {
     const available: Record<string, boolean> = {
-      manus: true, // Always available via built-in LLM
       gemini: !!process.env.GEMINI_API_KEY,
       anthropic: !!process.env.ANTHROPIC_API_KEY,
       openai: !!process.env.OPENAI_API_KEY,
@@ -349,8 +324,10 @@ export function createLlmProxyRouter(): Router {
       mistral: !!process.env.MISTRAL_API_KEY,
       ollama: !!(process.env.OLLAMA_HOST || process.env.OLLAMA_MODEL),
     };
+    const defaultProvider =
+      Object.entries(available).find(([, v]) => v)?.[0] ?? null;
     res.json({
-      default: "manus",
+      default: defaultProvider,
       available,
     });
   });

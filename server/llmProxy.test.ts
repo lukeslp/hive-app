@@ -1,21 +1,18 @@
-import { describe, expect, it, vi, beforeEach } from "vitest";
+import { describe, expect, it, vi, beforeEach, afterEach } from "vitest";
 
-// We test the pure functions and route logic by importing the module
-// and exercising the Express router with mock req/res objects.
-
-// Mock the invokeLLM function
-vi.mock("./_core/llm", () => ({
-  invokeLLM: vi.fn().mockResolvedValue({
-    choices: [{ message: { content: '{"subtopics": [{"label": "Test Topic", "type": "concept"}]}' } }],
-  }),
-}));
-
-// Mock global fetch to simulate provider failures for fallback testing
-const originalFetch = globalThis.fetch;
-vi.stubGlobal('fetch', vi.fn().mockRejectedValue(new Error('Simulated provider failure')));
+// Provider routing tests for the LLM proxy.
+// No more Manus / "built-in" — generation requires a configured provider
+// (server env key or client x-api-key header). Apple Foundation Models is
+// the iOS on-device equivalent and lives client-side, not in this proxy.
 
 import { createLlmProxyRouter } from "./llmProxy";
 import type { Request, Response } from "express";
+
+// Mock fetch globally — every provider call goes through fetch except
+// the now-removed callManus. Tests will configure success/failure per
+// case via the global mock.
+const mockFetch = vi.fn();
+vi.stubGlobal("fetch", mockFetch);
 
 function mockReq(overrides: Partial<Request> = {}): Request {
   return {
@@ -42,11 +39,34 @@ function mockRes(): Response & { _status: number; _json: any } {
   return res;
 }
 
+function geminiSuccessResponse() {
+  return {
+    ok: true,
+    status: 200,
+    json: async () => ({
+      candidates: [
+        {
+          content: {
+            parts: [{ text: '{"subtopics": [{"label": "Test Topic", "type": "concept"}]}' }],
+          },
+        },
+      ],
+    }),
+    text: async () => "",
+  };
+}
+
 describe("LLM Proxy Router", () => {
   let router: ReturnType<typeof createLlmProxyRouter>;
+  const originalEnv = { ...process.env };
 
   beforeEach(() => {
     router = createLlmProxyRouter();
+    mockFetch.mockReset();
+  });
+
+  afterEach(() => {
+    process.env = { ...originalEnv };
   });
 
   describe("POST /generate", () => {
@@ -54,7 +74,6 @@ describe("LLM Proxy Router", () => {
       const req = mockReq({ body: {} });
       const res = mockRes();
 
-      // Find the POST /generate handler
       const layer = router.stack.find(
         (l: any) => l.route?.path === "/generate" && l.route?.methods?.post
       );
@@ -66,7 +85,10 @@ describe("LLM Proxy Router", () => {
       expect(res._json).toEqual({ error: "Missing required field: contents" });
     });
 
-    it("calls Manus (built-in) provider by default and returns wrapped response", async () => {
+    it("uses the first server-configured provider when no x-provider header is sent", async () => {
+      process.env.GEMINI_API_KEY = "test-gemini-key";
+      mockFetch.mockResolvedValueOnce(geminiSuccessResponse());
+
       const req = mockReq({
         headers: {},
         body: {
@@ -84,14 +106,25 @@ describe("LLM Proxy Router", () => {
       await layer!.route!.stack[0].handle(req, res, () => {});
 
       expect(res._status).toBe(200);
-      expect(res._json).toBeDefined();
-      expect(res._json.candidates).toBeDefined();
-      expect(res._json.candidates[0].content.parts[0].text).toBeTruthy();
+      expect(res._json?.candidates?.[0]?.content?.parts?.[0]?.text).toBeTruthy();
+      // Confirms it actually called the Gemini endpoint, not anything Manus.
+      const calledUrl = mockFetch.mock.calls[0]?.[0];
+      expect(String(calledUrl)).toContain("generativelanguage.googleapis.com");
     });
 
-    it("falls back to manus when client requests unconfigured provider", async () => {
+    it("returns 500 when no provider is configured anywhere", async () => {
+      // Strip every provider env key.
+      delete process.env.GEMINI_API_KEY;
+      delete process.env.ANTHROPIC_API_KEY;
+      delete process.env.OPENAI_API_KEY;
+      delete process.env.XAI_API_KEY;
+      delete process.env.MISTRAL_API_KEY;
+      delete process.env.OLLAMA_API_KEY;
+      delete process.env.OLLAMA_HOST;
+      delete process.env.OLLAMA_MODEL;
+
       const req = mockReq({
-        headers: { "x-provider": "gemini" }, // No GEMINI_API_KEY set
+        headers: {},
         body: {
           contents: [{ parts: [{ text: "Test" }] }],
           generationConfig: { temperature: 0.7, maxOutputTokens: 512 },
@@ -105,14 +138,16 @@ describe("LLM Proxy Router", () => {
 
       await layer!.route!.stack[0].handle(req, res, () => {});
 
-      // Should succeed via manus fallback
-      expect(res._status).toBe(200);
-      expect(res._json.candidates).toBeDefined();
+      expect(res._status).toBe(500);
+      expect(res._json?.error?.message).toMatch(/No LLM provider configured/);
     });
   });
 
   describe("GET /providers", () => {
-    it("returns manus as always available and default", () => {
+    it("does not list manus and reports the first env-configured provider as default", () => {
+      delete process.env.GEMINI_API_KEY;
+      process.env.ANTHROPIC_API_KEY = "test-anthropic-key";
+
       const req = mockReq();
       const res = mockRes();
 
@@ -124,8 +159,30 @@ describe("LLM Proxy Router", () => {
       layer!.route!.stack[0].handle(req, res, () => {});
 
       expect(res._json).toBeDefined();
-      expect(res._json.default).toBe("manus");
-      expect(res._json.available.manus).toBe(true);
+      expect(res._json.default).toBe("anthropic");
+      expect(res._json.available.anthropic).toBe(true);
+      expect(res._json.available).not.toHaveProperty("manus");
+    });
+
+    it("returns null default when no provider env keys are configured", () => {
+      delete process.env.GEMINI_API_KEY;
+      delete process.env.ANTHROPIC_API_KEY;
+      delete process.env.OPENAI_API_KEY;
+      delete process.env.XAI_API_KEY;
+      delete process.env.MISTRAL_API_KEY;
+      delete process.env.OLLAMA_HOST;
+      delete process.env.OLLAMA_MODEL;
+
+      const req = mockReq();
+      const res = mockRes();
+
+      const layer = router.stack.find(
+        (l: any) => l.route?.path === "/providers" && l.route?.methods?.get
+      );
+
+      layer!.route!.stack[0].handle(req, res, () => {});
+
+      expect(res._json.default).toBeNull();
     });
   });
 
@@ -133,7 +190,6 @@ describe("LLM Proxy Router", () => {
     it("creates a share and retrieves it", () => {
       const shareData = { nodes: { "0,0": { label: "Test", q: 0, r: 0 } } };
 
-      // POST /share
       const postReq = mockReq({ body: shareData });
       const postRes = mockRes();
 
@@ -147,7 +203,6 @@ describe("LLM Proxy Router", () => {
       expect(postRes._json.id).toBeDefined();
       expect(typeof postRes._json.id).toBe("string");
 
-      // GET /share/:id
       const getReq = mockReq({ params: { id: postRes._json.id } });
       const getRes = mockRes();
 
