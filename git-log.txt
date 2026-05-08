@@ -1,3 +1,0 @@
-00a070c remove AI tooling cruft, gitignore agent files
-069f610 docs: update CLAUDE.md for Android PoC context
-dfcb592 feat: Hexpand Android PoC with Capacitor + on-device Gemma

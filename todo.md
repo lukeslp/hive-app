@@ -106,3 +106,10 @@
 - [x] BUG: Collab invite link opens a blank page for the joining user — should receive shared board state
 - [x] BUG: Too easy to accidentally create new nodes while panning/zooming on mobile — need pan/zoom vs tap discrimination
 - [x] UX: Text input modal (ContextPromptModal) should dismiss when tapping outside, not just via Cancel button
+
+## iOS open items
+
+- [ ] **UIScene lifecycle migration** — Capacitor 8 ships UIApplicationDelegate-only; iOS 26 logs `UIScene lifecycle will soon be required. Failure to adopt will result in an assert in the future.` Not breaking yet but on the deprecation track. Add SceneDelegate.swift, move window/url-context handling out of AppDelegate, set UIApplicationSceneManifest in Info.plist with `$(PRODUCT_MODULE_NAME).SceneDelegate`. Defer until Capacitor 9 ships scene support upstream OR a TestFlight reviewer flags it.
+- [ ] **`isCapacitor()` auth/session guards** — `useAuth.ts` disables `auth.me` and `useSessionManagement.ts` disables `sessions.list` whenever `isCapacitor()` is true. That made sense when the Android PoC was offline-first; for iOS we want cloud auth + cloud sessions to work. Decision needed: keep the guards (mobile is local-only) or drop them (mobile is parity with web). If dropping, also verify the OAuth callback redirect works through `capacitor://localhost`.
+- [ ] **Native Settings / Share Extension** — Phase 5. Capacitor's stock chrome may be enough for first 4.2 review pass given real LLM + real-time collab features. Add only if review pushes back.
+- [ ] **App Shortcuts (iOS 16+)** — "New brainstorm", "Open last session". Mirrors the existing manifest.json shortcuts.
