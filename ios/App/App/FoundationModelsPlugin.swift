@@ -1,0 +1,93 @@
+import Capacitor
+import Foundation
+
+#if canImport(FoundationModels)
+import FoundationModels
+#endif
+
+/// Capacitor bridge for Apple's on-device LLM (Foundation Models, iOS 26+).
+///
+/// Mirrors the shape of the Android GemmaPlugin so the JS side can swap them
+/// transparently. Returns `available: false` (instead of throwing) when the
+/// framework or Apple Intelligence isn't available — the caller falls back
+/// to the cloud LLM proxy.
+@objc(FoundationModelsPlugin)
+public class FoundationModelsPlugin: CAPPlugin, CAPBridgedPlugin {
+    public let identifier = "FoundationModelsPlugin"
+    public let jsName = "FoundationModels"
+    public let pluginMethods: [CAPPluginMethod] = [
+        CAPPluginMethod(name: "isAvailable", returnType: CAPPluginReturnPromise),
+        CAPPluginMethod(name: "generate", returnType: CAPPluginReturnPromise),
+    ]
+
+    @objc func isAvailable(_ call: CAPPluginCall) {
+        if #available(iOS 26.0, *) {
+            #if canImport(FoundationModels)
+            let model = SystemLanguageModel.default
+            switch model.availability {
+            case .available:
+                call.resolve(["available": true])
+            case .unavailable(let reason):
+                call.resolve([
+                    "available": false,
+                    "reason": String(describing: reason),
+                ])
+            }
+            #else
+            call.resolve([
+                "available": false,
+                "reason": "FoundationModels framework not in SDK at compile time",
+            ])
+            #endif
+        } else {
+            call.resolve([
+                "available": false,
+                "reason": "iOS < 26.0",
+            ])
+        }
+    }
+
+    @objc func generate(_ call: CAPPluginCall) {
+        guard let prompt = call.getString("prompt") else {
+            call.reject("Missing required field: prompt")
+            return
+        }
+        let systemPrompt = call.getString("systemPrompt")
+        let temperature = call.getDouble("temperature") ?? 0.7
+        let maxTokens = call.getInt("maxTokens") ?? 1024
+
+        if #available(iOS 26.0, *) {
+            #if canImport(FoundationModels)
+            Task {
+                do {
+                    let model = SystemLanguageModel.default
+                    guard case .available = model.availability else {
+                        call.reject("FoundationModels unavailable on this device")
+                        return
+                    }
+
+                    let session: LanguageModelSession
+                    if let sp = systemPrompt, !sp.isEmpty {
+                        session = LanguageModelSession(instructions: Instructions { sp })
+                    } else {
+                        session = LanguageModelSession()
+                    }
+
+                    let options = GenerationOptions(
+                        temperature: temperature,
+                        maximumResponseTokens: maxTokens
+                    )
+                    let response = try await session.respond(to: prompt, options: options)
+                    call.resolve(["text": response.content])
+                } catch {
+                    call.reject("FoundationModels generation failed: \(error.localizedDescription)")
+                }
+            }
+            #else
+            call.reject("FoundationModels framework not in SDK at compile time")
+            #endif
+        } else {
+            call.reject("iOS < 26.0; FoundationModels unavailable")
+        }
+    }
+}

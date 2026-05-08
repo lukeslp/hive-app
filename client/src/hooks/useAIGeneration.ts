@@ -17,6 +17,27 @@ import type { HexNode } from '@/types/hivemind';
 import { haptics } from '@/lib/haptics';
 import { getNodeKey } from '@/types/hexmind';
 import type { NodeTypeStyle } from '@/types/hexmind';
+import { getPlatform } from '@/lib/platform';
+import { FoundationModels } from '@/lib/foundationModelsPlugin';
+
+// Foundation Models availability is cached per-session — checking it on
+// every generation call would round-trip through the JS bridge for nothing.
+let foundationModelsAvailable: boolean | null = null;
+async function checkFoundationModels(): Promise<boolean> {
+    if (foundationModelsAvailable !== null) return foundationModelsAvailable;
+    if (getPlatform() !== 'ios') {
+        foundationModelsAvailable = false;
+        return false;
+    }
+    try {
+        const { available } = await FoundationModels.isAvailable();
+        foundationModelsAvailable = available;
+        return available;
+    } catch {
+        foundationModelsAvailable = false;
+        return false;
+    }
+}
 
 // Constants
 const MAX_REQUEST_SIZE = 50000; // 50KB limit
@@ -404,6 +425,33 @@ Generate 6 neighbor nodes.`;
       toast.error(errorMsg);
       setIsGenerating(false);
       return null;
+    }
+
+    // ── Try Apple on-device inference first (iOS 26+ with Apple Intelligence) ──
+    // Falls through to the cloud fetch on failure, unavailable, or non-iOS.
+    if (await checkFoundationModels()) {
+      try {
+        const fm = await FoundationModels.generate({
+          prompt: userQuery,
+          systemPrompt,
+          temperature,
+          maxTokens: 2048,
+        });
+        const branches = parseBranches(fm.text);
+        if (branches.length > 0) {
+          const newNodes = buildNeighborNodes(branches, centerNode, nodes, NODE_TYPES, forceRefresh);
+          setIsGenerating(false);
+          haptics.expand();
+          return newNodes;
+        }
+        // Empty response from on-device — fall through to cloud rather than
+        // returning a placeholder hex.
+      } catch (fmErr) {
+        console.warn("FoundationModels generation failed, falling back to cloud:", fmErr);
+        // Don't disable for the rest of the session — a transient failure
+        // shouldn't punish later calls. (The first availability check is
+        // cached separately.)
+      }
     }
 
     // Create abort controller with timeout
