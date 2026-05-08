@@ -18,7 +18,7 @@
 
 import { isCapacitor } from "./platform";
 import { buildApiUrl } from "./api";
-import { FoundationModels } from "./foundationModelsPlugin";
+import { tryOnDeviceFirst } from "./foundationModelsPlugin";
 
 export interface MergeInput {
     text: string;
@@ -85,19 +85,19 @@ async function tryFoundationModels(
     source: MergeInput,
     target: MergeInput
 ): Promise<MergeSynthesis | null> {
-    try {
-        const { available } = await FoundationModels.isAvailable();
-        if (!available) return null;
-        const { text } = await FoundationModels.generate({
-            prompt: buildUserPrompt(source, target),
-            systemPrompt: MERGE_SYSTEM_PROMPT,
-            temperature: 0.6,
-            maxTokens: 256,
-        });
-        return parseSynthJson(text);
-    } catch {
-        return null;
-    }
+    // Silent diagnostics: drag-merge has its own UX (the viaOnDevice flag
+    // surfaces in synthesizeMerge's caller), so the shared helper's toasts
+    // would be redundant here.
+    const fm = await tryOnDeviceFirst({
+        prompt: buildUserPrompt(source, target),
+        systemPrompt: MERGE_SYSTEM_PROMPT,
+        temperature: 0.6,
+        maxTokens: 256,
+        // Synthesis is short — a 5s budget is plenty even on cold-start.
+        timeoutMs: 5000,
+        silentDiagnostics: true,
+    });
+    return fm ? parseSynthJson(fm.text) : null;
 }
 
 async function tryCloudFallback(

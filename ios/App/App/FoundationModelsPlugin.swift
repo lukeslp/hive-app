@@ -77,8 +77,20 @@ public class FoundationModelsPlugin: CAPPlugin, CAPBridgedPlugin {
                         temperature: temperature,
                         maximumResponseTokens: maxTokens
                     )
-                    let response = try await session.respond(to: prompt, options: options)
+
+                    // Hard-bound the Apple Intelligence call. Without this,
+                    // a wedged framework (asset hydration, Apple Intelligence
+                    // toggled mid-call, low-power throttle) leaves the JS
+                    // side awaiting forever. The JS layer also bounds the
+                    // round-trip independently — this is the second guard
+                    // for the case where Capacitor's bridge swallows the
+                    // rejection.
+                    let response = try await Self.withTimeout(seconds: 15) {
+                        try await session.respond(to: prompt, options: options)
+                    }
                     call.resolve(["text": response.content])
+                } catch is FoundationModelsTimeout {
+                    call.reject("FoundationModels generation timed out after 15s")
                 } catch {
                     call.reject("FoundationModels generation failed: \(error.localizedDescription)")
                 }
@@ -90,4 +102,31 @@ public class FoundationModelsPlugin: CAPPlugin, CAPBridgedPlugin {
             call.reject("iOS < 26.0; FoundationModels unavailable")
         }
     }
+
+    /// Race an async throwing operation against a wall-clock deadline.
+    /// First task to finish wins; the loser is cancelled. If the deadline
+    /// task wins, the operation continues running (Swift can't preempt
+    /// Apple's framework) but its eventual result is discarded — the
+    /// promise to JS rejects on time. Only callable from the iOS 26+
+    /// guarded path inside generate().
+    @available(iOS 16.0, *)
+    private static func withTimeout<T: Sendable>(
+        seconds: Double,
+        operation: @escaping @Sendable () async throws -> T
+    ) async throws -> T {
+        try await withThrowingTaskGroup(of: T.self) { group in
+            group.addTask { try await operation() }
+            group.addTask {
+                try await Task.sleep(for: .seconds(seconds))
+                throw FoundationModelsTimeout()
+            }
+            guard let result = try await group.next() else {
+                throw FoundationModelsTimeout()
+            }
+            group.cancelAll()
+            return result
+        }
+    }
 }
+
+private struct FoundationModelsTimeout: Error {}

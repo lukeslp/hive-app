@@ -55,7 +55,7 @@ import { MergeSuggestionIndicator } from "@/components/MergeSuggestionIndicator"
 
 import { buildApiUrl } from "@/lib/api";
 import { isCapacitor, getPlatform } from "@/lib/platform";
-import { FoundationModels } from "@/lib/foundationModelsPlugin";
+import { tryOnDeviceFirst } from "@/lib/foundationModelsPlugin";
 import { sanitizeJson } from "@/lib/sanitize";
 import type { HexNode, ViewState, ConfirmModalState } from "@/types/hivemind";
 import { getNodeKey } from "@/types/hexmind";
@@ -628,48 +628,85 @@ Generate 6 diverse related ideas. Connect to key themes when relevant.`;
       return;
     }
 
+    // ── Try Apple on-device first (iOS 26+ with Apple Intelligence) ──
+    // This is THE primary user gesture (tile-tap). Prior to this fix the
+    // hook's instrumented dispatcher was only reached by the regenerate +
+    // merge paths; tile-tap went straight to cloud and on-device never
+    // fired. tryOnDeviceFirst owns: cached availability, JS-side timeout,
+    // diagnostic toasts. Returns null on any failure; we fall through.
+    const fm = await tryOnDeviceFirst({
+      prompt: userQuery,
+      systemPrompt,
+      temperature: 0.7 + aiGeneration.creativity * 0.6,
+      maxTokens: 2048,
+    });
+    let preFetchedBranches: any[] | null = null;
+    if (fm) {
+      const fmText = fm.text.replace(/^```json\s*/, "").replace(/\s*```$/, "").trim();
+      const sanitizedFmText = sanitizeJson(fmText);
+      try {
+        const parsed = sanitizedFmText ? JSON.parse(sanitizedFmText) : {};
+        if (Array.isArray(parsed.branches) && parsed.branches.length > 0) {
+          preFetchedBranches = parsed.branches;
+        }
+      } catch {
+        // FM produced text but JSON.parse failed — fall through to cloud.
+      }
+      if (!preFetchedBranches) {
+        toast.warning("On-device returned unparseable output — using cloud", { duration: 2500 });
+      }
+    }
+
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), 30000);
 
     try {
-      const response = await fetch(buildApiUrl("generate"), {
-        method: "POST",
-        headers: providerSettings.getRequestHeaders(),
-        body: JSON.stringify(requestPayload),
-        signal: controller.signal,
-      });
-
-      clearTimeout(timeoutId);
-      const result = await response.json();
-
-      if (!response.ok) throw new Error(`HTTP ${response.status}: ${response.statusText}`);
-      if (result.error) throw new Error(result.error.message || "API request failed");
-
-      let text = result.candidates?.[0]?.content?.parts?.[0]?.text;
-      if (!text) throw new Error("API returned no content");
-
-      text = text.replace(/^```json\s*/, "").replace(/\s*```$/, "").trim();
-      const sanitizedText = sanitizeJson(text);
       let branches: any[] = [];
+      let viaOnDevice = false;
 
-      try {
-        const parsed = sanitizedText ? JSON.parse(sanitizedText) : {};
-        branches = parsed.branches || [];
-      } catch {
-        // Regex fallback
+      if (preFetchedBranches) {
+        branches = preFetchedBranches;
+        viaOnDevice = true;
+        clearTimeout(timeoutId);
+      } else {
+        const response = await fetch(buildApiUrl("generate"), {
+          method: "POST",
+          headers: providerSettings.getRequestHeaders(),
+          body: JSON.stringify(requestPayload),
+          signal: controller.signal,
+        });
+
+        clearTimeout(timeoutId);
+        const result = await response.json();
+
+        if (!response.ok) throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+        if (result.error) throw new Error(result.error.message || "API request failed");
+
+        let text = result.candidates?.[0]?.content?.parts?.[0]?.text;
+        if (!text) throw new Error("API returned no content");
+
+        text = text.replace(/^```json\s*/, "").replace(/\s*```$/, "").trim();
+        const sanitizedText = sanitizeJson(text);
+
         try {
-          const branchMatches = sanitizedText.match(/"title"\s*:\s*"([^"]+)"/g) || [];
-          const descMatches = sanitizedText.match(/"description"\s*:\s*"([^"]+)"/g) || [];
-          const typeMatches = sanitizedText.match(/"type"\s*:\s*"([^"]+)"/g) || [];
-          for (let i = 0; i < Math.min(6, branchMatches.length); i++) {
-            branches.push({
-              title: branchMatches[i]?.match(/"title"\s*:\s*"([^"]+)"/)?.[1] || `Idea ${i + 1}`,
-              description: descMatches[i]?.match(/"description"\s*:\s*"([^"]+)"/)?.[1] || "",
-              type: typeMatches[i]?.match(/"type"\s*:\s*"([^"]+)"/)?.[1] || "concept",
-            });
-          }
+          const parsed = sanitizedText ? JSON.parse(sanitizedText) : {};
+          branches = parsed.branches || [];
         } catch {
-          branches = [];
+          // Regex fallback
+          try {
+            const branchMatches = sanitizedText.match(/"title"\s*:\s*"([^"]+)"/g) || [];
+            const descMatches = sanitizedText.match(/"description"\s*:\s*"([^"]+)"/g) || [];
+            const typeMatches = sanitizedText.match(/"type"\s*:\s*"([^"]+)"/g) || [];
+            for (let i = 0; i < Math.min(6, branchMatches.length); i++) {
+              branches.push({
+                title: branchMatches[i]?.match(/"title"\s*:\s*"([^"]+)"/)?.[1] || `Idea ${i + 1}`,
+                description: descMatches[i]?.match(/"description"\s*:\s*"([^"]+)"/)?.[1] || "",
+                type: typeMatches[i]?.match(/"type"\s*:\s*"([^"]+)"/)?.[1] || "concept",
+              });
+            }
+          } catch {
+            branches = [];
+          }
         }
       }
 
@@ -734,6 +771,13 @@ Generate 6 diverse related ideas. Connect to key themes when relevant.`;
 
       commitNodes(newNodes);
       haptics.expand();
+
+      if (viaOnDevice) {
+        toast("✦ Apple Intelligence", {
+          description: "Generated on-device",
+          duration: 1500,
+        });
+      }
 
       // Auto-expand
       if (nodesToAutoExpand.length > 0 && enableSmartExpansion) {
@@ -860,30 +904,24 @@ Generate 6 diverse related ideas. Connect to key themes when relevant.`;
     };
 
     try {
-      // Try Apple Foundation Models first on iOS Capacitor builds.
-      // Same pattern as useAIGeneration.generateNeighbors.
-      if (isCapacitor() && getPlatform() === "ios") {
+      // Try Apple Foundation Models first via the shared helper. Cached
+      // availability + JS-side timeout + uniform diagnostic toasts.
+      const fm = await tryOnDeviceFirst({
+        prompt: userText,
+        systemPrompt: systemText,
+        temperature: 0.9 + aiGeneration.creativity * 0.4,
+        maxTokens: 512,
+      });
+      if (fm) {
         try {
-          const { available } = await FoundationModels.isAvailable();
-          if (available) {
-            const fm = await FoundationModels.generate({
-              prompt: userText,
-              systemPrompt: systemText,
-              temperature: 0.9 + aiGeneration.creativity * 0.4,
-              maxTokens: 512,
-            });
-            const cleaned = (fm.text || "").replace(/^```json\s*/i, "").replace(/\s*```$/, "").trim();
-            const parsed = cleaned ? JSON.parse(cleaned) : null;
-            if (parsed && (parsed.title || parsed.description)) {
-              applyParsedRefresh(parsed, true);
-              return;
-            }
+          const cleaned = fm.text.replace(/^```json\s*/i, "").replace(/\s*```$/, "").trim();
+          const parsed = cleaned ? JSON.parse(cleaned) : null;
+          if (parsed && (parsed.title || parsed.description)) {
+            applyParsedRefresh(parsed, true);
+            return;
           }
-        } catch (fmErr) {
-          console.warn("[refresh] FoundationModels failed, falling back to cloud:", JSON.stringify({
-            name: fmErr instanceof Error ? fmErr.name : "unknown",
-            message: fmErr instanceof Error ? fmErr.message : String(fmErr),
-          }));
+        } catch {
+          // FM produced text but JSON.parse failed — fall through to cloud.
         }
       }
 

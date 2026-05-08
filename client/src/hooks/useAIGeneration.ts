@@ -17,27 +17,7 @@ import type { HexNode } from '@/types/hivemind';
 import { haptics } from '@/lib/haptics';
 import { getNodeKey } from '@/types/hexmind';
 import type { NodeTypeStyle } from '@/types/hexmind';
-import { getPlatform } from '@/lib/platform';
-import { FoundationModels } from '@/lib/foundationModelsPlugin';
-
-// Foundation Models availability is cached per-session — checking it on
-// every generation call would round-trip through the JS bridge for nothing.
-let foundationModelsAvailable: boolean | null = null;
-async function checkFoundationModels(): Promise<boolean> {
-    if (foundationModelsAvailable !== null) return foundationModelsAvailable;
-    if (getPlatform() !== 'ios') {
-        foundationModelsAvailable = false;
-        return false;
-    }
-    try {
-        const { available } = await FoundationModels.isAvailable();
-        foundationModelsAvailable = available;
-        return available;
-    } catch {
-        foundationModelsAvailable = false;
-        return false;
-    }
-}
+import { tryOnDeviceFirst } from '@/lib/foundationModelsPlugin';
 
 // Constants
 const MAX_REQUEST_SIZE = 50000; // 50KB limit
@@ -428,46 +408,32 @@ Generate 6 neighbor nodes.`;
     }
 
     // ── Try Apple on-device inference first (iOS 26+ with Apple Intelligence) ──
-    // Primary path on supported iOS devices. Falls through to cloud on
-    // failure / unavailable / non-iOS. The whole point of the iOS port.
-    //
-    // Diagnostic toasts: every branch surfaces a user-visible signal so we
-    // can verify on real hardware which path actually fires without needing
-    // Xcode attached. Once on-device is confirmed working end-to-end these
-    // can be downgraded back to console.log.
-    const fmAvailable = await checkFoundationModels();
-    console.log("[AI] FoundationModels available:", fmAvailable);
-    if (fmAvailable) {
-      toast.info("✦ Trying on-device…", { duration: 800 });
-      try {
-        const fm = await FoundationModels.generate({
-          prompt: userQuery,
-          systemPrompt,
-          temperature,
-          maxTokens: 2048,
+    // Falls through to cloud on failure / unavailable / non-iOS / timeout.
+    // tryOnDeviceFirst() owns: cached availability, JS-side timeout, uniform
+    // diagnostic toasts. Returns null on any failure; we fall through.
+    const fm = await tryOnDeviceFirst({
+      prompt: userQuery,
+      systemPrompt,
+      temperature,
+      maxTokens: 2048,
+    });
+    if (fm) {
+      const branches = parseBranches(fm.text);
+      if (branches.length > 0) {
+        const newNodes = buildNeighborNodes(branches, centerNode, nodes, NODE_TYPES, forceRefresh);
+        setIsGenerating(false);
+        haptics.expand();
+        toast("✦ Apple Intelligence", {
+          description: "Generated on-device",
+          duration: 1500,
         });
-        console.log("[AI] FoundationModels returned text length:", fm.text?.length ?? 0);
-        const branches = parseBranches(fm.text);
-        if (branches.length > 0) {
-          const newNodes = buildNeighborNodes(branches, centerNode, nodes, NODE_TYPES, forceRefresh);
-          setIsGenerating(false);
-          haptics.expand();
-          toast("✦ Apple Intelligence", {
-            description: "Generated on-device",
-            duration: 1500,
-          });
-          return newNodes;
-        }
-        console.log("[AI] FoundationModels empty branches; falling through to cloud");
-        toast.warning("On-device returned 0 branches — using cloud", { duration: 2500 });
-      } catch (fmErr) {
-        const errMsg = fmErr instanceof Error ? fmErr.message : String(fmErr);
-        console.warn("[AI] FoundationModels generation failed, falling back to cloud:", JSON.stringify({
-          name: fmErr instanceof Error ? fmErr.name : 'unknown',
-          message: errMsg,
-        }));
-        toast.error("On-device threw: " + errMsg, { duration: 4000 });
+        return newNodes;
       }
+      // FM returned text but parseBranches found nothing usable — surface
+      // the parse failure separately from the bridge throw, so the user can
+      // tell the difference between "FM didn't run" and "FM ran but the
+      // output wasn't parseable."
+      toast.warning("On-device returned unparseable output — using cloud", { duration: 2500 });
     }
 
     // Create abort controller with timeout
