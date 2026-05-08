@@ -54,7 +54,8 @@ import { RemoteCursors } from "@/components/RemoteCursors";
 import { MergeSuggestionIndicator } from "@/components/MergeSuggestionIndicator";
 
 import { buildApiUrl } from "@/lib/api";
-import { isCapacitor } from "@/lib/platform";
+import { isCapacitor, getPlatform } from "@/lib/platform";
+import { FoundationModels } from "@/lib/foundationModelsPlugin";
 import { sanitizeJson } from "@/lib/sanitize";
 import type { HexNode, ViewState, ConfirmModalState } from "@/types/hivemind";
 import { getNodeKey } from "@/types/hexmind";
@@ -836,28 +837,63 @@ Generate 6 diverse related ideas. Connect to key themes when relevant.`;
           .join("\n")}`
       : "";
 
+    const userText = `Current title: "${node.text}"\nCurrent description: ${node.description || "None"}\n${parentContext}\nNode type: ${node.type}\nRegenerate with a fresh perspective.${avoidClause}`;
+    const systemText = `You are a brainstorming engine. Style: ${tempDesc}.\nGiven context about a node in a mind map, regenerate a fresh title and description for it.\nKeep the same general theme but offer a new perspective or angle.\nReturn JSON: { "title": "Short Title (2-4 words)", "description": "Brief explanation (1-2 sentences)", "type": "concept|action|technical|question|risk" }`;
+
+    const applyParsedRefresh = (parsed: { title?: string; description?: string; type?: string }, viaOnDevice: boolean) => {
+      const newTitle = parsed.title || node.text;
+      const newDescription = parsed.description || node.description;
+      const newNodes = { ...nodesRef.current };
+      newNodes[key] = {
+        ...node,
+        text: newTitle,
+        description: newDescription,
+        type: parsed.type && NODE_TYPES[parsed.type] ? parsed.type : node.type,
+      };
+      commitNodes(newNodes);
+      const updated = [{ title: node.text, description: node.description }, ...history].slice(0, 3);
+      refreshHistoryRef.current.set(key, updated);
+      haptics.expand();
+      if (viaOnDevice) {
+        toast("✦ Apple Intelligence", { description: "Regenerated on-device", duration: 1500 });
+      }
+    };
+
     try {
+      // Try Apple Foundation Models first on iOS Capacitor builds.
+      // Same pattern as useAIGeneration.generateNeighbors.
+      if (isCapacitor() && getPlatform() === "ios") {
+        try {
+          const { available } = await FoundationModels.isAvailable();
+          if (available) {
+            const fm = await FoundationModels.generate({
+              prompt: userText,
+              systemPrompt: systemText,
+              temperature: 0.9 + aiGeneration.creativity * 0.4,
+              maxTokens: 512,
+            });
+            const cleaned = (fm.text || "").replace(/^```json\s*/i, "").replace(/\s*```$/, "").trim();
+            const parsed = cleaned ? JSON.parse(cleaned) : null;
+            if (parsed && (parsed.title || parsed.description)) {
+              applyParsedRefresh(parsed, true);
+              return;
+            }
+          }
+        } catch (fmErr) {
+          console.warn("[refresh] FoundationModels failed, falling back to cloud:", JSON.stringify({
+            name: fmErr instanceof Error ? fmErr.name : "unknown",
+            message: fmErr instanceof Error ? fmErr.message : String(fmErr),
+          }));
+        }
+      }
+
       const response = await fetch(buildApiUrl("generate"), {
         method: "POST",
         headers: providerSettings.getRequestHeaders(),
         body: JSON.stringify({
           model: GEMINI_TEXT_MODEL,
-          contents: [
-            {
-              parts: [
-                {
-                  text: `Current title: "${node.text}"\nCurrent description: ${node.description || "None"}\n${parentContext}\nNode type: ${node.type}\nRegenerate with a fresh perspective.${avoidClause}`,
-                },
-              ],
-            },
-          ],
-          systemInstruction: {
-            parts: [
-              {
-                text: `You are a brainstorming engine. Style: ${tempDesc}.\nGiven context about a node in a mind map, regenerate a fresh title and description for it.\nKeep the same general theme but offer a new perspective or angle.\nReturn JSON: { "title": "Short Title (2-4 words)", "description": "Brief explanation (1-2 sentences)", "type": "concept|action|technical|question|risk" }`,
-              },
-            ],
-          },
+          contents: [{ parts: [{ text: userText }] }],
+          systemInstruction: { parts: [{ text: systemText }] },
           generationConfig: {
             responseMimeType: "application/json",
             // Slightly higher temperature for refresh than first-pass
@@ -874,21 +910,7 @@ Generate 6 diverse related ideas. Connect to key themes when relevant.`;
       if (text) text = text.replace(/^```json\s*/, "").replace(/\s*```$/, "").trim();
 
       const parsed = text ? JSON.parse(text) : {};
-      const newTitle = parsed.title || node.text;
-      const newDescription = parsed.description || node.description;
-      const newNodes = { ...nodesRef.current };
-      newNodes[key] = {
-        ...node,
-        text: newTitle,
-        description: newDescription,
-        type: parsed.type && NODE_TYPES[parsed.type] ? parsed.type : node.type,
-      };
-      commitNodes(newNodes);
-      // Append the previous tile to history (bounded to last 3) so the
-      // NEXT refresh AVOIDs both this one and any earlier output.
-      const updated = [{ title: node.text, description: node.description }, ...history].slice(0, 3);
-      refreshHistoryRef.current.set(key, updated);
-      haptics.expand();
+      applyParsedRefresh(parsed, false);
     } catch (error) {
       console.error("Refresh node error:", error);
     } finally {
@@ -1013,8 +1035,8 @@ Generate 6 diverse related ideas. Connect to key themes when relevant.`;
       { text: sourceNode.text, description: sourceNode.description, type: sourceNode.type },
       { text: targetNode.text, description: targetNode.description, type: targetNode.type },
       providerSettings.getRequestHeaders()
-    ).then((synth) => {
-      if (!synth) return;
+    ).then((result) => {
+      if (!result) return;
       // Read the latest committed nodes (history may have advanced) and
       // patch the merged tile in place. Skip if the user has since
       // deleted/undone — getNodeKey on targetKey will miss.
@@ -1024,12 +1046,15 @@ Generate 6 diverse related ideas. Connect to key themes when relevant.`;
         ...latest,
         [targetKey]: {
           ...latest[targetKey],
-          text: synth.title,
-          description: synth.description || latest[targetKey].description,
+          text: result.synth.title,
+          description: result.synth.description || latest[targetKey].description,
           // Only adopt the LLM's reclassified type if it's a valid type.
-          type: NODE_TYPES[synth.type] ? synth.type : latest[targetKey].type,
+          type: NODE_TYPES[result.synth.type] ? result.synth.type : latest[targetKey].type,
         },
       });
+      if (result.viaOnDevice) {
+        toast("✦ Apple Intelligence", { description: "Merged on-device", duration: 1500 });
+      }
     });
   };
 

@@ -132,22 +132,32 @@ async function tryCloudFallback(
     }
 }
 
+export interface SynthesizedMergeResult {
+    synth: MergeSynthesis;
+    /** True iff the synthesis came from Apple Foundation Models on-device. */
+    viaOnDevice: boolean;
+}
+
 /**
- * Returns a synthesized merged tile, or null if synthesis isn't applicable
- * (web build) or failed (cloud + on-device both unavailable). Caller
+ * Returns a synthesized merged tile (with a flag for whether it came
+ * from on-device Apple Intelligence vs the cloud fallback), or null if
+ * synthesis isn't applicable (web build) or both paths failed. Caller
  * should fall back to literal concat when null.
  */
 export async function synthesizeMerge(
     source: MergeInput,
     target: MergeInput,
     extraHeaders: Record<string, string> = {}
-): Promise<MergeSynthesis | null> {
+): Promise<SynthesizedMergeResult | null> {
     if (!isCapacitor()) {
         return null; // Web: keep the existing literal-concat behavior.
     }
 
     const onDevice = await tryFoundationModels(source, target);
-    if (onDevice) return onDevice;
+    if (onDevice) return { synth: onDevice, viaOnDevice: true };
 
-    return tryCloudFallback(source, target, extraHeaders);
+    const cloud = await tryCloudFallback(source, target, extraHeaders);
+    if (cloud) return { synth: cloud, viaOnDevice: false };
+
+    return null;
 }

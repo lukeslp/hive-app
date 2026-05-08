@@ -428,7 +428,8 @@ Generate 6 neighbor nodes.`;
     }
 
     // ── Try Apple on-device inference first (iOS 26+ with Apple Intelligence) ──
-    // Falls through to the cloud fetch on failure, unavailable, or non-iOS.
+    // Primary path on supported iOS devices. Falls through to cloud on
+    // failure / unavailable / non-iOS. The whole point of the iOS port.
     const fmAvailable = await checkFoundationModels();
     console.log("[AI] FoundationModels available:", fmAvailable);
     if (fmAvailable) {
@@ -445,6 +446,12 @@ Generate 6 neighbor nodes.`;
           const newNodes = buildNeighborNodes(branches, centerNode, nodes, NODE_TYPES, forceRefresh);
           setIsGenerating(false);
           haptics.expand();
+          // Visible signal that on-device fired. Brief, dismissable, only
+          // when FM actually produced usable output.
+          toast("✦ Apple Intelligence", {
+            description: "Generated on-device",
+            duration: 1500,
+          });
           return newNodes;
         }
         console.log("[AI] FoundationModels empty branches; falling through to cloud");
