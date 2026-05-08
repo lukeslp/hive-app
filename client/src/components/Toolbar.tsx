@@ -107,7 +107,15 @@ export const Toolbar = ({
   const [moreOpen, setMoreOpen] = useState(false);
 
   return (
-    <header className="absolute top-0 left-0 right-0 z-20 p-2 sm:p-4 flex items-center justify-between pointer-events-none gap-2">
+    <header
+      className="absolute top-0 left-0 right-0 z-20 px-2 sm:px-4 pb-2 sm:pb-4 flex items-center justify-between pointer-events-none gap-2"
+      style={{
+        // env(safe-area-inset-top) is 0 on browsers without notches, so
+        // desktop web behavior is unchanged. On iPhone with Dynamic Island
+        // the toolbar drops below it instead of being occluded.
+        paddingTop: "max(0.5rem, env(safe-area-inset-top, 0px))",
+      }}
+    >
       {/* Left Actions */}
       <div
         aria-label="Main Controls"
