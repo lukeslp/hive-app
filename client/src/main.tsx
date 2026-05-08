@@ -78,7 +78,9 @@ const redirectToLoginIfUnauthorized = (error: unknown) => {
 
   if (!isUnauthorized) return;
 
-  window.location.href = getLoginUrl();
+  const target = getLoginUrl();
+  if (!target) return; // No OAuth portal configured (Capacitor build) — don't reload onto "".
+  window.location.href = target;
 };
 
 // Capacitor's JS-to-native log bridge serializes objects via JSON.stringify,
