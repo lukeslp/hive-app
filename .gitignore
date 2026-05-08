@@ -116,6 +116,17 @@ android/build/
 android/local.properties
 android/app/src/main/assets/public/
 
+# Capacitor iOS build artifacts + Xcode user state
+ios/App/build/
+ios/DerivedData/
+ios/App/Pods/
+ios/App/App.xcworkspace/xcuserdata/
+ios/App/App.xcodeproj/xcuserdata/
+ios/App/App.xcodeproj/project.xcworkspace/xcuserdata/
+ios/App/App.xcodeproj/project.xcworkspace/xcshareddata/swiftpm/
+xcuserdata/
+*.xcuserstate
+
 # AI tooling cruft
 .claude/
 CLAUDE.md

@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <key>com.apple.developer.associated-domains</key>
+    <array>
+        <string>applinks:hivemind.cx</string>
+        <string>applinks:hive-mind.pro</string>
+        <string>applinks:hexmind.app</string>
+        <string>applinks:hexmind.io</string>
+        <string>applinks:hexpand.app</string>
+        <string>applinks:hexpander.app</string>
+    </array>
+</dict>
+</plist>
