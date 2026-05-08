@@ -38,6 +38,33 @@ async function startServer() {
   app.use(express.urlencoded({ limit: "50mb", extended: true }));
   // Trust proxy for rate limiting behind reverse proxies
   app.set("trust proxy", 1);
+
+  // Apple App-Site Association for Universal Links into the iOS app.
+  // Apple wants the bare filename (no .json extension) served as
+  // application/json. The same content resolves at every brand domain
+  // because Caddy reverse-proxies all six (hivemind.cx, hive-mind.pro,
+  // hexmind.app/io, hexpand.app, hexpander.app) into this Node process.
+  app.get("/.well-known/apple-app-site-association", (_req, res) => {
+    res.type("application/json").json({
+      applinks: {
+        details: [
+          {
+            appIDs: ["596T7J7FB6.dev.dreamer.hexpand"],
+            components: [
+              { "/": "/", comment: "main entry — opens app" },
+              { "/": "/?*", comment: "preserve query strings" },
+              { "/": "/privacy*", exclude: true, comment: "legal stays in browser" },
+              { "/": "/terms*", exclude: true },
+            ],
+          },
+        ],
+      },
+      webcredentials: {
+        apps: ["596T7J7FB6.dev.dreamer.hexpand"],
+      },
+    });
+  });
+
   // OAuth callback under /api/oauth/callback
   registerOAuthRoutes(app);
   // Hexpand LLM proxy routes
