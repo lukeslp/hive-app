@@ -66,11 +66,36 @@ const redirectToLoginIfUnauthorized = (error: unknown) => {
   window.location.href = getLoginUrl();
 };
 
+// Capacitor's JS-to-native log bridge serializes objects via JSON.stringify,
+// which renders Error instances as "{}" and loses the message+stack. Build
+// a plain object of the useful fields before logging so the native side
+// (and remote logs) actually show something useful.
+function describeError(error: unknown): Record<string, unknown> {
+  if (error instanceof Error) {
+    const out: Record<string, unknown> = {
+      name: error.name,
+      message: error.message,
+    };
+    const anyErr = error as Error & { data?: unknown; cause?: unknown; stack?: string };
+    if (anyErr.stack) out.stack = String(anyErr.stack).split("\n").slice(0, 5).join("\n");
+    if (anyErr.data !== undefined) out.data = anyErr.data;
+    if (anyErr.cause !== undefined) out.cause = String(anyErr.cause);
+    return out;
+  }
+  if (typeof error === "object" && error !== null) {
+    try { return JSON.parse(JSON.stringify(error)); } catch { /* fall through */ }
+  }
+  return { value: String(error) };
+}
+
 queryClient.getQueryCache().subscribe(event => {
   if (event.type === "updated" && event.action.type === "error") {
     const error = event.query.state.error;
     redirectToLoginIfUnauthorized(error);
-    console.error("[API Query Error]", error);
+    console.error("[API Query Error]", JSON.stringify({
+      queryKey: event.query.queryKey,
+      ...describeError(error),
+    }));
   }
 });
 
@@ -78,7 +103,10 @@ queryClient.getMutationCache().subscribe(event => {
   if (event.type === "updated" && event.action.type === "error") {
     const error = event.mutation.state.error;
     redirectToLoginIfUnauthorized(error);
-    console.error("[API Mutation Error]", error);
+    console.error("[API Mutation Error]", JSON.stringify({
+      mutationKey: event.mutation.options.mutationKey,
+      ...describeError(error),
+    }));
   }
 });
 
