@@ -80,11 +80,12 @@ export function invalidateFoundationModelsCache(): void {
 
 export interface OnDeviceFirstOptions extends FMGenerateOptions {
     /**
-     * Per-call timeout in milliseconds. If the FM bridge call doesn't
-     * settle within this window, the helper rejects and the caller falls
-     * back to cloud. Defaults to 12 seconds — long enough for Apple
-     * Intelligence cold-start asset hydration on first call, short enough
-     * that a wedged framework doesn't lock the UI forever.
+     * Per-call timeout in milliseconds. Defaults to 20 seconds — the Swift
+     * side has its own 15s budget per call, and the JS race must run
+     * longer so native errors propagate instead of getting masked by an
+     * earlier JS abort. Apple Intelligence cold-start asset hydration plus
+     * a transient ANE retry can legitimately push past 12s on real
+     * hardware (verified in the post-strip TestFlight trace 2026-05-09).
      */
     timeoutMs?: number;
     /**
@@ -120,7 +121,7 @@ export async function tryOnDeviceFirst(
     const available = await isFoundationModelsAvailable();
     if (!available) return null;
 
-    const timeoutMs = opts.timeoutMs ?? 12000;
+    const timeoutMs = opts.timeoutMs ?? 20000;
     const silent = opts.silentDiagnostics ?? false;
 
     if (!silent) {
