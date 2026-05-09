@@ -138,3 +138,6 @@ SUGGESTIONS.md
 REPO_AUDIT.md
 *_STATUS.md
 .aider*
+
+# Local backup of pre-Apple-Intelligence-only iOS project (361M, do not commit)
+ios-backup-all-providers/
