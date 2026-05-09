@@ -28,10 +28,12 @@ const config: CapacitorConfig = {
     SplashScreen: {
       launchAutoHide: false,
       launchShowDuration: 0,
-      backgroundColor: '#0a0a0a',
+      // Matches the cream bg of Splash.imageset and LaunchScreen.storyboard.
+      // Bumped from #0a0a0a after the icon switched to the light mockup.
+      backgroundColor: '#faf7f0',
       showSpinner: true,
-      iosSpinnerStyle: 'large',
-      spinnerColor: '#ffffff',
+      iosSpinnerStyle: 'medium',
+      spinnerColor: '#fbbf24',
       splashFullScreen: true,
       splashImmersive: true,
     },

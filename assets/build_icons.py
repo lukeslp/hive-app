@@ -1,14 +1,12 @@
 """Procedural icon + splash generator.
 
 Draws the Hexmind / Alt-Text-Studio mark — a yellow point-up hexagon with a
-white lightning bolt — at the sizes Apple needs:
+white lightning bolt — on a warm cream background. Output sizes:
 
   AppIcon  : 1024x1024  flat (Apple masks corners + generates downscales)
-  Splash   : 2732x2732  centered on black with a soft radial glow
+  Splash   : 2732x2732  centered on cream with a faint amber halo
 
-Designed against the user's mockup picks: Row 2 col 4 (clean) for the icon,
-Row 1 col 2 (glow variant) for the splash background. Uses Pillow only —
-no SVG rasterizer required.
+Designed against the user's Row 1 col 1 light-mode mockup. Uses Pillow only.
 """
 
 from __future__ import annotations
@@ -24,7 +22,7 @@ SPLASH_DIR = REPO / "ios/App/App/Assets.xcassets/Splash.imageset"
 PREVIEW_DIR = REPO / "assets/preview"
 PREVIEW_DIR.mkdir(parents=True, exist_ok=True)
 
-BG = (10, 10, 10)              # near-black, plays nice with iOS dark wallpapers
+BG = (250, 247, 240)           # warm cream, reads light/airy in both UI modes
 HEX_FILL = (251, 191, 36)      # warm gold (Tailwind amber-400-ish)
 HEX_HIGHLIGHT = (253, 224, 71) # lighter gold for top-half soft gradient
 BOLT_FILL = (255, 255, 255)
@@ -94,7 +92,7 @@ def draw_hex_with_bolt(
 
 
 def render_app_icon(size: int = 1024) -> Image.Image:
-    """Flat black bg, hex fills ~62% of canvas. Saved as opaque RGB."""
+    """Flat cream bg, hex fills ~62% of canvas. Saved as opaque RGB."""
     bg = Image.new("RGB", (size, size), BG)
     fg = draw_hex_with_bolt(size, hex_fraction=0.62)
     bg.paste(fg, (0, 0), fg)
@@ -102,20 +100,23 @@ def render_app_icon(size: int = 1024) -> Image.Image:
 
 
 def render_splash(size: int = 2732) -> Image.Image:
-    """Same mark, much smaller (24% of canvas), with a soft golden glow."""
+    """Same mark, much smaller (24% of canvas), with a faint amber halo.
+
+    Cream bg makes the glow much subtler than the dark variant — it reads
+    as "warm" rather than "powered." Lower alpha + tighter blur to avoid
+    a muddy ring on light backgrounds.
+    """
     bg = Image.new("RGB", (size, size), BG)
 
-    # Glow layer: a much larger soft hex behind the real one, blurred heavily.
-    glow_canvas = size
-    glow = Image.new("RGBA", (glow_canvas, glow_canvas), (0, 0, 0, 0))
+    glow = Image.new("RGBA", (size, size), (0, 0, 0, 0))
     gd = ImageDraw.Draw(glow)
-    glow_radius = size * 0.22
+    glow_radius = size * 0.20
     cx = cy = size / 2
     gd.polygon(
         hex_points(cx, cy, glow_radius),
-        fill=(*GLOW_RGB, 110),
+        fill=(*GLOW_RGB, 60),
     )
-    glow = glow.filter(ImageFilter.GaussianBlur(radius=size * 0.06))
+    glow = glow.filter(ImageFilter.GaussianBlur(radius=size * 0.045))
     bg.paste(glow, (0, 0), glow)
 
     fg = draw_hex_with_bolt(size, hex_fraction=0.24)
