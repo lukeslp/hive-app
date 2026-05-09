@@ -141,3 +141,7 @@ REPO_AUDIT.md
 
 # Local backup of pre-Apple-Intelligence-only iOS project (361M, do not commit)
 ios-backup-all-providers/
+
+# Throwaway icon previews and the scp drop dir — keep build_icons.py only
+assets/preview/
+assets/incoming/
