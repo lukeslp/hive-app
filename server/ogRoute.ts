@@ -57,17 +57,17 @@ export function createOGRouter(): Router {
 <html>
 <head>
   <meta charset="UTF-8" />
-  <title>Hexpand — Hexagonal Brainstorming</title>
+  <title>Hexmind — Hexagonal Brainstorming</title>
   <meta property="og:type" content="website" />
-  <meta property="og:title" content="Hexpand — Hexagonal Brainstorming" />
+  <meta property="og:title" content="Hexmind — Hexagonal Brainstorming" />
   <meta property="og:description" content="Explore ideas on an infinite hex grid. Expand, merge, and discover connections between thoughts with LLM-assisted brainstorming." />
   <meta property="og:url" content="${req.protocol}://${req.get("host")}/" />
   <meta name="twitter:card" content="summary_large_image" />
-  <meta name="twitter:title" content="Hexpand — Hexagonal Brainstorming" />
+  <meta name="twitter:title" content="Hexmind — Hexagonal Brainstorming" />
   <meta name="twitter:description" content="Explore ideas on an infinite hex grid." />
 </head>
 <body>
-  <h1>Hexpand</h1>
+  <h1>Hexmind</h1>
   <p>Hexagonal brainstorming — explore ideas on an infinite hex grid.</p>
 </body>
 </html>`;

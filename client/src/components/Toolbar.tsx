@@ -124,7 +124,7 @@ export const Toolbar = ({
         {/* Logo */}
         <div className="flex items-center gap-1.5 sm:gap-2 flex-shrink-0">
           <Zap className="w-4 h-4 sm:w-5 sm:h-5 text-yellow-400 fill-yellow-400" />
-          <span className="font-bold hidden sm:inline text-sm">Hexpand</span>
+          <span className="font-bold hidden sm:inline text-sm">Hexmind</span>
         </div>
         <div className="h-5 sm:h-6 w-px bg-accent flex-shrink-0" />
 

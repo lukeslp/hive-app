@@ -23,7 +23,7 @@ export function useOGImage(thumbnailUrl: string | null | undefined, sessionName?
       const ogTitle = document.querySelector('meta[property="og:title"]') as HTMLMetaElement | null;
       const twitterTitle = document.querySelector('meta[name="twitter:title"]') as HTMLMetaElement | null;
 
-      const title = `${sessionName} — Hexpand`;
+      const title = `${sessionName} — Hexmind`;
       if (ogTitle) ogTitle.content = title;
       if (twitterTitle) twitterTitle.content = title;
     }

@@ -1,4 +1,12 @@
-# Next steps — hexpand
+# Next steps — hexmind
+
+> **Note 2026-05-08:** App renamed from "Hexpand" to "Hexmind." See
+> `RENAME_PLAN.md` for the canonical execution plan; that supersedes
+> the steps below for the immediate cycle. The body of this doc stays
+> as historical context for the App-Store-prep work that wasn't
+> rename-related.
+
+
 
 Picked up here next session. `main` is at `f945be6`, in sync with origin.
 Tag `ios-on-device-firing` records the milestone where Apple Foundation

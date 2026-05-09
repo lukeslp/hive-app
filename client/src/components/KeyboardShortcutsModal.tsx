@@ -108,7 +108,7 @@ export function KeyboardShortcutsModal({
             </DialogTitle>
           </div>
           <DialogDescription className="text-muted-foreground">
-            Hexpand can be fully controlled via keyboard for accessibility
+            Hexmind can be fully controlled via keyboard for accessibility
           </DialogDescription>
         </DialogHeader>
 

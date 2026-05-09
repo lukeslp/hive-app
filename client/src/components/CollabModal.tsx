@@ -121,7 +121,7 @@ export const CollabModal = ({
     if (navigator.share) {
       try {
         await navigator.share({
-          title: "Join my Hexpand board",
+          title: "Join my Hexmind board",
           text: "Collaborate on this brainstorm with me!",
           url: link,
         });

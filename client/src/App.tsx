@@ -2,7 +2,7 @@ import { Toaster } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import ErrorBoundary from "./components/ErrorBoundary";
 import { ThemeProvider } from "./contexts/ThemeContext";
-import HexpandApp from "./pages/HexpandApp";
+import HexmindApp from "./pages/HexmindApp";
 
 function App() {
   return (
@@ -13,7 +13,7 @@ function App() {
       >
         <TooltipProvider>
           <Toaster />
-          <HexpandApp />
+          <HexmindApp />
         </TooltipProvider>
       </ThemeProvider>
     </ErrorBoundary>

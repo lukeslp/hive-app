@@ -106,7 +106,7 @@ export const SettingsModal = ({
         <DialogHeader>
           <DialogTitle className="text-foreground">Settings</DialogTitle>
           <DialogDescription className="text-muted-foreground">
-            Customize your Hexpand experience
+            Customize your Hexmind experience
           </DialogDescription>
         </DialogHeader>
 
@@ -276,7 +276,7 @@ export const SettingsModal = ({
                   <div className="flex items-start gap-2 text-xs text-muted-foreground">
                     <Shield className="w-3.5 h-3.5 mt-0.5 flex-shrink-0" />
                     <span>
-                      Keys are stored locally in your browser and sent only to the Hexpand server
+                      Keys are stored locally in your browser and sent only to the Hexmind server
                       for proxying. They are never logged or shared with third parties.
                     </span>
                   </div>

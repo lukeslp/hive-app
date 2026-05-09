@@ -304,7 +304,7 @@ export function generateOGImage(
         ctx.fillStyle = "#818cf8";
         ctx.font = "18px sans-serif";
         ctx.textAlign = "right";
-        ctx.fillText("Hexpand", OG_WIDTH - 40, OG_HEIGHT - 40);
+        ctx.fillText("Hexmind", OG_WIDTH - 40, OG_HEIGHT - 40);
       }
 
       resolve(canvas.toDataURL("image/png", 0.9));

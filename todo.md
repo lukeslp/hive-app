@@ -1,4 +1,8 @@
-# Hexpand Migration TODO
+# Hexmind Migration TODO
+
+> Renamed from "Hexpand" 2026-05-08 — see `RENAME_PLAN.md`. Historical
+> task references to "Hexpand" are intentional (timeline of work).
+
 
 - [x] Migrate client components (HexCanvas, Modal, ConfirmationModal, SettingsModal, Minimap, FloatingActionBar, WelcomeModal, InspectPanel, EditModal, SessionsModal, TemplatesModal, TemplateContextModal, ContextPromptModal, ShareModal, Toolbar, KeyboardShortcutsModal)
 - [x] Migrate client hooks (useAIGeneration, useComposition, usePersistFn, useProviderSettings, useSessionManagement, useTemplates, useAccessibilityLabels)

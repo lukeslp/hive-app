@@ -1,8 +1,8 @@
 import type { CapacitorConfig } from '@capacitor/cli';
 
 const config: CapacitorConfig = {
-  appId: 'dev.dreamer.hexpand',
-  appName: 'Hexpand',
+  appId: 'app.hexmind.ios',
+  appName: 'Hexmind',
   webDir: 'dist/public',
   // Production: ship info/warn/error to the native log but suppress the
   // debug-level bridge chatter (`⚡️ To Native ->` plugin call traces and

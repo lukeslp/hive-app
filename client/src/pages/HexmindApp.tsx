@@ -117,7 +117,7 @@ const getNearestNodes = (
 // Main Component
 // ─────────────────────────────────────────────────────────────────────────────
 
-export default function HexpandApp() {
+export default function HexmindApp() {
   // ── Core state ──────────────────────────────────────────────────────────
   const [loadingNodes, setLoadingNodes] = useState<Set<string>>(new Set());
   const [generatingNeighbors, setGeneratingNeighbors] = useState<Set<string>>(new Set());

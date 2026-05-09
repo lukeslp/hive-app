@@ -49,7 +49,7 @@ async function startServer() {
       applinks: {
         details: [
           {
-            appIDs: ["596T7J7FB6.dev.dreamer.hexpand"],
+            appIDs: ["596T7J7FB6.app.hexmind.ios"],
             components: [
               { "/": "/", comment: "main entry — opens app" },
               { "/": "/?*", comment: "preserve query strings" },
@@ -60,7 +60,7 @@ async function startServer() {
         ],
       },
       webcredentials: {
-        apps: ["596T7J7FB6.dev.dreamer.hexpand"],
+        apps: ["596T7J7FB6.app.hexmind.ios"],
       },
     });
   });
