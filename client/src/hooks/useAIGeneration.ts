@@ -18,6 +18,7 @@ import { haptics } from '@/lib/haptics';
 import { getNodeKey } from '@/types/hexmind';
 import type { NodeTypeStyle } from '@/types/hexmind';
 import { tryOnDeviceFirst } from '@/lib/foundationModelsPlugin';
+import { isIos } from '@/lib/platform';
 
 // Constants
 const MAX_REQUEST_SIZE = 50000; // 50KB limit
@@ -408,9 +409,8 @@ Generate 6 neighbor nodes.`;
     }
 
     // ── Try Apple on-device inference first (iOS 26+ with Apple Intelligence) ──
-    // Falls through to cloud on failure / unavailable / non-iOS / timeout.
-    // tryOnDeviceFirst() owns: cached availability, JS-side timeout, uniform
-    // diagnostic toasts. Returns null on any failure; we fall through.
+    // On iOS this is the ONLY path — no cloud fallback. Web/Android still
+    // fall through to /api/generate when FM isn't available.
     const fm = await tryOnDeviceFirst({
       prompt: userQuery,
       systemPrompt,
@@ -429,10 +429,25 @@ Generate 6 neighbor nodes.`;
         });
         return newNodes;
       }
-      // FM returned text but parseBranches found nothing usable — surface
-      // the parse failure separately from the bridge throw, so the user can
-      // tell the difference between "FM didn't run" and "FM ran but the
-      // output wasn't parseable."
+    }
+
+    // iOS is Apple-Intelligence-only: no cloud fallback. If FM didn't
+    // return usable text, surface a clear error and emit placeholder
+    // neighbors so the UI doesn't deadlock.
+    if (isIos()) {
+      const errorMsg = fm
+        ? "On-device returned unparseable output"
+        : "Apple Intelligence isn't available on this device";
+      setError(errorMsg);
+      toast.error(errorMsg);
+      setIsGenerating(false);
+      const placeholderNodes = buildNeighborNodes([], centerNode, nodes, NODE_TYPES, forceRefresh);
+      return placeholderNodes;
+    }
+
+    if (fm) {
+      // Web/Android: FM produced text but parseBranches found nothing
+      // usable. Distinguish this from "FM didn't run" before falling through.
       toast.warning("On-device returned unparseable output — using cloud", { duration: 2500 });
     }
 

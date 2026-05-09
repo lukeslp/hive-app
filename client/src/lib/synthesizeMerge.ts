@@ -1,22 +1,17 @@
 /**
  * Async helper: synthesize two hex tiles into one new tile via LLM.
  *
- * Gated on isCapacitor() — web users at hivemind.cx never call this and
- * keep getting the existing string-concat behavior. iOS Capacitor builds
- * try in this order:
+ * Behavior by platform:
+ *   - Web: returns null immediately (existing literal-concat preserved)
+ *   - iOS: Apple Foundation Models on-device only — no cloud fallback
+ *   - Android: Apple Foundation Models (always returns null) → cloud /api/generate
  *
- *   1. Apple Foundation Models (on-device, iOS 26+ with Apple Intelligence)
- *   2. Cloud /api/generate with a merge-specific system prompt (existing endpoint)
- *   3. Return null → caller falls back to literal "source + target" concat
- *
- * 1500 ms total time budget. If the chain doesn't produce a synthesis in
- * time, returns null and the caller's existing string-concat path runs.
- *
- * The prompt is lifted from geepers's /api/brainstorm/merge with the
- * explicit "not a literal X+Y concat" rule that hexpand currently violates.
+ * 1500 ms total time budget on the cloud path. If the chain doesn't
+ * produce a synthesis in time, returns null and the caller's existing
+ * string-concat path runs.
  */
 
-import { isCapacitor } from "./platform";
+import { isCapacitor, isIos } from "./platform";
 import { buildApiUrl } from "./api";
 import { tryOnDeviceFirst } from "./foundationModelsPlugin";
 
@@ -155,6 +150,10 @@ export async function synthesizeMerge(
 
     const onDevice = await tryFoundationModels(source, target);
     if (onDevice) return { synth: onDevice, viaOnDevice: true };
+
+    // iOS is Apple-Intelligence-only — if FM didn't synthesize, fall
+    // back to the caller's literal-concat (returning null). No cloud.
+    if (isIos()) return null;
 
     const cloud = await tryCloudFallback(source, target, extraHeaders);
     if (cloud) return { synth: cloud, viaOnDevice: false };

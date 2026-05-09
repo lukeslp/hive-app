@@ -54,7 +54,7 @@ import { RemoteCursors } from "@/components/RemoteCursors";
 import { MergeSuggestionIndicator } from "@/components/MergeSuggestionIndicator";
 
 import { buildApiUrl } from "@/lib/api";
-import { isCapacitor, getPlatform } from "@/lib/platform";
+import { isCapacitor, getPlatform, isIos } from "@/lib/platform";
 import { tryOnDeviceFirst } from "@/lib/foundationModelsPlugin";
 import { sanitizeJson } from "@/lib/sanitize";
 import type { HexNode, ViewState, ConfirmModalState } from "@/types/hivemind";
@@ -650,11 +650,33 @@ Generate 6 diverse related ideas. Connect to key themes when relevant.`;
           preFetchedBranches = parsed.branches;
         }
       } catch {
-        // FM produced text but JSON.parse failed — fall through to cloud.
+        // FM produced text but JSON.parse failed — fall through.
       }
-      if (!preFetchedBranches) {
+      if (!preFetchedBranches && !isIos()) {
+        // Web/Android still has cloud as a fallback.
         toast.warning("On-device returned unparseable output — using cloud", { duration: 2500 });
       }
+    }
+
+    // iOS: Apple Intelligence is the only inference path. If FM didn't
+    // produce usable JSON, surface a clear error and let the loading state
+    // clean up below — never call /api/generate.
+    if (isIos() && !preFetchedBranches) {
+      const errorMsg = fm
+        ? "On-device returned unparseable output"
+        : "Apple Intelligence isn't available on this device";
+      toast.error(errorMsg);
+      setLoadingNodes((prev) => {
+        const next = new Set(prev);
+        next.delete(key);
+        return next;
+      });
+      setGeneratingNeighbors((prev) => {
+        const next = new Set(prev);
+        neighborPositions.forEach((p) => next.delete(p));
+        return next;
+      });
+      return;
     }
 
     const controller = new AbortController();
@@ -921,8 +943,15 @@ Generate 6 diverse related ideas. Connect to key themes when relevant.`;
             return;
           }
         } catch {
-          // FM produced text but JSON.parse failed — fall through to cloud.
+          // FM produced text but JSON.parse failed — fall through.
         }
+      }
+
+      // iOS: Apple-Intelligence-only — no cloud fallback for refresh.
+      if (isIos()) {
+        if (fm) toast.error("On-device returned unparseable output");
+        else toast.error("Apple Intelligence isn't available on this device");
+        return;
       }
 
       const response = await fetch(buildApiUrl("generate"), {

@@ -18,7 +18,7 @@
 import { useState, useCallback, useEffect } from "react";
 import { API_KEYS_STORAGE_KEY, PROVIDER_STORAGE_KEY } from "@/lib/hexConstants";
 import { buildApiUrl } from "@/lib/api";
-import { isCapacitor, getPlatform } from "@/lib/platform";
+import { isCapacitor, getPlatform, isIos } from "@/lib/platform";
 import { FoundationModels } from "@/lib/foundationModelsPlugin";
 
 export type Provider =
@@ -141,16 +141,16 @@ export function useProviderSettings(): UseProviderSettingsReturn {
   const [appleIntelligenceAvailable, setAppleIntelligenceAvailable] = useState(false);
 
   const [provider, setProviderState] = useState<Provider>(() => {
+    // iOS is Apple-Intelligence-only: never read localStorage, never let
+    // a stale "gemini" value bleed through from a pre-strip install.
+    if (isIos()) return "apple";
     try {
       const saved = localStorage.getItem(PROVIDER_STORAGE_KEY);
       if (saved && PROVIDERS.some((p) => p.id === saved)) {
         return saved as Provider;
       }
     } catch {}
-    // Default: Apple Intelligence on iOS Capacitor (it'll be confirmed
-    // available below and unselected if not). Otherwise the first
-    // server-configured provider, set after the /api/providers fetch.
-    return isCapacitor() && getPlatform() === "ios" ? "apple" : "gemini";
+    return "gemini";
   });
 
   const [apiKeys, setApiKeys] = useState<ApiKeys>(() => {
@@ -179,8 +179,10 @@ export function useProviderSettings(): UseProviderSettingsReturn {
     return () => { cancelled = true; };
   }, []);
 
-  // Fetch server-side provider availability on mount
+  // Fetch server-side provider availability on mount.
+  // iOS skips this — there's no provider picker and no cloud calls.
   useEffect(() => {
+    if (isIos()) return;
     fetch(buildApiUrl("providers"))
       .then((res) => res.json())
       .then((data: ServerProviderInfo) => {
@@ -217,6 +219,9 @@ export function useProviderSettings(): UseProviderSettingsReturn {
   }, [apiKeys]);
 
   const setProvider = useCallback((p: Provider) => {
+    // iOS is locked to "apple" — ignore any setProvider call (the UI on
+    // iOS doesn't expose the picker, but tests/callers might still try).
+    if (isIos()) return;
     setProviderState(p);
   }, []);
 
