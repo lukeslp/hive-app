@@ -105,6 +105,7 @@ export const Toolbar = ({
   collabParticipantCount,
 }: ToolbarProps) => {
   const [moreOpen, setMoreOpen] = useState(false);
+  const [filesMenuOpen, setFilesMenuOpen] = useState(false);
 
   return (
     <header
@@ -173,32 +174,6 @@ export const Toolbar = ({
 
             {/* Desktop-only actions */}
             <div className="hidden sm:flex items-center gap-1">
-              {/* Export dropdown */}
-              <div className="relative group/export">
-                <button
-                  aria-label="Export mind map"
-                  aria-haspopup="true"
-                  className="p-2.5 hover:bg-accent text-muted-foreground rounded-lg"
-                  title="Export"
-                >
-                  <Download className="w-4 h-4" />
-                </button>
-                <div className="absolute top-full right-0 mt-1 bg-card border border-border rounded-lg shadow-xl opacity-0 invisible group-hover/export:opacity-100 group-hover/export:visible transition-all z-50 min-w-[100px]">
-                  <button
-                    onClick={onExportPNG}
-                    className="w-full px-3 py-2 text-xs text-left hover:bg-accent rounded-t-lg"
-                  >
-                    PNG
-                  </button>
-                  <button
-                    onClick={onExportSVG}
-                    className="w-full px-3 py-2 text-xs text-left hover:bg-accent rounded-b-lg"
-                  >
-                    SVG
-                  </button>
-                </div>
-              </div>
-
               {/* Search Toggle */}
               <button
                 onClick={onToggleSearch}
@@ -233,56 +208,103 @@ export const Toolbar = ({
                 </TooltipContent>
               </Tooltip>
 
-              {/* Session Management */}
-              <div className="flex items-center gap-1 border-l border-border pl-2">
+              {/* Files & Sharing — folder icon opens a dropdown that
+                  consolidates Sessions, Export (PNG/SVG/JSON), Import,
+                  and Share into one menu, freeing up four toolbar slots
+                  on desktop. */}
+              <div className="relative border-l border-border pl-2 ml-1">
                 <Tooltip>
                   <TooltipTrigger asChild>
                     <button
-                      onClick={onShowSessions}
-                      className="p-2.5 hover:bg-accent text-muted-foreground rounded-lg"
+                      onClick={() => setFilesMenuOpen((v) => !v)}
+                      aria-label="Files and sharing"
+                      aria-expanded={filesMenuOpen}
+                      aria-haspopup="menu"
+                      className={`p-2.5 rounded-lg transition-colors ${
+                        filesMenuOpen
+                          ? "bg-accent text-accent-foreground"
+                          : "hover:bg-accent text-muted-foreground"
+                      }`}
                     >
                       <FolderOpen className="w-4 h-4" />
                     </button>
                   </TooltipTrigger>
-                  <TooltipContent>Sessions</TooltipContent>
+                  <TooltipContent>Files & Sharing</TooltipContent>
                 </Tooltip>
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <button
-                      onClick={onExportSession}
-                      className="p-2.5 hover:bg-accent text-muted-foreground rounded-lg"
+                {filesMenuOpen && (
+                  <>
+                    {/* Backdrop captures outside-click for dismiss */}
+                    <div
+                      className="fixed inset-0 z-40"
+                      onClick={() => setFilesMenuOpen(false)}
+                    />
+                    <div
+                      role="menu"
+                      className="absolute top-full right-0 mt-2 bg-card border border-border rounded-xl shadow-2xl z-50 min-w-[200px] py-1 animate-in fade-in slide-in-from-top-2 duration-150"
                     >
-                      <Download className="w-4 h-4" />
-                    </button>
-                  </TooltipTrigger>
-                  <TooltipContent>Export JSON</TooltipContent>
-                </Tooltip>
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <label className="p-2.5 hover:bg-accent text-muted-foreground rounded-lg cursor-pointer">
-                      <Upload className="w-4 h-4" />
-                      <input
-                        type="file"
-                        accept=".json"
-                        className="hidden"
-                        onChange={(e) => e.target.files?.[0] && onImportSession(e.target.files[0])}
-                      />
-                    </label>
-                  </TooltipTrigger>
-                  <TooltipContent>Import JSON</TooltipContent>
-                </Tooltip>
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <button
-                      onClick={onShare}
-                      disabled={nodeCount === 0}
-                      className="p-2 hover:bg-accent text-muted-foreground rounded-lg disabled:opacity-50 disabled:cursor-not-allowed"
-                    >
-                      <Share2 className="w-4 h-4" />
-                    </button>
-                  </TooltipTrigger>
-                  <TooltipContent>Share Link</TooltipContent>
-                </Tooltip>
+                      <button
+                        role="menuitem"
+                        onClick={() => { onShowSessions(); setFilesMenuOpen(false); }}
+                        className="w-full flex items-center gap-3 px-4 py-2.5 text-sm hover:bg-accent text-foreground"
+                      >
+                        <FolderOpen className="w-4 h-4 text-muted-foreground" />
+                        Sessions
+                      </button>
+                      <div className="h-px bg-border my-1" />
+                      <button
+                        role="menuitem"
+                        onClick={() => { onExportSession(); setFilesMenuOpen(false); }}
+                        className="w-full flex items-center gap-3 px-4 py-2.5 text-sm hover:bg-accent text-foreground"
+                      >
+                        <Download className="w-4 h-4 text-muted-foreground" />
+                        Save (JSON)
+                      </button>
+                      <label
+                        role="menuitem"
+                        className="w-full flex items-center gap-3 px-4 py-2.5 text-sm hover:bg-accent text-foreground cursor-pointer"
+                      >
+                        <Upload className="w-4 h-4 text-muted-foreground" />
+                        Load (JSON)
+                        <input
+                          type="file"
+                          accept=".json"
+                          className="hidden"
+                          onChange={(e) => {
+                            if (e.target.files?.[0]) onImportSession(e.target.files[0]);
+                            setFilesMenuOpen(false);
+                          }}
+                        />
+                      </label>
+                      <div className="h-px bg-border my-1" />
+                      <button
+                        role="menuitem"
+                        onClick={() => { onExportPNG(); setFilesMenuOpen(false); }}
+                        className="w-full flex items-center gap-3 px-4 py-2.5 text-sm hover:bg-accent text-foreground"
+                      >
+                        <Download className="w-4 h-4 text-muted-foreground" />
+                        Export PNG
+                      </button>
+                      <button
+                        role="menuitem"
+                        onClick={() => { onExportSVG(); setFilesMenuOpen(false); }}
+                        className="w-full flex items-center gap-3 px-4 py-2.5 text-sm hover:bg-accent text-foreground"
+                      >
+                        <Download className="w-4 h-4 text-muted-foreground" />
+                        Export SVG
+                      </button>
+                      <div className="h-px bg-border my-1" />
+                      <button
+                        role="menuitem"
+                        onClick={() => { onShare(); setFilesMenuOpen(false); }}
+                        disabled={nodeCount === 0}
+                        className="w-full flex items-center gap-3 px-4 py-2.5 text-sm hover:bg-accent text-foreground disabled:opacity-50 disabled:cursor-not-allowed"
+                      >
+                        <Share2 className="w-4 h-4 text-muted-foreground" />
+                        Share Link
+                      </button>
+                    </div>
+                  </>
+                )}
               </div>
             </div>
 
