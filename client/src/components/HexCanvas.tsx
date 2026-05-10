@@ -143,7 +143,7 @@ const HexNode = React.memo<{
   const Icon = style.icon;
 
   // Determine icon to display based on node state
-  const IconComponent = node.contextPrompt && !isAutoExpanding
+  const IconComponent = node.clarifyingQuestion && !isAutoExpanding
     ? HelpCircle
     : isAutoExpanding
       ? Zap
@@ -250,7 +250,7 @@ const HexNode = React.memo<{
             className={`
               transition-all duration-200
               ${
-                node.contextPrompt && !isAutoExpanding
+                node.clarifyingQuestion && !isAutoExpanding
                   ? 'fill-card stroke-amber-400'
                   : isAutoExpanding
                     ? 'fill-card stroke-purple-400'

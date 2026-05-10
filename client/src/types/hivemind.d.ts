@@ -16,7 +16,12 @@ export interface HexNode {
   hierarchyLevel?: number;     // 1=key, 2=interacted, 3=hover, 4=untouched
   clusterId?: string;          // Identifies which cluster this node belongs to
   isClusterRoot?: boolean;     // True for root nodes of each cluster
-  contextPrompt?: string;      // Question to ask user before expanding
+  // Clarification fields — see client/src/types/hexmind.ts for full docs.
+  clarifyingQuestion?: string;
+  shouldAskClarifyingQuestion?: boolean;
+  clarificationReasoning?: string;
+  userInputCategory?: 'preference' | 'constraint' | 'situation' | 'goal';
+  suggestedAnswers?: string[];
   contextInfo?: string;        // Generic user notes for LLM context
   codeSnippet?: {
     language: string;

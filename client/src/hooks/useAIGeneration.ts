@@ -179,7 +179,11 @@ function parseBranches(rawText: string): Array<{
   type?: string;
   complexity?: number;
   autoExpand?: boolean;
-  contextPrompt?: string;
+  shouldAskClarifyingQuestion?: boolean;
+  clarifyingQuestion?: string;
+  clarificationReasoning?: string;
+  userInputCategory?: 'preference' | 'constraint' | 'situation' | 'goal';
+  suggestedAnswers?: string[];
   relatedTo?: string[];
 }> {
   // Strip markdown code fences
@@ -216,7 +220,11 @@ function parseBranches(rawText: string): Array<{
     type?: string;
     complexity?: number;
     autoExpand?: boolean;
-    contextPrompt?: string;
+    shouldAskClarifyingQuestion?: boolean;
+    clarifyingQuestion?: string;
+    clarificationReasoning?: string;
+    userInputCategory?: 'preference' | 'constraint' | 'situation' | 'goal';
+    suggestedAnswers?: string[];
     relatedTo?: string[];
   }>;
 }
@@ -278,7 +286,13 @@ function buildNeighborNodes(
         parentId: key,
         pinned: false,
         clusterId: centerNode.clusterId,
-        contextPrompt: branches[i].contextPrompt || undefined,
+        clarifyingQuestion: branches[i].clarifyingQuestion || undefined,
+        shouldAskClarifyingQuestion: branches[i].shouldAskClarifyingQuestion || undefined,
+        clarificationReasoning: branches[i].clarificationReasoning || undefined,
+        userInputCategory: branches[i].userInputCategory || undefined,
+        suggestedAnswers: branches[i].suggestedAnswers && branches[i].suggestedAnswers!.length > 0
+          ? branches[i].suggestedAnswers
+          : undefined,
         relatedNodeKeys: relatedNodeKeys.length > 0 ? relatedNodeKeys : undefined,
         isBridge: isBridgeTile || undefined,
         bridgeTargetCluster: isBridgeTile

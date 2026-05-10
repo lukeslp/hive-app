@@ -80,10 +80,40 @@ export interface HexNode {
   isClusterRoot?: boolean;
 
   /**
-   * Question to ask user before expanding
-   * (e.g., "What kind of cafe?")
+   * Clarifying question this tile asks the user (text shown in the modal).
+   * Only present when the LLM determined the answer requires user-unique
+   * knowledge (preferences, constraints, situation, or goals) — never for
+   * facts the model could state itself.
    */
-  contextPrompt?: string;
+  clarifyingQuestion?: string;
+
+  /**
+   * Explicit gate for the clarification flow. The LLM commits to this as a
+   * boolean before naming a category, suppressing drift from the negative-
+   * instruction rule. When false, the tile expands into branches as normal.
+   */
+  shouldAskClarifyingQuestion?: boolean;
+
+  /**
+   * The LLM's justification for needing user input on this branch. Must
+   * reference the user's unique situation, not general knowledge — used by
+   * the post-hoc validator to catch factual questions laundered as
+   * user-knowledge categories.
+   */
+  clarificationReasoning?: string;
+
+  /**
+   * What kind of user input is needed. Constrains the LLM's classification
+   * to four categories instead of letting it invent justifications.
+   */
+  userInputCategory?: 'preference' | 'constraint' | 'situation' | 'goal';
+
+  /**
+   * 0–5 short suggested answers shown as tappable chips above the textbox.
+   * Tapping a chip POPULATES the textbox; user can edit before submitting.
+   * Empty array means the question is purely open-ended (textbox only).
+   */
+  suggestedAnswers?: string[];
 
   /** User-provided contextual notes for LLM expansion */
   contextInfo?: string;
@@ -316,8 +346,20 @@ export interface BranchSuggestion {
   /** Whether to auto-expand this node */
   autoExpand: boolean;
 
-  /** Optional context prompt before expansion */
-  contextPrompt?: string | null;
+  /** See HexNode.shouldAskClarifyingQuestion. Explicit boolean gate. */
+  shouldAskClarifyingQuestion?: boolean;
+
+  /** See HexNode.clarifyingQuestion. The question text. */
+  clarifyingQuestion?: string | null;
+
+  /** See HexNode.clarificationReasoning. */
+  clarificationReasoning?: string | null;
+
+  /** See HexNode.userInputCategory. */
+  userInputCategory?: 'preference' | 'constraint' | 'situation' | 'goal' | null;
+
+  /** See HexNode.suggestedAnswers. 0–5 chip labels. */
+  suggestedAnswers?: string[] | null;
 
   /** Related node keys for cross-connections */
   relatedTo?: string[] | null;

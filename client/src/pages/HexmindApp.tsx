@@ -773,7 +773,13 @@ Generate 6 diverse related ideas. Connect to key themes when relevant.`;
             parentId: key,
             pinned: false,
             clusterId: centerNode.clusterId,
-            contextPrompt: branches[i].contextPrompt || undefined,
+            clarifyingQuestion: branches[i].clarifyingQuestion || undefined,
+            shouldAskClarifyingQuestion: branches[i].shouldAskClarifyingQuestion || undefined,
+            clarificationReasoning: branches[i].clarificationReasoning || undefined,
+            userInputCategory: branches[i].userInputCategory || undefined,
+            suggestedAnswers: branches[i].suggestedAnswers && branches[i].suggestedAnswers!.length > 0
+              ? branches[i].suggestedAnswers
+              : undefined,
             relatedNodeKeys: relatedNodeKeys.length > 0 ? relatedNodeKeys : undefined,
           };
 
@@ -1217,9 +1223,9 @@ Generate 6 diverse related ideas. Connect to key themes when relevant.`;
       return nodes[neighborKey] === undefined;
     });
 
-    if (hasEmptyNeighbors && node.contextPrompt && !loadingNodes.has(key)) {
+    if (hasEmptyNeighbors && node.clarifyingQuestion && !loadingNodes.has(key)) {
       setContextPromptNode(node);
-      setContextPromptQuestion(node.contextPrompt);
+      setContextPromptQuestion(node.clarifyingQuestion);
       setContextResponse("");
       setShowContextPrompt(true);
       return;
