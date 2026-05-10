@@ -389,7 +389,7 @@ export function useSessionManagement({
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
     a.href = url;
-    a.download = `hexpand_${Date.now()}.json`;
+    a.download = `hexmind_${Date.now()}.json`;
     a.click();
     URL.revokeObjectURL(url);
   }, [nodes, viewState, creativity]);
