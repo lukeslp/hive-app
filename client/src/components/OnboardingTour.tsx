@@ -287,10 +287,13 @@ export const OnboardingTour: React.FC<OnboardingTourProps> = ({
         />
       )}
 
-      {/* Tutorial phase: feature cards at bottom */}
+      {/* Tutorial phase: feature card centered. Was bottom-anchored when
+          there was no backdrop dim and the canvas needed to stay visible
+          through the card; now that we dim + blur the whole canvas, the
+          card belongs at the focal centre of the screen. */}
       {phase === "tutorial" && currentTutorial && (
         <div
-          className="absolute inset-0 flex items-end justify-center pb-6 sm:pb-10"
+          className="absolute inset-0 flex items-center justify-center px-4"
           style={{ pointerEvents: "none" }}
         >
           <div
@@ -341,14 +344,16 @@ export const OnboardingTour: React.FC<OnboardingTourProps> = ({
                 </div>
 
                 <div className="flex items-center gap-3">
-                  {tutorialStep === 0 && (
-                    <button
-                      onClick={handleTutorialSkip}
-                      className="text-white/25 text-xs font-light hover:text-white/40 transition-colors"
-                    >
-                      Skip
-                    </button>
-                  )}
+                  {/* Skip is ALWAYS visible now (was step-0-only). The
+                      tour shouldn't trap people who get the gist after
+                      one card — they've already seen the gesture work
+                      via the prompt → generate flow that ran moments ago. */}
+                  <button
+                    onClick={handleTutorialSkip}
+                    className="text-white/25 text-xs font-light hover:text-white/40 transition-colors"
+                  >
+                    Skip rest
+                  </button>
                   <button
                     onClick={handleTutorialNext}
                     className="text-amber-400/80 text-sm font-medium hover:text-amber-400 transition-colors flex items-center gap-1"

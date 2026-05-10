@@ -607,6 +607,12 @@ USER HAS — preferences, constraints, situation, or goals.
 
 NEVER set it true for facts you could state yourself.
 
+EXPECTED FREQUENCY: For most central ideas, **1–2 of the 6 branches
+should set shouldAskClarifyingQuestion to true**. Zero is correct only
+when the topic is concrete and self-contained (e.g. "photosynthesis",
+"the French Revolution"). All-six-true is wrong — most expansions are
+factual / exploratory, not interrogative.
+
 EXAMPLES:
   Root "cheese" → tile "storage"
     → shouldAskClarifyingQuestion: false. Storage methods (refrigeration,
@@ -634,13 +640,15 @@ When shouldAskClarifyingQuestion is false, OMIT the four related fields
 
 CRITICAL: Return ONLY valid JSON, no markdown, no commentary. Match this
 exact shape (real values shown — do NOT copy these literally, generate
-your own based on the user's idea):
+your own based on the user's idea). Note this example has 2 of 6
+branches with shouldAskClarifyingQuestion=true, which is the expected
+frequency for a typical generation:
 
 {"branches":[
   {"title":"Revenue Model","description":"How the business makes money over time.","type":"action","complexity":3,"autoExpand":false,"shouldAskClarifyingQuestion":false},
   {"title":"Target Market","description":"Who the product is built for.","type":"concept","complexity":4,"autoExpand":false,"shouldAskClarifyingQuestion":true,"clarifyingQuestion":"Who's your target audience?","clarificationReasoning":"branches depend on which audience the user is building for","userInputCategory":"situation","suggestedAnswers":["Consumers","SMBs","Enterprise","Developers"]},
   {"title":"Legal Risk","description":"Compliance and liability exposure.","type":"risk","complexity":2,"autoExpand":false,"shouldAskClarifyingQuestion":false},
-  {"title":"User Onboarding","description":"How new users learn the product.","type":"action","complexity":3,"autoExpand":false,"shouldAskClarifyingQuestion":false},
+  {"title":"Pricing Strategy","description":"How to price the product.","type":"action","complexity":4,"autoExpand":false,"shouldAskClarifyingQuestion":true,"clarifyingQuestion":"What's your monetization preference?","clarificationReasoning":"pricing branches depend on whether user wants subscription, one-time, freemium, or usage-based","userInputCategory":"preference","suggestedAnswers":["Subscription","One-time","Freemium","Usage-based"]},
   {"title":"Tech Stack","description":"Languages, frameworks, infrastructure.","type":"technical","complexity":4,"autoExpand":true,"shouldAskClarifyingQuestion":false},
   {"title":"Success Metrics","description":"How to measure if it's working.","type":"question","complexity":3,"autoExpand":false,"shouldAskClarifyingQuestion":false}
 ]}

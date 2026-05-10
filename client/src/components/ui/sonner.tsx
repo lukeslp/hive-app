@@ -7,6 +7,14 @@ const Toaster = ({ ...props }: ToasterProps) => {
   return (
     <Sonner
       theme={theme as ToasterProps["theme"]}
+      // Top-center keeps the toast clear of the bottom InspectPanel,
+      // bottom-right Minimap, and the bottom-anchored OnboardingTour
+      // cards. Was overlapping all three at the previous bottom-right
+      // default. Top-center reads naturally in landscape AND portrait.
+      position="top-center"
+      // Slightly inset from the toolbar — measured at 56px (toolbar
+      // height ~44 + 12 breathing room).
+      offset={{ top: 56 }}
       className="toaster group"
       style={
         {

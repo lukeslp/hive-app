@@ -411,7 +411,9 @@ When false, omit those four.
 
 CLARIFYING QUESTIONS — when to ASK vs when to EXPAND:
 A tile may OPTIONALLY carry a clarifying question that fires when the user
-taps it (instead of expanding into 6 sub-branches). Set shouldAskClarifyingQuestion
+taps it (instead of expanding into 6 sub-branches). EXPECTED FREQUENCY: 1–2
+of 6 branches per generation should ask. Zero is correct only when the
+topic is concrete and self-contained. Set shouldAskClarifyingQuestion
 to true ONLY when downstream branches would depend on knowledge ONLY THE
 USER HAS — preferences, constraints, situation, or goals.
 
