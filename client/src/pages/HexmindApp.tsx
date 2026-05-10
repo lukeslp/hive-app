@@ -57,6 +57,7 @@ import { buildApiUrl } from "@/lib/api";
 import { isCapacitor, getPlatform, isIos } from "@/lib/platform";
 import { tryOnDeviceFirst } from "@/lib/foundationModelsPlugin";
 import { sanitizeJson } from "@/lib/sanitize";
+import { validateBranches } from "@/lib/clarificationValidator";
 import type { HexNode, ViewState, ConfirmModalState } from "@/types/hivemind";
 import { getNodeKey } from "@/types/hexmind";
 import {
@@ -585,13 +586,58 @@ IMPORTANT:
   4-5: Rich, multi-faceted concept that SHOULD be expanded further
 - Mark branches with complexity 4-5 as "autoExpand": true (max 2 per generation)
 
-CONTEXT PROMPTING (CRITICAL - MANDATORY FOR 2-3 BRANCHES):
-When a concept is too broad/vague to explore meaningfully without specifics, you MUST add a contextPrompt question.
-This is NOT optional - include contextPrompt for AT LEAST 2-3 branches per generation.
+CLARIFYING QUESTIONS — when to ASK vs when to EXPAND:
+A tile may OPTIONALLY carry a clarifying question that fires when the user
+taps it (instead of expanding into 6 sub-branches). Set shouldAskClarifyingQuestion
+to true ONLY when downstream branches would depend on knowledge ONLY THE
+USER HAS — preferences, constraints, situation, or goals.
 
-CRITICAL: Return ONLY valid JSON. No explanations, no commentary, no extra text. Just pure JSON.
+NEVER set it true for facts you could state yourself.
 
-Return JSON: { "branches": [{ "title": "Short Title (2-4 words)", "description": "Brief explanation (1-2 sentences)", "type": "concept|action|technical|question|risk", "complexity": 3, "autoExpand": false, "contextPrompt": "Specific question here or null", "relatedTo": ["node-key-1", "node-key-2"] | null }, ... ] }`;
+EXAMPLES:
+  Root "cheese" → tile "storage"
+    → shouldAskClarifyingQuestion: false. Storage methods (refrigeration,
+      wax coating, vacuum seal, cellar humidity) are facts. Just expand.
+
+  Root "fitness app" → tile "workout plan"
+    → shouldAskClarifyingQuestion: true. userInputCategory: "goal".
+      clarificationReasoning: "branches depend on user's fitness goal —
+      weight loss vs strength vs endurance produce different plans."
+      clarifyingQuestion: "What's your primary fitness goal?"
+      suggestedAnswers: ["Weight loss", "Strength", "Endurance", "General health"]
+
+  Root "vacation to Japan" → tile "itinerary"
+    → shouldAskClarifyingQuestion: true. userInputCategory: "preference".
+      clarificationReasoning: "trip length and travel style determine
+      which cities to visit." clarifyingQuestion: "How many days, and
+      cities or countryside?" suggestedAnswers: []  (open-ended)
+
+  Root "JavaScript framework" → tile "best practices"
+    → shouldAskClarifyingQuestion: false. Best practices are general
+      knowledge. Just expand.
+
+When shouldAskClarifyingQuestion is false, OMIT the four related fields
+(clarifyingQuestion, clarificationReasoning, userInputCategory, suggestedAnswers).
+
+CRITICAL: Return ONLY valid JSON. No explanations, no commentary.
+
+Return JSON: {
+  "branches": [
+    {
+      "title": "Short Title (2-4 words)",
+      "description": "Brief explanation (1-2 sentences)",
+      "type": "concept|action|technical|question|risk",
+      "complexity": 3,
+      "autoExpand": false,
+      "shouldAskClarifyingQuestion": false,
+      "clarifyingQuestion": "Question only if shouldAsk is true, else omit",
+      "clarificationReasoning": "Why user input is needed (only if shouldAsk)",
+      "userInputCategory": "preference|constraint|situation|goal (only if shouldAsk)",
+      "suggestedAnswers": ["chip", "labels"],
+      "relatedTo": ["node-key-1", "node-key-2"]
+    }
+  ]
+}`;
 
     const nearbyNodesContext = getNearestNodes(centerNode, nodes, 10);
     const keyThemeCount = Object.values(nodes).filter((n) => n.isKeyTheme).length;
@@ -731,6 +777,12 @@ Generate 6 diverse related ideas. Connect to key themes when relevant.`;
           }
         }
       }
+
+      // Validate clarification fields BEFORE padding — drops factual
+      // questions the LLM laundered as user-knowledge per the validator's
+      // regex patterns. Padded placeholder branches don't carry the
+      // shouldAsk fields so they pass through untouched.
+      branches = validateBranches(branches);
 
       // Pad to 6
       const defaultTypes = ["concept", "action", "technical", "question", "risk", "concept"];

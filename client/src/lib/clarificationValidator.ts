@@ -19,7 +19,19 @@
  * goal?" passes because the possessive marks user-knowledge intent.
  */
 
-import type { BranchSuggestion } from '@/types/hexmind';
+/**
+ * Minimum shape the validator needs. Any object carrying these optional
+ * fields is acceptable — keeps the validator decoupled from the full
+ * BranchSuggestion type, which has a stricter NodeType enum on `type` that
+ * runtime-parsed branches don't satisfy.
+ */
+export interface ClarifiableBranch {
+    shouldAskClarifyingQuestion?: boolean;
+    clarifyingQuestion?: string | null;
+    clarificationReasoning?: string | null;
+    userInputCategory?: 'preference' | 'constraint' | 'situation' | 'goal' | null;
+    suggestedAnswers?: string[] | null;
+}
 
 /**
  * Question openers that signal factual lookup. Each pattern is anchored to
@@ -69,12 +81,15 @@ export function isFactualLookup(question: string): boolean {
  *   expand-on-tap.
  * - shouldAsk == true && question passes → returned unchanged.
  */
-export function validateClarification<T extends Partial<BranchSuggestion>>(
+export function validateClarification<T extends ClarifiableBranch>(
     branch: T,
 ): T {
     if (!branch.shouldAskClarifyingQuestion) return branch;
     if (!branch.clarifyingQuestion) {
-        return { ...branch, shouldAskClarifyingQuestion: false };
+        // Cast: spread + override on a generic narrows poorly in TS — we
+        // know the shape is preserved because only optional clarification
+        // fields are touched.
+        return { ...branch, shouldAskClarifyingQuestion: false } as T;
     }
     if (!isFactualLookup(branch.clarifyingQuestion)) return branch;
     return {
@@ -84,11 +99,11 @@ export function validateClarification<T extends Partial<BranchSuggestion>>(
         clarificationReasoning: undefined,
         userInputCategory: undefined,
         suggestedAnswers: undefined,
-    };
+    } as T;
 }
 
 /** Run the validator across an entire branch set. */
-export function validateBranches<T extends Partial<BranchSuggestion>>(
+export function validateBranches<T extends ClarifiableBranch>(
     branches: T[],
 ): T[] {
     return branches.map(validateClarification);

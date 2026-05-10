@@ -19,6 +19,7 @@ import { getNodeKey } from '@/types/hexmind';
 import type { NodeTypeStyle } from '@/types/hexmind';
 import { tryOnDeviceFirst } from '@/lib/foundationModelsPlugin';
 import { isIos } from '@/lib/platform';
+import { validateBranches } from '@/lib/clarificationValidator';
 
 // Constants
 const MAX_REQUEST_SIZE = 50000; // 50KB limit
@@ -230,6 +231,22 @@ function parseBranches(rawText: string): Array<{
 }
 
 /**
+ * Wrap parseBranches with the post-hoc clarification validator. The
+ * validator drops factual questions the LLM laundered as user-knowledge
+ * (e.g., "How do you store cheese?") so they fall through to normal
+ * branch expansion instead of opening a dead-end modal.
+ *
+ * Explicit return type pins it back to parseBranches' shape — generic
+ * inference on validateBranches widens to Partial<BranchSuggestion>[]
+ * which downstream consumers (buildNeighborNodes) won't accept.
+ */
+function parseAndValidateBranches(
+  rawText: string,
+): ReturnType<typeof parseBranches> {
+  return validateBranches(parseBranches(rawText));
+}
+
+/**
  * Build HexNode records from parsed branches for 6 hex directions.
  */
 function buildNeighborNodes(
@@ -381,12 +398,46 @@ ${bridgingIntensity > 0.7 ? 'Aggressively seek cross-pollination — find surpri
 This helps clusters grow toward each other organically.` : ""}
 
 JSON schema:
-{ "branches": [{ "title": "Short Label", "type": "concept", "complexity": 3, "autoExpand": false }] }
+{ "branches": [{
+  "title": "Short Label",
+  "type": "concept",
+  "complexity": 3,
+  "autoExpand": false,
+  "shouldAskClarifyingQuestion": false,
+  "clarifyingQuestion": "Only when shouldAsk is true",
+  "clarificationReasoning": "Why user input is needed (only when shouldAsk)",
+  "userInputCategory": "preference|constraint|situation|goal (only when shouldAsk)",
+  "suggestedAnswers": ["chip", "labels"]
+}] }
 
-Example:
+CLARIFYING QUESTIONS — when to ASK vs when to EXPAND:
+A tile may OPTIONALLY carry a clarifying question that fires when the user
+taps it (instead of expanding into 6 sub-branches). Set shouldAskClarifyingQuestion
+to true ONLY when downstream branches would depend on knowledge ONLY THE
+USER HAS — preferences, constraints, situation, or goals.
+
+NEVER set it true for facts you could state yourself.
+
+EXAMPLES:
+  Root "cheese" → tile "storage"
+    shouldAskClarifyingQuestion: false. Storage methods are facts. Expand.
+
+  Root "fitness app" → tile "workout plan"
+    shouldAskClarifyingQuestion: true. category: "goal".
+    reasoning: "branches depend on user's fitness goal."
+    question: "What's your primary fitness goal?"
+    suggestedAnswers: ["Weight loss", "Strength", "Endurance"]
+
+  Root "JavaScript framework" → tile "best practices"
+    shouldAskClarifyingQuestion: false. General knowledge. Expand.
+
+When shouldAskClarifyingQuestion is false, OMIT the four related fields.
+
+Example output:
 { "branches": [
-  { "title": "Revenue Model", "type": "action", "complexity": 3, "autoExpand": false },
-  { "title": "Legal Risk", "type": "risk", "complexity": 2, "autoExpand": false }
+  { "title": "Revenue Model", "type": "action", "complexity": 3, "autoExpand": false, "shouldAskClarifyingQuestion": false },
+  { "title": "Target Market", "type": "concept", "complexity": 4, "autoExpand": false, "shouldAskClarifyingQuestion": true, "clarifyingQuestion": "Who's your target audience?", "clarificationReasoning": "branches depend on which audience the user is building for", "userInputCategory": "situation", "suggestedAnswers": ["Consumers", "SMBs", "Enterprise", "Developers"] },
+  { "title": "Legal Risk", "type": "risk", "complexity": 2, "autoExpand": false, "shouldAskClarifyingQuestion": false }
 ]}`;
 
     const userQuery = `Central idea: "${centerNode.text}"
@@ -432,7 +483,7 @@ Generate 6 neighbor nodes.`;
       maxTokens: 2048,
     });
     if (fm) {
-      const branches = parseBranches(fm.text);
+      const branches = parseAndValidateBranches(fm.text);
       if (branches.length > 0) {
         const newNodes = buildNeighborNodes(branches, centerNode, nodes, NODE_TYPES, forceRefresh);
         setIsGenerating(false);
@@ -504,8 +555,8 @@ Generate 6 neighbor nodes.`;
       }
 
       console.log("[AI] cloud text length:", text.length);
-      const branches = parseBranches(text);
-      console.log("[AI] parsed branches:", branches.length);
+      const branches = parseAndValidateBranches(text);
+      console.log("[AI] parsed+validated branches:", branches.length);
       const newNodes = buildNeighborNodes(branches, centerNode, nodes, NODE_TYPES, forceRefresh);
 
       setIsGenerating(false);
