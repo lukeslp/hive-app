@@ -274,7 +274,13 @@ const HexNode = React.memo<{
                           ? `fill-card ${style.border}`
                           : isHovered
                             ? `fill-secondary ${style.border}`
-                            : 'fill-background stroke-border/80'
+                            // Default state: per-type 20%-opacity tint
+                            // (style.bg, e.g. fill-amber-500/20) makes the
+                            // 5 types visually distinct without breaking
+                            // WCAG 1.4.3 — the underlying canvas is dark
+                            // so text contrast stays well above 4.5:1.
+                            // Stroke stays neutral until selection.
+                            : `${style.bg} stroke-border/60`
               }
             `}
             style={{
