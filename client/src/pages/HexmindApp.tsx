@@ -583,20 +583,10 @@ Nodes marked as **[KEY THEME]** are the most important concepts. When generating
 Given a central idea, you MUST generate EXACTLY 6 distinct related nodes to fill all hexagonal neighbors.
 Each node should explore a different angle or aspect of the central idea.
 
-TYPE DISTRIBUTION (REQUIRED):
-- Available types: concept, action, technical, question, risk
-- You MUST use at least THREE different types across the 6 branches.
-- NO MORE THAN 3 branches with type "concept" per generation.
-- For ANY topic, include at least one "action" (something the user could do)
-  AND at least one "risk" or "question" (something that pushes the user
-  toward critical thinking) — these unlock different parts of the brain.
-- "technical" applies broadly: implementation, infrastructure, mechanism,
-  measurement, materials. Use it when there's any "how does this actually
-  work / what's the underlying system" angle.
-
-This distribution rule is MANDATORY. The five types map to five
-visually-distinct hex colors and icons; if you emit 6 concepts in a row
-the user sees a wall of identical-looking yellow tiles.
+TYPE DISTRIBUTION: Use at least 3 different types across the 6 branches.
+NO MORE than 3 "concept" branches. Always include at least one "action"
+plus one "risk" or "question". Available: concept, action, technical,
+question, risk.
 
 You will also receive a list of existing nearby nodes in the map. If any of your generated branches
 have a strong conceptual relationship with existing nodes (NOT the parent), suggest those connections.
@@ -642,13 +632,21 @@ EXAMPLES:
 When shouldAskClarifyingQuestion is false, OMIT the four related fields
 (clarifyingQuestion, clarificationReasoning, userInputCategory, suggestedAnswers).
 
-CRITICAL: Return ONLY valid JSON, no commentary, matching the shape shown
-in the examples above. Required fields per branch: title, description,
-type, complexity, autoExpand, shouldAskClarifyingQuestion. When
-shouldAskClarifyingQuestion is true, ALSO include clarifyingQuestion,
-clarificationReasoning, userInputCategory, and suggestedAnswers (the
-fitness/vacation examples show how). When false, omit those four.
-relatedTo is optional.`;
+CRITICAL: Return ONLY valid JSON, no markdown, no commentary. Match this
+exact shape (real values shown — do NOT copy these literally, generate
+your own based on the user's idea):
+
+{"branches":[
+  {"title":"Revenue Model","description":"How the business makes money over time.","type":"action","complexity":3,"autoExpand":false,"shouldAskClarifyingQuestion":false},
+  {"title":"Target Market","description":"Who the product is built for.","type":"concept","complexity":4,"autoExpand":false,"shouldAskClarifyingQuestion":true,"clarifyingQuestion":"Who's your target audience?","clarificationReasoning":"branches depend on which audience the user is building for","userInputCategory":"situation","suggestedAnswers":["Consumers","SMBs","Enterprise","Developers"]},
+  {"title":"Legal Risk","description":"Compliance and liability exposure.","type":"risk","complexity":2,"autoExpand":false,"shouldAskClarifyingQuestion":false},
+  {"title":"User Onboarding","description":"How new users learn the product.","type":"action","complexity":3,"autoExpand":false,"shouldAskClarifyingQuestion":false},
+  {"title":"Tech Stack","description":"Languages, frameworks, infrastructure.","type":"technical","complexity":4,"autoExpand":true,"shouldAskClarifyingQuestion":false},
+  {"title":"Success Metrics","description":"How to measure if it's working.","type":"question","complexity":3,"autoExpand":false,"shouldAskClarifyingQuestion":false}
+]}
+
+When shouldAskClarifyingQuestion is false, OMIT clarifyingQuestion,
+clarificationReasoning, userInputCategory, and suggestedAnswers.`;
 
     const nearbyNodesContext = getNearestNodes(centerNode, nodes, 10);
     const keyThemeCount = Object.values(nodes).filter((n) => n.isKeyTheme).length;
