@@ -398,18 +398,11 @@ IMPORTANT: Generate ${bridgingIntensity < 0.3 ? '0-1' : bridgingIntensity > 0.7 
 ${bridgingIntensity > 0.7 ? 'Aggressively seek cross-pollination — find surprising connections between seemingly unrelated ideas.' : bridgingIntensity < 0.3 ? 'Only bridge if there is a very natural, obvious connection. Stay focused on the immediate topic.' : 'Create conceptual connections — find angles that link the current idea to those broader interests.'}
 This helps clusters grow toward each other organically.` : ""}
 
-JSON schema:
-{ "branches": [{
-  "title": "Short Label",
-  "type": "concept",
-  "complexity": 3,
-  "autoExpand": false,
-  "shouldAskClarifyingQuestion": false,
-  "clarifyingQuestion": "Only when shouldAsk is true",
-  "clarificationReasoning": "Why user input is needed (only when shouldAsk)",
-  "userInputCategory": "preference|constraint|situation|goal (only when shouldAsk)",
-  "suggestedAnswers": ["chip", "labels"]
-}] }
+Required fields per branch: title, type, complexity, autoExpand,
+shouldAskClarifyingQuestion. When shouldAskClarifyingQuestion is true,
+ALSO include clarifyingQuestion, clarificationReasoning,
+userInputCategory, and suggestedAnswers (see fitness example below).
+When false, omit those four.
 
 CLARIFYING QUESTIONS — when to ASK vs when to EXPAND:
 A tile may OPTIONALLY carry a clarifying question that fires when the user

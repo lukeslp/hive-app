@@ -629,25 +629,13 @@ EXAMPLES:
 When shouldAskClarifyingQuestion is false, OMIT the four related fields
 (clarifyingQuestion, clarificationReasoning, userInputCategory, suggestedAnswers).
 
-CRITICAL: Return ONLY valid JSON. No explanations, no commentary.
-
-Return JSON: {
-  "branches": [
-    {
-      "title": "Short Title (2-4 words)",
-      "description": "Brief explanation (1-2 sentences)",
-      "type": "concept|action|technical|question|risk",
-      "complexity": 3,
-      "autoExpand": false,
-      "shouldAskClarifyingQuestion": false,
-      "clarifyingQuestion": "Question only if shouldAsk is true, else omit",
-      "clarificationReasoning": "Why user input is needed (only if shouldAsk)",
-      "userInputCategory": "preference|constraint|situation|goal (only if shouldAsk)",
-      "suggestedAnswers": ["chip", "labels"],
-      "relatedTo": ["node-key-1", "node-key-2"]
-    }
-  ]
-}`;
+CRITICAL: Return ONLY valid JSON, no commentary, matching the shape shown
+in the examples above. Required fields per branch: title, description,
+type, complexity, autoExpand, shouldAskClarifyingQuestion. When
+shouldAskClarifyingQuestion is true, ALSO include clarifyingQuestion,
+clarificationReasoning, userInputCategory, and suggestedAnswers (the
+fitness/vacation examples show how). When false, omit those four.
+relatedTo is optional.`;
 
     const nearbyNodesContext = getNearestNodes(centerNode, nodes, 10);
     const keyThemeCount = Object.values(nodes).filter((n) => n.isKeyTheme).length;
