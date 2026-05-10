@@ -56,7 +56,6 @@ interface ToolbarProps {
   onImportSession: (file: File) => void;
   onShare: () => void;
   onShowSettings: () => void;
-  onToggleFilter: () => void;
   onSetFilterType: (type: string | null) => void;
   onShowCollab?: () => void;
   isCollabConnected?: boolean;
@@ -90,7 +89,6 @@ export const Toolbar = ({
   onImportSession,
   onShare,
   onShowSettings,
-  onToggleFilter,
   onSetFilterType,
   onShowCollab,
   isCollabConnected,
@@ -98,6 +96,7 @@ export const Toolbar = ({
 }: ToolbarProps) => {
   const [moreOpen, setMoreOpen] = useState(false);
   const [filesMenuOpen, setFilesMenuOpen] = useState(false);
+  const [filterMenuOpen, setFilterMenuOpen] = useState(false);
 
   return (
     <header
@@ -180,25 +179,9 @@ export const Toolbar = ({
                 <Search className="w-4 h-4" />
               </button>
 
-              {/* Key Theme Filter */}
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <button
-                    onClick={onToggleKeyThemes}
-                    className={`p-2.5 rounded-lg transition-colors ${
-                      showOnlyKeyThemes
-                        ? "bg-yellow-400/20 text-yellow-300"
-                        : "hover:bg-accent text-foreground/80"
-                    }`}
-                    aria-label="Filter key themes"
-                  >
-                    <Sparkles className="w-4 h-4" />
-                  </button>
-                </TooltipTrigger>
-                <TooltipContent>
-                  {showOnlyKeyThemes ? "Show All" : "Filter Key Themes"}
-                </TooltipContent>
-              </Tooltip>
+              {/* Key Themes toggle moved into the Filter dropdown on
+                  the right cluster — same conceptual category (filter
+                  what's visible), one fewer top-level icon. */}
 
               {/* Files & Sharing — folder icon opens a dropdown that
                   consolidates Sessions, Export (PNG/SVG/JSON), Import,
@@ -488,23 +471,81 @@ export const Toolbar = ({
           <TooltipContent>Settings</TooltipContent>
         </Tooltip>
 
-        <Tooltip>
-          <TooltipTrigger asChild>
-            <button
-              onClick={onToggleFilter}
-              className={`p-2 sm:p-3 bg-card/90 border border-border rounded-lg sm:rounded-xl transition-colors ${
-                filterType ? "bg-accent" : "hover:bg-accent/50"
-              }`}
-            >
-              <Filter className="w-4 h-4 sm:w-5 sm:h-5" />
-            </button>
-          </TooltipTrigger>
-          <TooltipContent>Filter by Type</TooltipContent>
-        </Tooltip>
-
-        {/* Minimap toggle and fullscreen reset removed — the minimap
-            now collapses inline via its own button (frees one toolbar
-            slot) and the reset-view affordance was rarely used. */}
+        {/* Filter dropdown — combines per-type filtering with the
+            key-themes toggle (was a separate icon on the desktop bar).
+            Active indicator on the trigger when ANY filter is on. */}
+        <div className="relative">
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <button
+                onClick={() => setFilterMenuOpen((v) => !v)}
+                aria-label="Filter view"
+                aria-expanded={filterMenuOpen}
+                aria-haspopup="true"
+                className={`p-2 sm:p-3 bg-card/90 border border-border rounded-lg sm:rounded-xl transition-colors ${
+                  (filterType || showOnlyKeyThemes || filterMenuOpen)
+                    ? "bg-accent"
+                    : "hover:bg-accent/50"
+                }`}
+              >
+                <Filter className="w-4 h-4 sm:w-5 sm:h-5" />
+              </button>
+            </TooltipTrigger>
+            <TooltipContent>Filter view</TooltipContent>
+          </Tooltip>
+          {filterMenuOpen && (
+            <>
+              <div
+                className="fixed inset-0 z-40"
+                onClick={() => setFilterMenuOpen(false)}
+              />
+              <div
+                onKeyDown={(e) => { if (e.key === "Escape") setFilterMenuOpen(false); }}
+                className="absolute top-full right-0 mt-2 bg-card border border-border rounded-xl shadow-2xl z-50 min-w-[200px] py-1 animate-in fade-in slide-in-from-top-2 duration-150"
+              >
+                {/* Key themes toggle (was the standalone Sparkles button) */}
+                <button
+                  onClick={() => { onToggleKeyThemes(); setFilterMenuOpen(false); }}
+                  className="w-full flex items-center gap-3 px-4 py-2.5 text-sm hover:bg-accent text-foreground"
+                >
+                  <Sparkles className={`w-4 h-4 ${showOnlyKeyThemes ? "text-yellow-300" : "text-muted-foreground"}`} />
+                  <span className="flex-1 text-left">
+                    {showOnlyKeyThemes ? "Show all (key themes only ON)" : "Show only key themes"}
+                  </span>
+                </button>
+                <div className="h-px bg-border my-1" />
+                {/* Per-type filter — null = all types visible */}
+                <button
+                  onClick={() => { onSetFilterType(null); setFilterMenuOpen(false); }}
+                  className={`w-full flex items-center gap-3 px-4 py-2.5 text-sm hover:bg-accent ${
+                    !filterType ? "text-foreground font-medium" : "text-muted-foreground"
+                  }`}
+                >
+                  <span className="w-4 h-4 inline-block" aria-hidden="true" />
+                  All types
+                </button>
+                {Object.values(NODE_TYPES)
+                  .filter((t) => t.id !== "default" && t.id !== "root")
+                  .map((type) => {
+                    const Icon = type.icon;
+                    const isActive = filterType === type.id;
+                    return (
+                      <button
+                        key={type.id}
+                        onClick={() => { onSetFilterType(type.id); setFilterMenuOpen(false); }}
+                        className={`w-full flex items-center gap-3 px-4 py-2.5 text-sm hover:bg-accent ${
+                          isActive ? "text-foreground font-medium bg-accent/40" : "text-muted-foreground"
+                        }`}
+                      >
+                        <Icon className={`w-4 h-4 ${type.color}`} />
+                        Only {type.label}
+                      </button>
+                    );
+                  })}
+              </div>
+            </>
+          )}
+        </div>
       </div>
     </header>
   );

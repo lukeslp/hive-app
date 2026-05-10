@@ -1534,7 +1534,6 @@ Generate 6 diverse related ideas. Connect to key themes when relevant.`;
         onImportSession={sessions.importSession}
         onShare={sessions.generateShareUrl}
         onShowSettings={() => setShowSettingsModal(true)}
-        onToggleFilter={() => setFilterType(filterType ? null : "all")}
         onSetFilterType={setFilterType}
         onShowCollab={!isCapacitor() ? () => setShowCollabModal(true) : undefined}
         isCollabConnected={!isCapacitor() && collab.isConnected}
