@@ -76,7 +76,7 @@ interface HexCanvasProps {
  * Individual Hexagon Node Component
  * Memoized to prevent unnecessary re-renders
  */
-const HexNode = React.memo<{
+const HexTile = React.memo<{
   nodeKey: string;
   node: HexNode;
   x: number;
@@ -185,7 +185,7 @@ const HexNode = React.memo<{
       <div
         tabIndex={0}
         role="button"
-        aria-label={`${node.text}, ${node.type} node, level ${node.depth}${node.pinned ? ', pinned' : ''}${node.isKeyTheme ? ', key theme' : ''}${isAsking ? ', needs clarification' : node.shouldAskClarifyingQuestion ? ', answered' : ''}. ${isTouchDevice ? 'Tap' : 'Click'} to ${isAsking ? 'answer a question before expanding' : 'expand'}. ${isTouchDevice ? 'Long press' : 'Right-click'} for actions.`}
+        aria-label={`${node.text}, ${node.type} node, level ${node.depth}${node.pinned ? ', pinned' : ''}${node.isKeyTheme ? ', key theme' : ''}${isAsking ? ', needs clarification' : ''}. ${isTouchDevice ? 'Tap' : 'Click'} to ${isAsking ? 'answer a question before expanding' : 'expand'}. ${isTouchDevice ? 'Long press' : 'Right-click'} for actions.`}
         onKeyDown={(e) => onNodeKeyDown(e, nodeKey, node)}
         draggable={!node.pinned && node.type !== 'root'}
         onDragStart={onDragStart}
@@ -437,7 +437,7 @@ const HexNode = React.memo<{
   );
 });
 
-HexNode.displayName = 'HexNode';
+HexTile.displayName = 'HexTile';
 
 /**
  * Compute z-index based on node state and properties.
@@ -739,11 +739,13 @@ export const HexCanvas = React.memo<HexCanvasProps>(({
         const isDimmed = Boolean(
           (searchQuery &&
             !node.text.toLowerCase().includes(searchQuery.toLowerCase())) ||
-          (filterType && filterType !== 'all' && node.type !== filterType)
+          // Toolbar's filter dropdown only ever sets null or a real type id;
+          // the legacy 'all' string check is dead.
+          (filterType && node.type !== filterType)
         );
 
         return (
-          <HexNode
+          <HexTile
             key={key}
             nodeKey={key}
             node={node}
@@ -833,7 +835,12 @@ export const HexCanvas = React.memo<HexCanvasProps>(({
     prevProps.searchQuery === nextProps.searchQuery &&
     prevProps.filterType === nextProps.filterType &&
     prevProps.mergeAnimationKey === nextProps.mergeAnimationKey &&
-    prevProps.nodePresenceMap === nextProps.nodePresenceMap
+    prevProps.nodePresenceMap === nextProps.nodePresenceMap &&
+    // Without this, answering a clarifying-question tile doesn't repaint
+    // until another prop changes. The set is rebuilt only when
+    // contextHistory keys change (parent useMemo), so reference equality
+    // is the right check.
+    prevProps.answeredAskNodes === nextProps.answeredAskNodes
   );
 });
 

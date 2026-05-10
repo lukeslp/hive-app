@@ -21,6 +21,11 @@ import { tryOnDeviceFirst } from '@/lib/foundationModelsPlugin';
 import { isIos } from '@/lib/platform';
 import { validateBranches } from '@/lib/clarificationValidator';
 import { BRANCH_SET_SCHEMA } from '@/lib/branchSchema';
+import {
+  BRANCH_TYPE_DISTRIBUTION_RULE,
+  CLARIFICATION_RULES,
+  JSON_OUTPUT_EXAMPLE,
+} from '@/lib/branchPrompt';
 
 // Constants
 const MAX_REQUEST_SIZE = 50000; // 50KB limit
@@ -383,13 +388,8 @@ Each concept explores a different angle: operational, conceptual, risk, action, 
 
 RULES:
 - Title: 2-4 words MAXIMUM. Short, punchy, scannable. Never write a full sentence.
-- NO description field. Title only. No explanation.
 - Type: concept | action | technical | question | risk
-- TYPE DISTRIBUTION (REQUIRED): Use at least THREE different types across
-  the 6 branches. NO MORE than 3 "concept" branches. Always include at
-  least one "action" AND at least one "risk" or "question". These map to
-  visually-distinct hex colors and icons; emitting 6 concepts in a row
-  produces a wall of identical-looking yellow tiles.
+- ${BRANCH_TYPE_DISTRIBUTION_RULE}
 - Complexity 1-5: how much this idea could branch further
 - autoExpand: true only for complexity 4-5 (max 2 per generation)
 - Return ONLY valid JSON. No commentary.
@@ -403,43 +403,9 @@ IMPORTANT: Generate ${bridgingIntensity < 0.3 ? '0-1' : bridgingIntensity > 0.7 
 ${bridgingIntensity > 0.7 ? 'Aggressively seek cross-pollination — find surprising connections between seemingly unrelated ideas.' : bridgingIntensity < 0.3 ? 'Only bridge if there is a very natural, obvious connection. Stay focused on the immediate topic.' : 'Create conceptual connections — find angles that link the current idea to those broader interests.'}
 This helps clusters grow toward each other organically.` : ""}
 
-Required fields per branch: title, type, complexity, autoExpand,
-shouldAskClarifyingQuestion. When shouldAskClarifyingQuestion is true,
-ALSO include clarifyingQuestion, clarificationReasoning,
-userInputCategory, and suggestedAnswers (see fitness example below).
-When false, omit those four.
+${CLARIFICATION_RULES}
 
-CLARIFYING QUESTIONS — when to ASK vs when to EXPAND:
-A tile may OPTIONALLY carry a clarifying question that fires when the user
-taps it (instead of expanding into 6 sub-branches). EXPECTED FREQUENCY: 1–2
-of 6 branches per generation should ask. Zero is correct only when the
-topic is concrete and self-contained. Set shouldAskClarifyingQuestion
-to true ONLY when downstream branches would depend on knowledge ONLY THE
-USER HAS — preferences, constraints, situation, or goals.
-
-NEVER set it true for facts you could state yourself.
-
-EXAMPLES:
-  Root "cheese" → tile "storage"
-    shouldAskClarifyingQuestion: false. Storage methods are facts. Expand.
-
-  Root "fitness app" → tile "workout plan"
-    shouldAskClarifyingQuestion: true. category: "goal".
-    reasoning: "branches depend on user's fitness goal."
-    question: "What's your primary fitness goal?"
-    suggestedAnswers: ["Weight loss", "Strength", "Endurance"]
-
-  Root "JavaScript framework" → tile "best practices"
-    shouldAskClarifyingQuestion: false. General knowledge. Expand.
-
-When shouldAskClarifyingQuestion is false, OMIT the four related fields.
-
-Example output:
-{ "branches": [
-  { "title": "Revenue Model", "type": "action", "complexity": 3, "autoExpand": false, "shouldAskClarifyingQuestion": false },
-  { "title": "Target Market", "type": "concept", "complexity": 4, "autoExpand": false, "shouldAskClarifyingQuestion": true, "clarifyingQuestion": "Who's your target audience?", "clarificationReasoning": "branches depend on which audience the user is building for", "userInputCategory": "situation", "suggestedAnswers": ["Consumers", "SMBs", "Enterprise", "Developers"] },
-  { "title": "Legal Risk", "type": "risk", "complexity": 2, "autoExpand": false, "shouldAskClarifyingQuestion": false }
-]}`;
+${JSON_OUTPUT_EXAMPLE}`;
 
     const userQuery = `Central idea: "${centerNode.text}"
 ${centerNode.contextInfo ? `Context: ${centerNode.contextInfo}` : ""}
@@ -526,7 +492,7 @@ Generate 6 neighbor nodes.`;
     const timeoutId = setTimeout(() => controller.abort(), REQUEST_TIMEOUT);
 
     const fetchUrl = buildApiUrl("generate");
-    console.log("[AI] cloud fetch starting:", fetchUrl, "payload bytes:", requestSize);
+    if (import.meta.env.DEV) console.log("[AI] cloud fetch starting:", fetchUrl, "payload bytes:", requestSize);
 
     try {
       const response = await fetch(fetchUrl, {
@@ -537,7 +503,7 @@ Generate 6 neighbor nodes.`;
       });
 
       clearTimeout(timeoutId);
-      console.log("[AI] cloud fetch response:", response.status, response.statusText);
+      if (import.meta.env.DEV) console.log("[AI] cloud fetch response:", response.status, response.statusText);
 
       const result = await response.json();
 
@@ -558,9 +524,9 @@ Generate 6 neighbor nodes.`;
         throw new Error("API returned no content");
       }
 
-      console.log("[AI] cloud text length:", text.length);
+      if (import.meta.env.DEV) console.log("[AI] cloud text length:", text.length);
       const branches = parseAndValidateBranches(text);
-      console.log("[AI] parsed+validated branches:", branches.length);
+      if (import.meta.env.DEV) console.log("[AI] parsed+validated branches:", branches.length);
       const newNodes = buildNeighborNodes(branches, centerNode, nodes, NODE_TYPES, forceRefresh);
 
       setIsGenerating(false);

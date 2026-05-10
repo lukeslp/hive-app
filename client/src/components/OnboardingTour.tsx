@@ -26,10 +26,6 @@ interface OnboardingTourProps {
    * not a half-populated grid mid-generation.
    */
   isGenerating: boolean;
-  /** Called when the tap indicator is tapped — parent should open the ContextPromptModal */
-  onIndicatorTap: () => void;
-  /** Whether the context prompt modal is currently open (hides indicator while open) */
-  isPromptOpen: boolean;
 }
 
 const STORAGE_KEY = "hexpand_tour_completed";
@@ -64,9 +60,6 @@ export function useOnboardingTour() {
   }, []);
 
   return {
-    showTutorial: !tutorialCompleted,
-    completeTutorial,
-    resetTutorial,
     tourActive: !tutorialCompleted,
     completeTour: completeTutorial,
     resetTour: resetTutorial,

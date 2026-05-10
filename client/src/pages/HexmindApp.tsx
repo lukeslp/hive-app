@@ -59,6 +59,11 @@ import { tryOnDeviceFirst } from "@/lib/foundationModelsPlugin";
 import { sanitizeJson } from "@/lib/sanitize";
 import { validateBranches } from "@/lib/clarificationValidator";
 import { BRANCH_SET_SCHEMA } from "@/lib/branchSchema";
+import {
+  BRANCH_TYPE_DISTRIBUTION_RULE,
+  CLARIFICATION_RULES,
+  JSON_OUTPUT_EXAMPLE,
+} from "@/lib/branchPrompt";
 import type { HexNode, ViewState, ConfirmModalState } from "@/types/hivemind";
 import { getNodeKey } from "@/types/hexmind";
 import {
@@ -252,7 +257,9 @@ export default function HexmindApp() {
     message: "",
     onConfirm: () => {},
   });
-  const [showMinimap, setShowMinimap] = useState(true);
+  // showMinimap state removed — Minimap now collapses inline via its
+  // own button (4ef72c0). Kept rendered unconditionally below; the user
+  // controls visibility via the inline collapse, not a parent toggle.
   const [draggedNodeId, setDraggedNodeId] = useState<string | null>(null);
   const [dropTargetId, setDropTargetId] = useState<string | null>(null);
   const [mergeAnimationKey, setMergeAnimationKey] = useState<string | null>(null);
@@ -262,8 +269,8 @@ export default function HexmindApp() {
 
   // Context prompts
   const [showContextPrompt, setShowContextPrompt] = useState(false);
-  const [contextPromptNode, setContextPromptNode] = useState<HexNode | null>(null);
-  const [contextPromptQuestion, setContextPromptQuestion] = useState("");
+  const [clarifyingNode, setClarifyingNode] = useState<HexNode | null>(null);
+  const [clarifyingPromptText, setClarifyingPromptText] = useState("");
   const [contextResponse, setContextResponse] = useState("");
   const [contextHistory, setContextHistory] = useState<Record<string, string>>({});
 
@@ -583,10 +590,7 @@ Nodes marked as **[KEY THEME]** are the most important concepts. When generating
 Given a central idea, you MUST generate EXACTLY 6 distinct related nodes to fill all hexagonal neighbors.
 Each node should explore a different angle or aspect of the central idea.
 
-TYPE DISTRIBUTION: Use at least 3 different types across the 6 branches.
-NO MORE than 3 "concept" branches. Always include at least one "action"
-plus one "risk" or "question". Available: concept, action, technical,
-question, risk.
+${BRANCH_TYPE_DISTRIBUTION_RULE}
 
 You will also receive a list of existing nearby nodes in the map. If any of your generated branches
 have a strong conceptual relationship with existing nodes (NOT the parent), suggest those connections.
@@ -599,62 +603,9 @@ IMPORTANT:
   4-5: Rich, multi-faceted concept that SHOULD be expanded further
 - Mark branches with complexity 4-5 as "autoExpand": true (max 2 per generation)
 
-CLARIFYING QUESTIONS — when to ASK vs when to EXPAND:
-A tile may OPTIONALLY carry a clarifying question that fires when the user
-taps it (instead of expanding into 6 sub-branches). Set shouldAskClarifyingQuestion
-to true ONLY when downstream branches would depend on knowledge ONLY THE
-USER HAS — preferences, constraints, situation, or goals.
+${CLARIFICATION_RULES}
 
-NEVER set it true for facts you could state yourself.
-
-EXPECTED FREQUENCY: For most central ideas, **1–2 of the 6 branches
-should set shouldAskClarifyingQuestion to true**. Zero is correct only
-when the topic is concrete and self-contained (e.g. "photosynthesis",
-"the French Revolution"). All-six-true is wrong — most expansions are
-factual / exploratory, not interrogative.
-
-EXAMPLES:
-  Root "cheese" → tile "storage"
-    → shouldAskClarifyingQuestion: false. Storage methods (refrigeration,
-      wax coating, vacuum seal, cellar humidity) are facts. Just expand.
-
-  Root "fitness app" → tile "workout plan"
-    → shouldAskClarifyingQuestion: true. userInputCategory: "goal".
-      clarificationReasoning: "branches depend on user's fitness goal —
-      weight loss vs strength vs endurance produce different plans."
-      clarifyingQuestion: "What's your primary fitness goal?"
-      suggestedAnswers: ["Weight loss", "Strength", "Endurance", "General health"]
-
-  Root "vacation to Japan" → tile "itinerary"
-    → shouldAskClarifyingQuestion: true. userInputCategory: "preference".
-      clarificationReasoning: "trip length and travel style determine
-      which cities to visit." clarifyingQuestion: "How many days, and
-      cities or countryside?" suggestedAnswers: []  (open-ended)
-
-  Root "JavaScript framework" → tile "best practices"
-    → shouldAskClarifyingQuestion: false. Best practices are general
-      knowledge. Just expand.
-
-When shouldAskClarifyingQuestion is false, OMIT the four related fields
-(clarifyingQuestion, clarificationReasoning, userInputCategory, suggestedAnswers).
-
-CRITICAL: Return ONLY valid JSON, no markdown, no commentary. Match this
-exact shape (real values shown — do NOT copy these literally, generate
-your own based on the user's idea). Note this example has 2 of 6
-branches with shouldAskClarifyingQuestion=true, which is the expected
-frequency for a typical generation:
-
-{"branches":[
-  {"title":"Revenue Model","description":"How the business makes money over time.","type":"action","complexity":3,"autoExpand":false,"shouldAskClarifyingQuestion":false},
-  {"title":"Target Market","description":"Who the product is built for.","type":"concept","complexity":4,"autoExpand":false,"shouldAskClarifyingQuestion":true,"clarifyingQuestion":"Who's your target audience?","clarificationReasoning":"branches depend on which audience the user is building for","userInputCategory":"situation","suggestedAnswers":["Consumers","SMBs","Enterprise","Developers"]},
-  {"title":"Legal Risk","description":"Compliance and liability exposure.","type":"risk","complexity":2,"autoExpand":false,"shouldAskClarifyingQuestion":false},
-  {"title":"Pricing Strategy","description":"How to price the product.","type":"action","complexity":4,"autoExpand":false,"shouldAskClarifyingQuestion":true,"clarifyingQuestion":"What's your monetization preference?","clarificationReasoning":"pricing branches depend on whether user wants subscription, one-time, freemium, or usage-based","userInputCategory":"preference","suggestedAnswers":["Subscription","One-time","Freemium","Usage-based"]},
-  {"title":"Tech Stack","description":"Languages, frameworks, infrastructure.","type":"technical","complexity":4,"autoExpand":true,"shouldAskClarifyingQuestion":false},
-  {"title":"Success Metrics","description":"How to measure if it's working.","type":"question","complexity":3,"autoExpand":false,"shouldAskClarifyingQuestion":false}
-]}
-
-When shouldAskClarifyingQuestion is false, OMIT clarifyingQuestion,
-clarificationReasoning, userInputCategory, and suggestedAnswers.`;
+${JSON_OUTPUT_EXAMPLE}`;
 
     const nearbyNodesContext = getNearestNodes(centerNode, nodes, 10);
     const keyThemeCount = Object.values(nodes).filter((n) => n.isKeyTheme).length;
@@ -1297,8 +1248,8 @@ Generate 6 diverse related ideas. Connect to key themes when relevant.`;
     });
 
     if (hasEmptyNeighbors && node.clarifyingQuestion && !loadingNodes.has(key)) {
-      setContextPromptNode(node);
-      setContextPromptQuestion(node.clarifyingQuestion);
+      setClarifyingNode(node);
+      setClarifyingPromptText(node.clarifyingQuestion);
       setContextResponse("");
       setShowContextPrompt(true);
       return;
@@ -1835,8 +1786,6 @@ Generate 6 diverse related ideas. Connect to key themes when relevant.`;
         // generatingNeighbors set non-empty). Tour waits for both to
         // settle before showing the dim + cards.
         isGenerating={loadingNodes.size > 0 || generatingNeighbors.size > 0}
-        onIndicatorTap={() => {}}
-        isPromptOpen={false}
       />
 
 
@@ -1913,31 +1862,31 @@ Generate 6 diverse related ideas. Connect to key themes when relevant.`;
 
       <ContextPromptModal
         isOpen={showContextPrompt}
-        question={contextPromptQuestion}
-        suggestedAnswers={contextPromptNode?.suggestedAnswers}
+        question={clarifyingPromptText}
+        suggestedAnswers={clarifyingNode?.suggestedAnswers}
         response={contextResponse}
         setResponse={setContextResponse}
         onGenerate={() => {
-          if (contextPromptNode) {
-            const nodeKey = getNodeKey(contextPromptNode.q, contextPromptNode.r);
+          if (clarifyingNode) {
+            const nodeKey = getNodeKey(clarifyingNode.q, clarifyingNode.r);
             setContextHistory({ ...contextHistory, [nodeKey]: contextResponse });
             setShowContextPrompt(false);
-            generateNeighbors(contextPromptNode, false, contextResponse);
-            setContextPromptNode(null);
+            generateNeighbors(clarifyingNode, false, contextResponse);
+            setClarifyingNode(null);
             setContextResponse("");
           }
         }}
         onSkip={() => {
-          if (contextPromptNode) {
+          if (clarifyingNode) {
             setShowContextPrompt(false);
-            generateNeighbors(contextPromptNode, false, "");
-            setContextPromptNode(null);
+            generateNeighbors(clarifyingNode, false, "");
+            setClarifyingNode(null);
             setContextResponse("");
           }
         }}
         onClose={() => {
           setShowContextPrompt(false);
-          setContextPromptNode(null);
+          setClarifyingNode(null);
           setContextResponse("");
         }}
       />
@@ -1978,8 +1927,9 @@ Generate 6 diverse related ideas. Connect to key themes when relevant.`;
         visibleProviders={providerSettings.visibleProviders}
       />
 
-      {/* Minimap */}
-      {showMinimap && Object.keys(nodes).length > 0 && containerRef.current && (
+      {/* Minimap — always rendered when nodes exist; user collapses
+          inline via the X button on the minimap itself. */}
+      {Object.keys(nodes).length > 0 && containerRef.current && (
         <div className="absolute bottom-4 right-4 z-30 pointer-events-auto interactive-ui">
           <Minimap
             nodes={nodes}
