@@ -1,12 +1,57 @@
 # Next steps — Hexmind
 
-> Pickup point as of 2026-05-09. The rename from "Hexpand" to "Hexmind"
-> shipped in `85d2e9d`; macOS support via "Designed for iPad" enabled in
-> `f13f8c9`. Both pushed to `origin/main`. Apple Developer App ID
-> `app.hexmind.ios` is registered with capabilities; App Store Connect
-> "App" record exists. Tag `ios-on-device-firing` records the milestone
-> where Apple Foundation Models actually generated on-device for the
-> first time (verified iOS 26.4 simulator).
+> Pickup point as of 2026-05-10. Long /hitit + UX session landed the
+> tile-clarification redesign (Parts A.5 → A.4 → A.3 → A.2 → B → C → D
+> per `~/.claude/plans/enchanted-mapping-wall.md`), variety enforcement,
+> per-type tile coloring within WCAG, toolbar consolidation under a
+> folder dropdown, collapsible minimap, fullscreen icon removed, and
+> the onboarding tour deferred until the first generation settles
+> (with a new auto-expand step + media slots for GIFs).
+>
+> Earlier in the day: rename Hexpand → Hexmind shipped in `85d2e9d`,
+> Designed-for-iPad in `f13f8c9`, multi-provider strip in `cfabcfe`,
+> light-mode icon + splash in `369324c` and the schema-placeholder
+> leak fix in `139c4a0` and `269a423`.
+
+## What landed today (commits `cfabcfe` → `4ef72c0`)
+
+- **Multi-provider strip** — iOS bundle is Apple-Intelligence-only
+- **Tile clarification redesign** — `clarifyingQuestion` + 4 new schema
+  fields, post-hoc validator (30 unit tests), Gemini `responseSchema`,
+  modal chips that populate textbox, dashed-border + corner badge +
+  "Ask" pill, regenerate-on-edit checkbox
+- **UX polish** — variety prompt enforcement, per-type 20%-opacity
+  tile tint, toolbar consolidation (9 → 5 icons via folder dropdown),
+  collapsible minimap, fullscreen icon removed, tour now waits for
+  generation to fully settle before dimming + showing cards
+
+## Still queued (highest impact first)
+
+1. **Part A.1 — Swift `@Generable` BranchSet on iOS plugin.** Permanent
+   fix for the schema-placeholder-leak class of bugs. Without it, every
+   prompt edit risks the LLM emitting JSON-shape comments verbatim.
+   See `~/.claude/plans/enchanted-mapping-wall.md` Part A.1.
+2. **UIScene lifecycle migration.** Console warning every launch.
+   Apple says "will assert in a future release." Plan in
+   `MIGRATION_PLAN.md` (the Toolbar dedupe section is OBSOLETE — the
+   folder-dropdown consolidation in commit `919d152` addressed the
+   same dupe-button concern via a different mechanism).
+3. **Tour GIFs.** 5 commented-out `media:` slots in
+   `client/src/components/OnboardingTour.tsx`. Record short GIFs of
+   the actual interactions, drop into `client/public/tour/`, uncomment.
+4. **Server redeploy** — see below. Still blocks Universal Links.
+5. **Hardware verify on real device** — the prompt fixes shipped to
+   the simulator only. Real Pro device test still owed.
+6. **TestFlight upload** — see existing flow below.
+7. **Class 9 trademark filing** — unchanged.
+
+---
+
+> Original 2026-05-09 doc continues below for the operational details
+> (server redeploy command, Xcode upload steps, App Store fields, etc.)
+> that haven't changed.
+
+---
 
 ## Right now — server redeploy is the only blocker for TestFlight
 
