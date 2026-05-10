@@ -55,7 +55,7 @@ import { MergeSuggestionIndicator } from "@/components/MergeSuggestionIndicator"
 
 import { buildApiUrl } from "@/lib/api";
 import { isCapacitor, getPlatform, isIos } from "@/lib/platform";
-import { tryOnDeviceFirst } from "@/lib/foundationModelsPlugin";
+import { tryOnDeviceFirst, tryOnDeviceBranchesFirst } from "@/lib/foundationModelsPlugin";
 import { sanitizeJson } from "@/lib/sanitize";
 import { validateBranches } from "@/lib/clarificationValidator";
 import { BRANCH_SET_SCHEMA } from "@/lib/branchSchema";
@@ -650,9 +650,11 @@ Generate 6 diverse related ideas. Connect to key themes when relevant.`;
     // This is THE primary user gesture (tile-tap). Prior to this fix the
     // hook's instrumented dispatcher was only reached by the regenerate +
     // merge paths; tile-tap went straight to cloud and on-device never
-    // fired. tryOnDeviceFirst owns: cached availability, JS-side timeout,
-    // diagnostic toasts. Returns null on any failure; we fall through.
-    const fm = await tryOnDeviceFirst({
+    // fired. tryOnDeviceBranchesFirst owns: cached availability, JS-side
+    // timeout, diagnostic toasts, AND the @Generable schema enforcement
+    // that landed in Part A.1 — the model literally can't emit invalid
+    // enums or schema-placeholder text. Returns null on any failure.
+    const fm = await tryOnDeviceBranchesFirst({
       prompt: userQuery,
       systemPrompt,
       temperature: 0.7 + aiGeneration.creativity * 0.6,

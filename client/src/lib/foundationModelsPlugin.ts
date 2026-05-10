@@ -40,6 +40,19 @@ export interface FoundationModelsPlugin {
 
     /** Run inference and return the full response text. */
     generate(opts: FMGenerateOptions): Promise<FMResponse>;
+
+    /**
+     * Run inference under a @Generable BranchSet schema (iOS 26+ only).
+     * The framework grammar-constrains decoding so the model literally
+     * cannot emit invalid enums, wrong array length, or schema-shape
+     * placeholder text. Returns JSON-encoded BranchSet in the `text`
+     * field — same shape as `generate` so caller parsing is uniform.
+     *
+     * Use for tile generation. Use `generate` for shapes the schema
+     * doesn't cover (currently: merge synthesis, which has its own
+     * lighter contract).
+     */
+    generateBranches(opts: FMGenerateOptions): Promise<FMResponse>;
 }
 
 export const FoundationModels = registerPlugin<FoundationModelsPlugin>(
@@ -118,6 +131,37 @@ export interface OnDeviceFirstOptions extends FMGenerateOptions {
 export async function tryOnDeviceFirst(
     opts: OnDeviceFirstOptions,
 ): Promise<{ text: string } | null> {
+    return runWithBridge(opts, (fm, payload) => fm.generate(payload));
+}
+
+/**
+ * Like `tryOnDeviceFirst` but routes through `generateBranches` — the
+ * @Generable-backed plugin method that grammar-constrains the output
+ * to BranchSet shape. The model can't emit invalid enums, wrong-count
+ * arrays, or copy schema-placeholder text into the output.
+ *
+ * Returns `{text: string}` containing the JSON-encoded BranchSet so the
+ * caller's existing parser path stays unchanged. Falls through to the
+ * caller's cloud fallback (or iOS error toast) on null, exactly like
+ * `tryOnDeviceFirst`.
+ */
+export async function tryOnDeviceBranchesFirst(
+    opts: OnDeviceFirstOptions,
+): Promise<{ text: string } | null> {
+    return runWithBridge(opts, (fm, payload) => fm.generateBranches(payload));
+}
+
+/**
+ * Shared bridge invocation: cache check + timeout race + diagnostic
+ * toasts + cache-invalidation-on-timeout. Both tryOnDeviceFirst and
+ * tryOnDeviceBranchesFirst funnel through here so the operational
+ * envelope (timeouts, error surfacing, retry signaling) stays
+ * identical regardless of which plugin method runs.
+ */
+async function runWithBridge(
+    opts: OnDeviceFirstOptions,
+    invoke: (fm: FoundationModelsPlugin, payload: FMGenerateOptions) => Promise<FMResponse>,
+): Promise<{ text: string } | null> {
     const available = await isFoundationModelsAvailable();
     if (!available) return null;
 
@@ -137,7 +181,7 @@ export async function tryOnDeviceFirst(
     });
 
     try {
-        const fmCall = FoundationModels.generate({
+        const fmCall = invoke(FoundationModels, {
             prompt: opts.prompt,
             systemPrompt: opts.systemPrompt,
             temperature: opts.temperature,

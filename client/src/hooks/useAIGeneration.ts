@@ -17,7 +17,7 @@ import type { HexNode } from '@/types/hivemind';
 import { haptics } from '@/lib/haptics';
 import { getNodeKey } from '@/types/hexmind';
 import type { NodeTypeStyle } from '@/types/hexmind';
-import { tryOnDeviceFirst } from '@/lib/foundationModelsPlugin';
+import { tryOnDeviceBranchesFirst } from '@/lib/foundationModelsPlugin';
 import { isIos } from '@/lib/platform';
 import { validateBranches } from '@/lib/clarificationValidator';
 import { BRANCH_SET_SCHEMA } from '@/lib/branchSchema';
@@ -446,7 +446,7 @@ Generate 6 neighbor nodes.`;
     // ── Try Apple on-device inference first (iOS 26+ with Apple Intelligence) ──
     // On iOS this is the ONLY path — no cloud fallback. Web/Android still
     // fall through to /api/generate when FM isn't available.
-    const fm = await tryOnDeviceFirst({
+    const fm = await tryOnDeviceBranchesFirst({
       prompt: userQuery,
       systemPrompt,
       temperature,
