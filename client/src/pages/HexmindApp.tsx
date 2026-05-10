@@ -58,6 +58,7 @@ import { isCapacitor, getPlatform, isIos } from "@/lib/platform";
 import { tryOnDeviceFirst } from "@/lib/foundationModelsPlugin";
 import { sanitizeJson } from "@/lib/sanitize";
 import { validateBranches } from "@/lib/clarificationValidator";
+import { BRANCH_SET_SCHEMA } from "@/lib/branchSchema";
 import type { HexNode, ViewState, ConfirmModalState } from "@/types/hivemind";
 import { getNodeKey } from "@/types/hexmind";
 import {
@@ -659,6 +660,10 @@ Generate 6 diverse related ideas. Connect to key themes when relevant.`;
       systemInstruction: { parts: [{ text: systemPrompt }] },
       generationConfig: {
         responseMimeType: "application/json",
+        // Grammar-constrained decoding via OpenAPI subset schema. Forces
+        // enum membership (type, userInputCategory) at the token level so
+        // the LLM can't drift to invalid categories across long sessions.
+        responseSchema: BRANCH_SET_SCHEMA,
         temperature: 0.7 + aiGeneration.creativity * 0.6,
       },
     };

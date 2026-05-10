@@ -20,6 +20,7 @@ import type { NodeTypeStyle } from '@/types/hexmind';
 import { tryOnDeviceFirst } from '@/lib/foundationModelsPlugin';
 import { isIos } from '@/lib/platform';
 import { validateBranches } from '@/lib/clarificationValidator';
+import { BRANCH_SET_SCHEMA } from '@/lib/branchSchema';
 
 // Constants
 const MAX_REQUEST_SIZE = 50000; // 50KB limit
@@ -458,6 +459,9 @@ Generate 6 neighbor nodes.`;
       systemInstruction: { parts: [{ text: systemPrompt }] },
       generationConfig: {
         responseMimeType: "application/json",
+        // Grammar-constrained decoding — see branchSchema.ts. Mirrors the
+        // @Generable Branch struct in FoundationModelsPlugin.swift.
+        responseSchema: BRANCH_SET_SCHEMA,
         temperature,
         maxOutputTokens: 2048,
       },

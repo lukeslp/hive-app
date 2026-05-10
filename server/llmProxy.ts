@@ -24,6 +24,12 @@ interface NormalizedRequest {
   temperature: number;
   maxTokens: number;
   jsonMode: boolean;
+  /**
+   * OpenAPI-3.0-subset response schema for grammar-constrained decoding.
+   * Currently honored only by Gemini (other providers ignore it). Sent
+   * by the tile-generation client to enforce the BranchSet shape.
+   */
+  responseSchema?: unknown;
 }
 
 // ─── In-memory share store (persists across requests, not across deploys) ───
@@ -40,6 +46,7 @@ function extractRequest(body: any): NormalizedRequest {
     temperature: body.generationConfig?.temperature ?? 0.7,
     maxTokens: body.generationConfig?.maxOutputTokens ?? 2048,
     jsonMode: body.generationConfig?.responseMimeType === "application/json",
+    responseSchema: body.generationConfig?.responseSchema,
   };
 }
 
@@ -57,6 +64,7 @@ async function callGemini(req: NormalizedRequest, apiKey: string): Promise<strin
   };
   if (req.system) body.systemInstruction = { parts: [{ text: req.system }] };
   if (req.jsonMode) body.generationConfig.responseMimeType = "application/json";
+  if (req.responseSchema) body.generationConfig.responseSchema = req.responseSchema;
 
   const res = await fetch(
     `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`,
