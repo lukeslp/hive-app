@@ -1780,16 +1780,25 @@ Generate 6 diverse related ideas. Connect to key themes when relevant.`;
         setEditTitle={setEditTitle}
         editDesc={editDesc}
         setEditDesc={setEditDesc}
-        onSave={() => {
+        onSave={(regenerateNeighbors) => {
           if (editingNodeId) {
+            const updatedNode = {
+              ...nodes[editingNodeId],
+              text: editTitle,
+              description: editDesc,
+            };
             commitNodes({
               ...nodes,
-              [editingNodeId]: {
-                ...nodes[editingNodeId],
-                text: editTitle,
-                description: editDesc,
-              },
+              [editingNodeId]: updatedNode,
             });
+            // Plan Part D: opt-in cascade — when the user ticks the
+            // checkbox, regenerate the six neighbors against the new
+            // content. forceRefresh=true rewrites unpinned children
+            // that were spawned from this parent. Async + fire-and-
+            // forget so the modal closes immediately.
+            if (regenerateNeighbors) {
+              void generateNeighbors(updatedNode, true);
+            }
           }
           setEditingNodeId(null);
         }}

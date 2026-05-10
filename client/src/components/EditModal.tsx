@@ -3,6 +3,8 @@
  * Extracted from HiveMindApp.tsx monolith
  */
 
+import { useState, useEffect } from "react";
+import { Sparkles } from "@/lib/icons";
 import { Modal } from "@/components/Modal";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -18,7 +20,13 @@ interface EditModalProps {
   setEditTitle: (value: string) => void;
   editDesc: string;
   setEditDesc: (value: string) => void;
-  onSave: () => void;
+  /**
+   * Save handler. Receives whether the user wants the tile's existing
+   * neighbors regenerated against the new content. Default false — pure
+   * field edit; user opts in via the checkbox for the "edit + cascade"
+   * flow described in plan Part D.
+   */
+  onSave: (regenerateNeighbors: boolean) => void;
   onChangeType: (type: string) => void;
 }
 
@@ -34,6 +42,13 @@ export const EditModal = ({
   onSave,
   onChangeType,
 }: EditModalProps) => {
+  const [regenerateNeighbors, setRegenerateNeighbors] = useState(false);
+
+  // Reset the toggle whenever the modal opens for a different node so it
+  // doesn't carry over from a prior edit session.
+  useEffect(() => {
+    if (isOpen) setRegenerateNeighbors(false);
+  }, [isOpen, nodeId]);
   return (
     <Modal isOpen={isOpen} onClose={onClose} title="Edit Node" maxWidth="max-w-md">
       <div className="flex flex-col gap-4">
@@ -86,12 +101,34 @@ export const EditModal = ({
           </div>
         )}
 
+        {/* Regenerate-on-edit toggle. When checked, save also triggers
+            generateNeighbors with forceRefresh=true so the tile's six
+            children get rebuilt against the new title/description/type. */}
+        <label className="flex items-start gap-2 mt-1 cursor-pointer select-none group">
+          <input
+            type="checkbox"
+            checked={regenerateNeighbors}
+            onChange={(e) => setRegenerateNeighbors(e.target.checked)}
+            className="mt-0.5 h-4 w-4 rounded border-border bg-secondary text-indigo-500 focus:ring-1 focus:ring-indigo-500 focus:ring-offset-0 cursor-pointer"
+          />
+          <span className="flex-1">
+            <span className="flex items-center gap-1.5 text-sm font-medium text-foreground">
+              <Sparkles className="w-3.5 h-3.5 text-indigo-400" />
+              Re-generate this tile's branches
+            </span>
+            <span className="text-xs text-muted-foreground">
+              Replace the six neighboring tiles with new ones based on the
+              edited content. Existing pinned neighbors are preserved.
+            </span>
+          </span>
+        </label>
+
         <div className="flex justify-end gap-2 mt-2">
           <Button variant="ghost" onClick={onClose}>
             Cancel
           </Button>
-          <Button onClick={onSave} className="bg-indigo-600 hover:bg-indigo-500">
-            Save
+          <Button onClick={() => onSave(regenerateNeighbors)} className="bg-indigo-600 hover:bg-indigo-500">
+            {regenerateNeighbors ? "Save & Regenerate" : "Save"}
           </Button>
         </div>
       </div>
