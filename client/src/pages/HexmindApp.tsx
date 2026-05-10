@@ -582,8 +582,21 @@ Nodes marked as **[KEY THEME]** are the most important concepts. When generating
 
 Given a central idea, you MUST generate EXACTLY 6 distinct related nodes to fill all hexagonal neighbors.
 Each node should explore a different angle or aspect of the central idea.
-Types available: concept, action, technical, question, risk.
-Vary the types to create a diverse exploration.
+
+TYPE DISTRIBUTION (REQUIRED):
+- Available types: concept, action, technical, question, risk
+- You MUST use at least THREE different types across the 6 branches.
+- NO MORE THAN 3 branches with type "concept" per generation.
+- For ANY topic, include at least one "action" (something the user could do)
+  AND at least one "risk" or "question" (something that pushes the user
+  toward critical thinking) — these unlock different parts of the brain.
+- "technical" applies broadly: implementation, infrastructure, mechanism,
+  measurement, materials. Use it when there's any "how does this actually
+  work / what's the underlying system" angle.
+
+This distribution rule is MANDATORY. The five types map to five
+visually-distinct hex colors and icons; if you emit 6 concepts in a row
+the user sees a wall of identical-looking yellow tiles.
 
 You will also receive a list of existing nearby nodes in the map. If any of your generated branches
 have a strong conceptual relationship with existing nodes (NOT the parent), suggest those connections.
@@ -1309,7 +1322,7 @@ Generate 6 diverse related ideas. Connect to key themes when relevant.`;
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
     a.href = url;
-    a.download = `hexpand-export-${Date.now()}.svg`;
+    a.download = `hexmind-export-${Date.now()}.svg`;
     document.body.appendChild(a);
     a.click();
     document.body.removeChild(a);
@@ -1334,16 +1347,27 @@ Generate 6 diverse related ideas. Connect to key themes when relevant.`;
       ctx.drawImage(img, 0, 0);
       URL.revokeObjectURL(url);
       canvas.toBlob((blob) => {
-        if (!blob) return;
+        if (!blob) {
+          toast.error("PNG export failed — couldn't encode the canvas.");
+          return;
+        }
         const pngUrl = URL.createObjectURL(blob);
         const a = document.createElement("a");
         a.href = pngUrl;
-        a.download = `hexpand-export-${Date.now()}.png`;
+        a.download = `hexmind-export-${Date.now()}.png`;
         document.body.appendChild(a);
         a.click();
         document.body.removeChild(a);
         URL.revokeObjectURL(pngUrl);
+        toast.success("PNG exported");
       });
+    };
+    img.onerror = () => {
+      // SVG-as-Image rasterization can silently fail on certain SVG features
+      // (foreignObject, complex filters). Without this handler the user
+      // taps Export and nothing happens.
+      URL.revokeObjectURL(url);
+      toast.error("PNG export failed — SVG rasterization rejected.");
     };
     img.src = url;
   };

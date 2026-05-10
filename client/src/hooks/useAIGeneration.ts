@@ -385,6 +385,11 @@ RULES:
 - Title: 2-4 words MAXIMUM. Short, punchy, scannable. Never write a full sentence.
 - NO description field. Title only. No explanation.
 - Type: concept | action | technical | question | risk
+- TYPE DISTRIBUTION (REQUIRED): Use at least THREE different types across
+  the 6 branches. NO MORE than 3 "concept" branches. Always include at
+  least one "action" AND at least one "risk" or "question". These map to
+  visually-distinct hex colors and icons; emitting 6 concepts in a row
+  produces a wall of identical-looking yellow tiles.
 - Complexity 1-5: how much this idea could branch further
 - autoExpand: true only for complexity 4-5 (max 2 per generation)
 - Return ONLY valid JSON. No commentary.
