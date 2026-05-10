@@ -19,6 +19,13 @@ interface OnboardingTourProps {
   onStartBrainstorm: (idea: string) => void;
   onStartDualBrainstorm?: (idea1: string, idea2: string) => void;
   nodeCount: number;
+  /**
+   * True while a generation is in flight. The tour waits for
+   * `nodeCount > 1 && !isGenerating` so the user sees a settled
+   * canvas with all 6 neighbors before the dim + cards appear —
+   * not a half-populated grid mid-generation.
+   */
+  isGenerating: boolean;
   /** Called when the tap indicator is tapped — parent should open the ContextPromptModal */
   onIndicatorTap: () => void;
   /** Whether the context prompt modal is currently open (hides indicator while open) */
@@ -66,8 +73,51 @@ export function useOnboardingTour() {
   };
 }
 
+/**
+ * Each tutorial step optionally accepts a `media` URL — drop a short GIF
+ * or muted-loop video into `client/public/tour/` named after the step
+ * (e.g. `tap-expand.gif`) and the card will render it above the body
+ * text. Missing media → text-only card, no broken-image placeholder.
+ */
+interface TutorialStep {
+  icon: React.ReactNode;
+  title: string;
+  body: string;
+  /** Path under client/public/. Renders <img> if .gif/.png, <video> if .mp4/.webm. */
+  media?: string;
+}
+
+/** Render the optional media (gif/png → img, mp4/webm → autoplay loop video). */
+function TutorialMedia({ src }: { src: string }) {
+  const isVideo = /\.(mp4|webm|mov)$/i.test(src);
+  if (isVideo) {
+    return (
+      <video
+        src={src}
+        autoPlay
+        loop
+        muted
+        playsInline
+        className="w-full rounded-lg mb-3 bg-black/40"
+        aria-hidden="true"
+      />
+    );
+  }
+  return (
+    <img
+      src={src}
+      alt=""
+      className="w-full rounded-lg mb-3 bg-black/40"
+      aria-hidden="true"
+      onError={(e) => {
+        (e.target as HTMLImageElement).style.display = "none";
+      }}
+    />
+  );
+}
+
 // Tutorial step content — platform-aware text
-function getTutorialSteps(isTouch: boolean) {
+function getTutorialSteps(isTouch: boolean): TutorialStep[] {
   const tap = isTouch ? "Tap" : "Click";
   const drag = isTouch ? "Long-press and drag" : "Drag";
   const doubleTap = isTouch ? "Double-tap" : "Double-click";
@@ -122,6 +172,15 @@ function getTutorialSteps(isTouch: boolean) {
       title: "Navigate freely",
       body: `${panAction}. Star key ideas to guide the AI. ${isTouch ? "" : "Press H for shortcuts."}`.trim(),
     },
+    {
+      icon: (
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+          <path d="M13 2 3 14h9l-1 8 10-12h-9l1-8z" />
+        </svg>
+      ),
+      title: "Smart expansion",
+      body: `Some tiles are rich enough that the AI auto-expands them on its own — watch for the pulse animation. You can turn this off in Settings.`,
+    },
   ];
 }
 
@@ -129,6 +188,7 @@ export const OnboardingTour: React.FC<OnboardingTourProps> = ({
   showTutorial,
   onTutorialComplete,
   nodeCount,
+  isGenerating,
 }) => {
   /**
    * Phase machine:
@@ -156,16 +216,20 @@ export const OnboardingTour: React.FC<OnboardingTourProps> = ({
     }
   }, [nodeCount, phase]);
 
-  // When waiting for nodes, advance to tutorial or done once nodes > 1
+  // Defer the tutorial until the FIRST generation has fully settled —
+  // not just "any neighbor exists" (nodeCount > 1) but "all 6 neighbors
+  // are in AND no further generation is in flight." That gives the user
+  // a populated, motionless canvas as the backdrop for the dim + cards
+  // instead of a half-rendered grid mid-spinner.
   useEffect(() => {
-    if (phase === "waiting" && nodeCount > 1) {
+    if (phase === "waiting" && nodeCount > 1 && !isGenerating) {
       if (showTutorial) {
         setPhase("tutorial");
       } else {
         setPhase("done");
       }
     }
-  }, [phase, nodeCount, showTutorial]);
+  }, [phase, nodeCount, isGenerating, showTutorial]);
 
   // Animate tutorial step entrance
   useEffect(() => {
@@ -209,6 +273,20 @@ export const OnboardingTour: React.FC<OnboardingTourProps> = ({
       }`}
       style={{ pointerEvents: "none" }}
     >
+      {/* Dimmed backdrop during the tutorial. pointer-events-auto so the
+          user can't accidentally tap a hex underneath while reading; tap
+          on the backdrop itself does nothing (no dismiss-on-backdrop —
+          dismissal goes through Skip / Let's go). */}
+      {phase === "tutorial" && (
+        <div
+          className={`absolute inset-0 bg-black/60 backdrop-blur-[2px] transition-opacity duration-500 ${
+            stepVisible ? "opacity-100" : "opacity-0"
+          }`}
+          style={{ pointerEvents: "auto" }}
+          aria-hidden="true"
+        />
+      )}
+
       {/* Tutorial phase: feature cards at bottom */}
       {phase === "tutorial" && currentTutorial && (
         <div
@@ -224,7 +302,13 @@ export const OnboardingTour: React.FC<OnboardingTourProps> = ({
             style={{ pointerEvents: "auto" }}
           >
             <div className="bg-zinc-900/85 backdrop-blur-lg rounded-2xl border border-white/[0.08] shadow-2xl overflow-hidden">
-              <div className="px-5 pt-5 pb-4">
+              {/* Optional media (GIF / muted video) above the text */}
+              {currentTutorial.media && (
+                <div className="px-5 pt-5">
+                  <TutorialMedia src={currentTutorial.media} />
+                </div>
+              )}
+              <div className={`px-5 pb-4 ${currentTutorial.media ? "pt-0" : "pt-5"}`}>
                 <div className="flex items-start gap-3.5">
                   <div className="text-amber-400/80 mt-0.5 flex-shrink-0">
                     {currentTutorial.icon}

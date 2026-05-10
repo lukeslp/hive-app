@@ -1,9 +1,15 @@
 /**
  * Minimap - Overview navigation for the hex grid
  * Responsive: smaller on mobile to avoid overlapping InspectPanel
+ *
+ * Collapsible: tap the chevron in the top-right to shrink the minimap to
+ * a small map-icon button; tap again to re-expand. State is local —
+ * survives re-renders, resets on full reload. The toolbar's old minimap
+ * toggle was removed in favor of this inline control.
  */
 
-import React, { useRef } from "react";
+import React, { useRef, useState } from "react";
+import { Map as MapIcon, X } from "@/lib/icons";
 import { HEX_SIZE, HEX_WIDTH, HEX_HEIGHT } from "@/lib/hexConstants";
 import { NODE_TYPES } from "@/lib/nodeTypes";
 import type { HexNode, ViewState } from "@/types/hivemind";
@@ -24,6 +30,7 @@ export const Minimap = ({
   selectedNodeId,
 }: MinimapProps) => {
   const minimapRef = useRef<HTMLDivElement>(null);
+  const [isCollapsed, setIsCollapsed] = useState(false);
   // Responsive size: smaller on mobile
   const isMobile = typeof window !== "undefined" && window.innerWidth < 640;
   const MINIMAP_SIZE = isMobile ? 100 : 160;
@@ -31,6 +38,20 @@ export const Minimap = ({
 
   const nodeKeys = Object.keys(nodes);
   if (nodeKeys.length === 0) return null;
+
+  // Collapsed: just a small icon button. Tapping re-expands.
+  if (isCollapsed) {
+    return (
+      <button
+        onClick={() => setIsCollapsed(false)}
+        className="bg-card/90 backdrop-blur border border-border rounded-xl p-2 shadow-xl hover:bg-accent transition-colors"
+        aria-label="Expand minimap"
+        title="Expand minimap"
+      >
+        <MapIcon className="w-5 h-5 text-muted-foreground" />
+      </button>
+    );
+  }
 
   let minX = Infinity, maxX = -Infinity, minY = Infinity, maxY = -Infinity;
   nodeKeys.forEach(key => {
@@ -67,6 +88,21 @@ export const Minimap = ({
   };
 
   return (
+    <div className="relative">
+      {/* Collapse button — overlaid in the top-right corner of the map.
+          z-10 to sit above the SVG; pointer-events stay normal so the
+          map's click-to-navigate doesn't fire when tapping this. */}
+      <button
+        onClick={(e) => {
+          e.stopPropagation();
+          setIsCollapsed(true);
+        }}
+        className="absolute top-1 right-1 z-10 p-1 rounded-md bg-card/80 hover:bg-accent text-muted-foreground transition-colors"
+        aria-label="Collapse minimap"
+        title="Collapse"
+      >
+        <X className="w-3 h-3" />
+      </button>
     <div
       ref={minimapRef}
       className="bg-card/90 backdrop-blur border border-border rounded-xl overflow-hidden cursor-crosshair shadow-xl"
@@ -109,6 +145,7 @@ export const Minimap = ({
           rx="2"
         />
       </svg>
+    </div>
     </div>
   );
 };

@@ -24,8 +24,6 @@ import {
   X,
   Settings,
   Filter,
-  Map,
-  Maximize2,
   MoreHorizontal,
   Users,
 } from "@/lib/icons";
@@ -43,7 +41,6 @@ interface ToolbarProps {
   searchInputRef: React.RefObject<HTMLInputElement | null>;
   showOnlyKeyThemes: boolean;
   filterType: string | null;
-  showMinimap: boolean;
   onShowWelcome: () => void;
   onExportPNG: () => void;
   onExportSVG: () => void;
@@ -61,8 +58,6 @@ interface ToolbarProps {
   onShowSettings: () => void;
   onToggleFilter: () => void;
   onSetFilterType: (type: string | null) => void;
-  onToggleMinimap: () => void;
-  onResetView: () => void;
   onShowCollab?: () => void;
   isCollabConnected?: boolean;
   collabParticipantCount?: number;
@@ -80,7 +75,6 @@ export const Toolbar = ({
   searchInputRef,
   showOnlyKeyThemes,
   filterType,
-  showMinimap,
   onShowWelcome,
   onExportPNG,
   onExportSVG,
@@ -98,8 +92,6 @@ export const Toolbar = ({
   onShowSettings,
   onToggleFilter,
   onSetFilterType,
-  onToggleMinimap,
-  onResetView,
   onShowCollab,
   isCollabConnected,
   collabParticipantCount,
@@ -511,27 +503,9 @@ export const Toolbar = ({
           <TooltipContent>Filter by Type</TooltipContent>
         </Tooltip>
 
-        {/* Minimap toggle — hidden on very small screens */}
-        <Tooltip>
-          <TooltipTrigger asChild>
-            <button
-              onClick={onToggleMinimap}
-              className={`hidden sm:block p-2 sm:p-3 bg-card/90 border border-border rounded-lg sm:rounded-xl transition-colors ${
-                showMinimap ? "bg-accent" : "hover:bg-accent/50"
-              }`}
-            >
-              <Map className="w-4 h-4 sm:w-5 sm:h-5" />
-            </button>
-          </TooltipTrigger>
-          <TooltipContent>{showMinimap ? "Hide Minimap" : "Show Minimap"}</TooltipContent>
-        </Tooltip>
-
-        <button
-          onClick={onResetView}
-          className="p-2 sm:p-3 bg-card/90 border border-border rounded-lg sm:rounded-xl hover:bg-accent/50"
-        >
-          <Maximize2 className="w-4 h-4 sm:w-5 sm:h-5" />
-        </button>
+        {/* Minimap toggle and fullscreen reset removed — the minimap
+            now collapses inline via its own button (frees one toolbar
+            slot) and the reset-view affordance was rarely used. */}
       </div>
     </header>
   );

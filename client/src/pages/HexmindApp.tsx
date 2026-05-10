@@ -1496,7 +1496,6 @@ Generate 6 diverse related ideas. Connect to key themes when relevant.`;
         searchInputRef={search.searchInputRef}
         showOnlyKeyThemes={showOnlyKeyThemes}
         filterType={filterType}
-        showMinimap={showMinimap}
         onShowWelcome={() => {
               resetHistory({});
               setSelectedNodeId(null);
@@ -1529,8 +1528,6 @@ Generate 6 diverse related ideas. Connect to key themes when relevant.`;
         onShowSettings={() => setShowSettingsModal(true)}
         onToggleFilter={() => setFilterType(filterType ? null : "all")}
         onSetFilterType={setFilterType}
-        onToggleMinimap={() => setShowMinimap(!showMinimap)}
-        onResetView={() => setViewState({ x: 0, y: 0, zoom: 0.8 })}
         onShowCollab={!isCapacitor() ? () => setShowCollabModal(true) : undefined}
         isCollabConnected={!isCapacitor() && collab.isConnected}
         collabParticipantCount={!isCapacitor() ? collab.participants.length : 0}
@@ -1827,6 +1824,10 @@ Generate 6 diverse related ideas. Connect to key themes when relevant.`;
         onTutorialComplete={completeTour}
         onStartBrainstorm={startBrainstorm}
         nodeCount={Object.keys(nodes).length}
+        // True while ANY generation is in flight (loadingNodes set or
+        // generatingNeighbors set non-empty). Tour waits for both to
+        // settle before showing the dim + cards.
+        isGenerating={loadingNodes.size > 0 || generatingNeighbors.size > 0}
         onIndicatorTap={() => {}}
         isPromptOpen={false}
       />
