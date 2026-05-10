@@ -1877,6 +1877,7 @@ Generate 6 diverse related ideas. Connect to key themes when relevant.`;
       <ContextPromptModal
         isOpen={showContextPrompt}
         question={contextPromptQuestion}
+        suggestedAnswers={contextPromptNode?.suggestedAnswers}
         response={contextResponse}
         setResponse={setContextResponse}
         onGenerate={() => {

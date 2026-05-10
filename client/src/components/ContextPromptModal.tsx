@@ -7,13 +7,15 @@
  *
  * Features:
  * - Frosted glass backdrop that lets the canvas show through
- * - Minimal UI: just a heading and an input bar
+ * - Minimal UI: heading, optional suggestion chips, input bar
+ * - Suggestion chips POPULATE the textbox on tap (don't submit). User can
+ *   edit before pressing Enter. Editing the textbox clears chip selection.
  * - Skip (expand without context) and Cancel (dismiss) via keyboard or subtle buttons
  * - Tap/click anywhere outside the input area to dismiss
  * - Enter to submit, Escape to cancel
  */
 
-import { useRef, useEffect, useCallback } from "react";
+import { useRef, useEffect, useState, useCallback } from "react";
 import { Sparkles, Zap, X } from "@/lib/icons";
 import { haptics } from "@/lib/haptics";
 
@@ -27,6 +29,12 @@ interface ContextPromptModalProps {
   onClose: () => void;
   /** Optional variant for first-click onboarding style */
   variant?: "onboarding" | "context";
+  /**
+   * 0–5 suggested answers shown as tappable chips above the textbox.
+   * Tapping a chip POPULATES the textbox with the chip's text — user can
+   * then edit before submitting. If undefined or empty, no chips render.
+   */
+  suggestedAnswers?: string[];
 }
 
 export const ContextPromptModal = ({
@@ -38,9 +46,11 @@ export const ContextPromptModal = ({
   onSkip,
   onClose,
   variant = "context",
+  suggestedAnswers,
 }: ContextPromptModalProps) => {
   const inputRef = useRef<HTMLInputElement>(null);
   const contentRef = useRef<HTMLDivElement>(null);
+  const [selectedChip, setSelectedChip] = useState<string | null>(null);
 
   // Auto-focus input when modal opens
   useEffect(() => {
@@ -51,7 +61,37 @@ export const ContextPromptModal = ({
       }, 100);
       return () => clearTimeout(timer);
     }
+    // Modal closed — reset chip selection so re-opening starts fresh.
+    setSelectedChip(null);
   }, [isOpen]);
+
+  // Clear chip selection when the textbox no longer matches the picked chip.
+  // Lets the user tap "Weight loss" then edit to "Weight loss but slowly"
+  // without leaving a stale highlight.
+  useEffect(() => {
+    if (selectedChip && response !== selectedChip) {
+      setSelectedChip(null);
+    }
+  }, [response, selectedChip]);
+
+  const handleChipTap = useCallback(
+    (chip: string) => {
+      haptics.tap();
+      setResponse(chip);
+      setSelectedChip(chip);
+      // Move cursor to end so the user can append/edit naturally.
+      requestAnimationFrame(() => {
+        const input = inputRef.current;
+        if (input) {
+          input.focus();
+          input.setSelectionRange(chip.length, chip.length);
+        }
+      });
+    },
+    [setResponse]
+  );
+
+  const hasChips = !!(suggestedAnswers && suggestedAnswers.length > 0);
 
   // Dismiss when clicking outside the content area
   const handleBackdropClick = useCallback(
@@ -122,6 +162,34 @@ export const ContextPromptModal = ({
           {heading}
         </h2>
 
+        {/* Suggestion chips (when LLM provided likely answers) */}
+        {hasChips && (
+          <div
+            className="flex flex-wrap justify-center gap-2 mb-4"
+            role="group"
+            aria-label="Suggested answers — tap to use as a starting point, then edit"
+          >
+            {suggestedAnswers!.map((chip) => {
+              const isSelected = selectedChip === chip;
+              return (
+                <button
+                  key={chip}
+                  type="button"
+                  onClick={() => handleChipTap(chip)}
+                  className={`px-3 py-1.5 rounded-full text-sm font-light
+                              transition-all duration-150 backdrop-blur-md
+                              ${isSelected
+                                ? "bg-purple-500/70 text-white border border-purple-400/60"
+                                : "bg-white/[0.06] text-white/75 border border-white/[0.12] hover:bg-white/[0.1] hover:border-white/[0.2]"}`}
+                  aria-pressed={isSelected}
+                >
+                  {chip}
+                </button>
+              );
+            })}
+          </div>
+        )}
+
         {/* Input bar */}
         <div className="relative group">
           <input
@@ -130,7 +198,7 @@ export const ContextPromptModal = ({
             value={response}
             onChange={(e) => setResponse(e.target.value)}
             onKeyDown={handleKeyDown}
-            placeholder={placeholder}
+            placeholder={hasChips ? "Or type your own answer..." : placeholder}
             className="w-full px-5 py-4 bg-white/[0.08] border border-white/[0.12] rounded-2xl
                        text-white/90 text-base sm:text-lg placeholder:text-white/25
                        focus:outline-none focus:border-white/25 focus:bg-white/[0.1]
