@@ -97,11 +97,13 @@ export const Minimap = ({
           e.stopPropagation();
           setIsCollapsed(true);
         }}
-        className="absolute top-1 right-1 z-10 p-1 rounded-md bg-card/80 hover:bg-accent text-muted-foreground transition-colors"
+        // 44×44 hit target per Apple HIG. Visual icon is small (w-3.5)
+        // but the padding gives the full touch surface.
+        className="absolute top-0 right-0 z-10 flex items-center justify-center w-11 h-11 rounded-md text-muted-foreground hover:bg-accent transition-colors"
         aria-label="Collapse minimap"
         title="Collapse"
       >
-        <X className="w-3 h-3" />
+        <X className="w-3.5 h-3.5" />
       </button>
     <div
       ref={minimapRef}

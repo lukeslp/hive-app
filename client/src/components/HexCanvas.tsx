@@ -356,9 +356,7 @@ const HexNode = React.memo<{
                 )}
               </div>
               <span
-                className={`text-hex-node font-bold line-clamp-4 uppercase text-center ${
-                  node.isKeyTheme ? 'text-foreground' : 'text-card-foreground'
-                }`}
+                className="text-hex-node font-bold line-clamp-4 uppercase text-center text-foreground"
                 style={{ wordBreak: 'break-word' }}
               >
                 {node.text}

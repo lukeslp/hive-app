@@ -50,19 +50,23 @@ export const ContextPromptModal = ({
 }: ContextPromptModalProps) => {
   const inputRef = useRef<HTMLInputElement>(null);
   const contentRef = useRef<HTMLDivElement>(null);
+  const headingId = useRef(`prompt-heading-${Math.random().toString(36).slice(2, 8)}`).current;
+  const previouslyFocused = useRef<HTMLElement | null>(null);
   const [selectedChip, setSelectedChip] = useState<string | null>(null);
 
-  // Auto-focus input when modal opens
+  // Auto-focus input when modal opens; restore focus when closed.
+  // VoiceOver / Switch Control / keyboard users need the focus to land
+  // back on the trigger so they don't get stranded mid-document.
   useEffect(() => {
     if (isOpen) {
-      // Small delay to ensure the animation has started
+      previouslyFocused.current = document.activeElement as HTMLElement | null;
       const timer = setTimeout(() => {
         inputRef.current?.focus();
       }, 100);
       return () => clearTimeout(timer);
     }
-    // Modal closed — reset chip selection so re-opening starts fresh.
     setSelectedChip(null);
+    previouslyFocused.current?.focus?.();
   }, [isOpen]);
 
   // Clear chip selection when the textbox no longer matches the picked chip.
@@ -133,6 +137,9 @@ export const ContextPromptModal = ({
 
   return (
     <div
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby={headingId}
       className="fixed inset-0 z-[9998] flex items-center justify-center animate-in fade-in duration-200"
       onClick={handleBackdropClick}
       onTouchEnd={handleBackdropClick}
@@ -153,6 +160,7 @@ export const ContextPromptModal = ({
       >
         {/* Heading */}
         <h2
+          id={headingId}
           className={`text-center mb-6 font-light tracking-wide ${
             isOnboarding
               ? "text-white/70 text-2xl sm:text-3xl"

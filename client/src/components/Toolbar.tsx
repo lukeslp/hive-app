@@ -150,7 +150,7 @@ export const Toolbar = ({
                 onClick={onUndo}
                 disabled={!canUndo}
                 aria-label={`Undo last action${!canUndo ? " (unavailable)" : ""}`}
-                className="p-1.5 sm:p-2.5 hover:bg-accent text-muted-foreground rounded-lg disabled:opacity-30"
+                className="p-2.5 hover:bg-accent text-muted-foreground rounded-lg disabled:opacity-30"
               >
                 <Undo2 className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
               </button>
@@ -158,7 +158,7 @@ export const Toolbar = ({
                 onClick={onRedo}
                 disabled={!canRedo}
                 aria-label={`Redo last action${!canRedo ? " (unavailable)" : ""}`}
-                className="p-1.5 sm:p-2.5 hover:bg-accent text-muted-foreground rounded-lg disabled:opacity-30"
+                className="p-2.5 hover:bg-accent text-muted-foreground rounded-lg disabled:opacity-30"
               >
                 <Redo2 className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
               </button>
@@ -211,7 +211,7 @@ export const Toolbar = ({
                       onClick={() => setFilesMenuOpen((v) => !v)}
                       aria-label="Files and sharing"
                       aria-expanded={filesMenuOpen}
-                      aria-haspopup="menu"
+                      aria-haspopup="true"
                       className={`p-2.5 rounded-lg transition-colors ${
                         filesMenuOpen
                           ? "bg-accent text-accent-foreground"
@@ -231,11 +231,15 @@ export const Toolbar = ({
                       onClick={() => setFilesMenuOpen(false)}
                     />
                     <div
-                      role="menu"
+                      // No role="menu" — the ARIA menu pattern requires
+                      // arrow-key nav, focus management, and home/end
+                      // handling we don't implement. Plain buttons in a
+                      // div are a11y-correct without breaking the menu
+                      // contract. Escape-to-close added on the trigger.
+                      onKeyDown={(e) => { if (e.key === "Escape") setFilesMenuOpen(false); }}
                       className="absolute top-full right-0 mt-2 bg-card border border-border rounded-xl shadow-2xl z-50 min-w-[200px] py-1 animate-in fade-in slide-in-from-top-2 duration-150"
                     >
                       <button
-                        role="menuitem"
                         onClick={() => { onShowSessions(); setFilesMenuOpen(false); }}
                         className="w-full flex items-center gap-3 px-4 py-2.5 text-sm hover:bg-accent text-foreground"
                       >
@@ -244,7 +248,6 @@ export const Toolbar = ({
                       </button>
                       <div className="h-px bg-border my-1" />
                       <button
-                        role="menuitem"
                         onClick={() => { onExportSession(); setFilesMenuOpen(false); }}
                         className="w-full flex items-center gap-3 px-4 py-2.5 text-sm hover:bg-accent text-foreground"
                       >
@@ -252,7 +255,6 @@ export const Toolbar = ({
                         Save (JSON)
                       </button>
                       <label
-                        role="menuitem"
                         className="w-full flex items-center gap-3 px-4 py-2.5 text-sm hover:bg-accent text-foreground cursor-pointer"
                       >
                         <Upload className="w-4 h-4 text-muted-foreground" />
@@ -269,7 +271,6 @@ export const Toolbar = ({
                       </label>
                       <div className="h-px bg-border my-1" />
                       <button
-                        role="menuitem"
                         onClick={() => { onExportPNG(); setFilesMenuOpen(false); }}
                         className="w-full flex items-center gap-3 px-4 py-2.5 text-sm hover:bg-accent text-foreground"
                       >
@@ -277,7 +278,6 @@ export const Toolbar = ({
                         Export PNG
                       </button>
                       <button
-                        role="menuitem"
                         onClick={() => { onExportSVG(); setFilesMenuOpen(false); }}
                         className="w-full flex items-center gap-3 px-4 py-2.5 text-sm hover:bg-accent text-foreground"
                       >
@@ -286,7 +286,6 @@ export const Toolbar = ({
                       </button>
                       <div className="h-px bg-border my-1" />
                       <button
-                        role="menuitem"
                         onClick={() => { onShare(); setFilesMenuOpen(false); }}
                         disabled={nodeCount === 0}
                         className="w-full flex items-center gap-3 px-4 py-2.5 text-sm hover:bg-accent text-foreground disabled:opacity-50 disabled:cursor-not-allowed"
@@ -304,7 +303,7 @@ export const Toolbar = ({
             <div className="relative sm:hidden">
               <button
                 onClick={() => setMoreOpen(!moreOpen)}
-                className="p-1.5 hover:bg-accent text-muted-foreground rounded-lg"
+                className="p-2.5 hover:bg-accent text-muted-foreground rounded-lg"
                 aria-label="More actions"
               >
                 <MoreHorizontal className="w-4 h-4" />
