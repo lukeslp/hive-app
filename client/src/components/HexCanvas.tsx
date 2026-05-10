@@ -15,7 +15,7 @@ import {
   Info,
 } from '@/lib/icons';
 import { HEX_SIZE, HEX_WIDTH, HEX_HEIGHT, CLUSTER_COLORS } from '@/lib/hexConstants';
-import { NODE_TYPES } from '@/lib/nodeTypes';
+import { NODE_TYPES, ASK_INDICATOR } from '@/lib/nodeTypes';
 import type { HexNode, ViewState } from '@/types/hivemind';
 import { haptics } from '@/lib/haptics';
 
@@ -39,6 +39,13 @@ interface HexCanvasProps {
   loadingNodes: Set<string>;
   autoExpandingNodes: Set<string>;
   generatingNeighbors: Set<string>;
+  /**
+   * Set of node keys whose clarification question has been answered.
+   * Tiles in this set lose the dashed-border + corner badge + "Ask" pill
+   * treatment and revert to normal expand-on-tap visuals. Computed by
+   * the parent from the contextHistory map.
+   */
+  answeredAskNodes: Set<string>;
   draggedNodeId: string | null;
   dropTargetId: string | null;
   mergeAnimationKey: string | null;
@@ -79,6 +86,8 @@ const HexNode = React.memo<{
   isInspected: boolean;
   isLoading: boolean;
   isAutoExpanding: boolean;
+  /** True when this tile asks a clarifying question that hasn't been answered. */
+  isAsking: boolean;
   isDragged: boolean;
   isDropTarget: boolean;
   isDimmed: boolean;
@@ -114,6 +123,7 @@ const HexNode = React.memo<{
   isInspected,
   isLoading,
   isAutoExpanding,
+  isAsking,
   isDragged,
   isDropTarget,
   isDimmed,
@@ -142,8 +152,10 @@ const HexNode = React.memo<{
   const style = NODE_TYPES[node.type] || NODE_TYPES.default;
   const Icon = style.icon;
 
-  // Determine icon to display based on node state
-  const IconComponent = node.clarifyingQuestion && !isAutoExpanding
+  // Determine icon to display based on node state. isAsking trumps the
+  // legacy clarifyingQuestion check — once a tile is answered it loses
+  // the question icon even though clarifyingQuestion still has a value.
+  const IconComponent = isAsking
     ? HelpCircle
     : isAutoExpanding
       ? Zap
@@ -173,7 +185,7 @@ const HexNode = React.memo<{
       <div
         tabIndex={0}
         role="button"
-        aria-label={`${node.text}, ${node.type} node, level ${node.depth}${node.pinned ? ', pinned' : ''}${node.isKeyTheme ? ', key theme' : ''}. ${isTouchDevice ? 'Tap' : 'Click'} to expand. ${isTouchDevice ? 'Long press' : 'Right-click'} for actions.`}
+        aria-label={`${node.text}, ${node.type} node, level ${node.depth}${node.pinned ? ', pinned' : ''}${node.isKeyTheme ? ', key theme' : ''}${isAsking ? ', needs clarification' : node.shouldAskClarifyingQuestion ? ', answered' : ''}. ${isTouchDevice ? 'Tap' : 'Click'} to ${isAsking ? 'answer a question before expanding' : 'expand'}. ${isTouchDevice ? 'Long press' : 'Right-click'} for actions.`}
         onKeyDown={(e) => onNodeKeyDown(e, nodeKey, node)}
         draggable={!node.pinned && node.type !== 'root'}
         onDragStart={onDragStart}
@@ -250,7 +262,7 @@ const HexNode = React.memo<{
             className={`
               transition-all duration-200
               ${
-                node.clarifyingQuestion && !isAutoExpanding
+                isAsking
                   ? 'fill-card stroke-amber-400'
                   : isAutoExpanding
                     ? 'fill-card stroke-purple-400'
@@ -272,6 +284,7 @@ const HexNode = React.memo<{
             }}
             strokeLinejoin="round"
             strokeLinecap="round"
+            strokeDasharray={isAsking ? ASK_INDICATOR.borderDash : undefined}
           />
 
           {/* Inner glow for selected/hovered */}
@@ -344,6 +357,17 @@ const HexNode = React.memo<{
               >
                 {node.text}
               </span>
+              {/* "Ask" pill — third non-color channel per WCAG 1.4.1. Only
+                  renders when the tile is genuinely asking; cleared on
+                  answer (parent computes via answeredAskNodes). */}
+              {isAsking && (
+                <span
+                  className="text-[7px] sm:text-[8px] uppercase tracking-wider font-bold px-1.5 py-0.5 rounded-full bg-amber-400/15 text-amber-300 border border-amber-400/30"
+                  aria-hidden="true"
+                >
+                  {ASK_INDICATOR.pillText}
+                </span>
+              )}
             </>
           )}
 
@@ -354,6 +378,18 @@ const HexNode = React.memo<{
             </div>
           )}
         </div>
+
+        {/* Corner ask badge — second non-color channel per WCAG 1.4.1.
+            Positioned top-right inside the hex. aria-hidden because the
+            parent's aria-label already announces "needs clarification". */}
+        {isAsking && (
+          <div
+            className={`absolute top-2 right-2 sm:top-3 sm:right-3 z-20 flex items-center justify-center w-5 h-5 sm:w-6 sm:h-6 rounded-full ${ASK_INDICATOR.badgeBg} ${ASK_INDICATOR.badgeFg} shadow-md pointer-events-none`}
+            aria-hidden="true"
+          >
+            <ASK_INDICATOR.badgeIcon className="w-3 h-3 sm:w-3.5 sm:h-3.5" />
+          </div>
+        )}
 
         {/* Presence name badges */}
         {presenceNames.length > 0 && (
@@ -383,6 +419,7 @@ const HexNode = React.memo<{
     prevProps.isInspected === nextProps.isInspected &&
     prevProps.isLoading === nextProps.isLoading &&
     prevProps.isAutoExpanding === nextProps.isAutoExpanding &&
+    prevProps.isAsking === nextProps.isAsking &&
     prevProps.isDragged === nextProps.isDragged &&
     prevProps.isDropTarget === nextProps.isDropTarget &&
     prevProps.isDimmed === nextProps.isDimmed &&
@@ -443,6 +480,7 @@ export const HexCanvas = React.memo<HexCanvasProps>(({
   loadingNodes,
   autoExpandingNodes,
   generatingNeighbors,
+  answeredAskNodes,
   draggedNodeId,
   dropTargetId,
   mergeAnimationKey,
@@ -677,6 +715,10 @@ export const HexCanvas = React.memo<HexCanvasProps>(({
         const isInspected = inspectedNodeId === key;
         const isLoading = loadingNodes.has(key);
         const isAutoExpanding = autoExpandingNodes.has(key);
+        // True when the LLM emitted shouldAskClarifyingQuestion AND the
+        // user hasn't answered yet. Drives dashed border + corner badge +
+        // "Ask" pill + the "needs clarification" aria-label suffix.
+        const isAsking = !!node.shouldAskClarifyingQuestion && !answeredAskNodes.has(key);
         const isDragged = draggedNodeId === key;
         const isDropTarget = dropTargetId === key;
 
@@ -708,6 +750,7 @@ export const HexCanvas = React.memo<HexCanvasProps>(({
             isInspected={isInspected}
             isLoading={isLoading}
             isAutoExpanding={isAutoExpanding}
+            isAsking={isAsking}
             isDragged={isDragged}
             isDropTarget={isDropTarget}
             isDimmed={isDimmed}

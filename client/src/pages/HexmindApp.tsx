@@ -267,6 +267,15 @@ export default function HexmindApp() {
   const [contextResponse, setContextResponse] = useState("");
   const [contextHistory, setContextHistory] = useState<Record<string, string>>({});
 
+  // Set of node keys whose clarification has already been answered.
+  // Computed from contextHistory so HexCanvas can hide the ask-state
+  // visuals once the user has supplied input. Memoized so HexCanvas's
+  // memoized child rows don't churn on every render.
+  const answeredAskNodes = useMemo(
+    () => new Set(Object.keys(contextHistory)),
+    [contextHistory]
+  );
+
   // Onboarding prompt (reuses ContextPromptModal for initial brainstorm)
   const [showOnboardingPrompt, setShowOnboardingPrompt] = useState(false);
   const [onboardingResponse, setOnboardingResponse] = useState("");
@@ -1616,6 +1625,7 @@ Generate 6 diverse related ideas. Connect to key themes when relevant.`;
               loadingNodes={loadingNodes}
               autoExpandingNodes={autoExpandingNodes}
               generatingNeighbors={generatingNeighbors}
+              answeredAskNodes={answeredAskNodes}
               draggedNodeId={draggedNodeId}
               dropTargetId={dropTargetId}
               mergeAnimationKey={mergeAnimationKey}

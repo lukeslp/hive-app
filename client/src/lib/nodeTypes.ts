@@ -83,3 +83,30 @@ export const NODE_TYPES: Record<string, NodeTypeStyle> = {
     icon: Box,
   },
 };
+
+/**
+ * Visual signal for tiles that will OPEN A CLARIFICATION MODAL on tap
+ * instead of expanding into 6 sub-branches. WCAG 1.4.1 requires color
+ * to never be the SOLE indicator — these tokens give three independent
+ * channels (geometry, icon, text) plus the parent component lifts the
+ * aria-label to "needs clarification" / "answered" so screen readers
+ * also get the state.
+ *
+ * Why not full background color: conscience's WCAG 1.4.3 audit showed
+ * solid tints from NODE_TYPES.bgSolid fail contrast on 3+ of 6 colors
+ * with no text color that passes AA across the palette. Geometry +
+ * iconography + text label survives all three color-blindness
+ * simulators (deuteranopia, protanopia, tritanopia).
+ */
+export const ASK_INDICATOR = {
+  /** SVG stroke-dasharray on the hex path. Universal "awaiting input" cue. */
+  borderDash: "4 3",
+  /** Lucide icon for the corner badge (top-right of the hex). */
+  badgeIcon: HelpCircle,
+  /** Background class for the badge — owns its own contrast via tokens. */
+  badgeBg: "bg-popover",
+  /** Foreground class for the badge icon. */
+  badgeFg: "text-popover-foreground",
+  /** Visible pill text — the third non-color channel. */
+  pillText: "Ask",
+};
