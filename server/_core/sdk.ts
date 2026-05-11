@@ -13,7 +13,7 @@ import type {
   GetUserInfoResponse,
   GetUserInfoWithJwtRequest,
   GetUserInfoWithJwtResponse,
-} from "./types/manusTypes";
+} from "./types/webDevAuthTypes";
 // Utility function
 const isNonEmptyString = (value: unknown): value is string =>
   typeof value === "string" && value.length > 0;
@@ -160,7 +160,7 @@ class SDKServer {
   }
 
   /**
-   * Create a session token for a Manus user openId
+   * Create a session JWT for an OAuth user (openId from provider).
    * @example
    * const sessionToken = await sdk.createSessionToken(userInfo.openId);
    */

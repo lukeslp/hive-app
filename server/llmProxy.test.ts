@@ -1,16 +1,13 @@
 import { describe, expect, it, vi, beforeEach, afterEach } from "vitest";
 
 // Provider routing tests for the LLM proxy.
-// No more Manus / "built-in" — generation requires a configured provider
-// (server env key or client x-api-key header). Apple Foundation Models is
-// the iOS on-device equivalent and lives client-side, not in this proxy.
+// Generation requires a configured provider (server env key or client x-api-key).
+// Apple Foundation Models is iOS on-device only (client), not this router.
 
 import { createLlmProxyRouter } from "./llmProxy";
 import type { Request, Response } from "express";
 
-// Mock fetch globally — every provider call goes through fetch except
-// the now-removed callManus. Tests will configure success/failure per
-// case via the global mock.
+// Mock fetch globally — provider calls use fetch. Configure per test via mockFetch.
 const mockFetch = vi.fn();
 vi.stubGlobal("fetch", mockFetch);
 
@@ -107,7 +104,7 @@ describe("LLM Proxy Router", () => {
 
       expect(res._status).toBe(200);
       expect(res._json?.candidates?.[0]?.content?.parts?.[0]?.text).toBeTruthy();
-      // Confirms it actually called the Gemini endpoint, not anything Manus.
+      // Confirms it called the Gemini API.
       const calledUrl = mockFetch.mock.calls[0]?.[0];
       expect(String(calledUrl)).toContain("generativelanguage.googleapis.com");
     });
@@ -144,7 +141,7 @@ describe("LLM Proxy Router", () => {
   });
 
   describe("GET /providers", () => {
-    it("does not list manus and reports the first env-configured provider as default", () => {
+    it("lists only standard providers and picks first env-configured key as default", () => {
       delete process.env.GEMINI_API_KEY;
       process.env.ANTHROPIC_API_KEY = "test-anthropic-key";
 
@@ -161,7 +158,9 @@ describe("LLM Proxy Router", () => {
       expect(res._json).toBeDefined();
       expect(res._json.default).toBe("anthropic");
       expect(res._json.available.anthropic).toBe(true);
-      expect(res._json.available).not.toHaveProperty("manus");
+      expect(new Set(Object.keys(res._json.available))).toEqual(
+        new Set(["gemini", "anthropic", "openai", "grok", "mistral", "ollama"])
+      );
     });
 
     it("returns null default when no provider env keys are configured", () => {

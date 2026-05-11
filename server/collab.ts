@@ -11,6 +11,7 @@
 
 import { WebSocketServer, WebSocket } from "ws";
 import type { Server } from "http";
+import { COOKIE_NAME } from "@shared/const";
 import { sdk } from "./_core/sdk";
 
 // ── Types ────────────────────────────────────────────────────────────────
@@ -151,7 +152,9 @@ export function setupCollabWebSocket(_httpServer: Server) {
           if (token) {
             try {
               // Create a mock request to use SDK auth
-              const mockReq = { headers: { cookie: `manus_session=${token}` } } as any;
+              const mockReq = {
+                headers: { cookie: `${COOKIE_NAME}=${token}` },
+              } as any;
               const user = await sdk.authenticateRequest(mockReq);
               if (user) {
                 userId = String(user.id);

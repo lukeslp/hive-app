@@ -1,14 +1,13 @@
 /**
- * LLM Proxy Routes for Hexpand
+ * LLM proxy routes for Hexmind.
  *
  * Provides /api/generate, /api/providers, /api/share endpoints.
  * Routes generation requests to the configured provider based on either
  * a client-supplied x-provider header + x-api-key, or server-side env
  * keys (GEMINI_API_KEY, ANTHROPIC_API_KEY, etc.).
  *
- * No Manus / Manus Forge / built-in provider — that path was removed.
- * Apple Foundation Models on iOS handles "no key needed" via the
- * client-side foundationModelsPlugin, NOT through this server proxy.
+ * There is no vendor “built-in” cloud model here — on-device Apple Intelligence
+ * is handled in the client (foundationModelsPlugin), not this router.
  */
 
 import { Router, Request, Response } from "express";
@@ -250,8 +249,7 @@ function resolveProvider(req: Request): {
     provider = clientProvider as Provider;
     apiKey = clientApiKey || getEnvKey(provider);
   } else {
-    // No valid provider chosen; fall back to whichever has a server env
-    // key configured. No more Manus default.
+    // No valid provider chosen; fall back to whichever has a server env key configured.
     const fallback = validProviders.find((p) => {
       if (p === "ollama") return !!(ollamaModel || process.env.OLLAMA_MODEL);
       return !!getEnvKey(p);
@@ -321,8 +319,7 @@ export function createLlmProxyRouter(): Router {
 
   // Provider info endpoint. The "default" is whichever provider has a
   // server env key configured (preference order matches the type list).
-  // No Manus / built-in entry — Apple Foundation Models is the iOS
-  // equivalent and it lives client-side, not here.
+  // Apple Foundation Models is iOS-only and lives client-side, not here.
   apiRouter.get("/providers", (_req: Request, res: Response) => {
     const available: Record<string, boolean> = {
       gemini: !!process.env.GEMINI_API_KEY,

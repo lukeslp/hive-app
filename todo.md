@@ -9,12 +9,12 @@
 - [x] Migrate client types (hivemind.d.ts, hexmind.ts)
 - [x] Migrate client libs (api.ts, hexConstants.ts, hexGrid.ts, icons.ts, nodeTypes.ts, sanitize.ts, templates.ts)
 - [x] Migrate client styles (index.css with all hex grid styles)
-- [x] Port LLM proxy as Express routes with multi-provider support (Manus built-in, OpenAI, Gemini, Anthropic, Grok, Mistral, Ollama)
-- [x] Implement smart provider fallback logic (auto-fallback to Manus built-in on provider failure)
+- [x] Port LLM proxy as Express routes with multi-provider support (OpenAI, Gemini, Anthropic, Grok, Mistral, Ollama)
+- [x] Implement smart provider fallback logic (auto-fallback to next configured provider on failure)
 - [x] Wire up App.tsx with dark theme and HexpandApp route
-- [x] Add Manus as default built-in provider (works out of the box, no API key needed)
+- [x] Default provider from server env keys when client sends no preference (superseded by on-device AI on iOS)
 - [x] Client-side API key management with localStorage persistence
-- [x] Settings modal with provider cards, API key inputs, creativity slider, "built-in" badge for Manus
+- [x] Settings modal with provider cards, API key inputs, creativity slider
 - [x] Session management (save/load/export/import)
 - [x] Templates system
 - [x] Share functionality

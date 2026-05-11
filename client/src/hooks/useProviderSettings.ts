@@ -8,9 +8,6 @@
  * providers (Gemini / Claude / GPT / Grok / Mistral / Ollama) are the
  * fallback for older devices and the only options on web.
  *
- * No more "manus" / "built-in AI" entry — that routed to Manus Forge
- * cloud and was misleadingly labeled as built-in.
- *
  * Keys are stored in localStorage (never sent to any third party except
  * the provider whose key it is).
  */
