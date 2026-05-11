@@ -140,7 +140,8 @@ REPO_AUDIT.md
 *_STATUS.md
 .aider*
 
-# Local backup of pre-Apple-Intelligence-only iOS project (361M, do not commit)
+# Local backup of pre-Apple-Intelligence-only iOS project (~361M). Keep this tree on disk;
+# do not delete for "cleanup" — intentionally retained for recovery / reference.
 ios-backup-all-providers/
 
 # Throwaway icon previews and the scp drop dir — keep build_icons.py only
