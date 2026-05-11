@@ -264,6 +264,30 @@ export default function HexmindApp() {
   const [draggedNodeId, setDraggedNodeId] = useState<string | null>(null);
   const [dropTargetId, setDropTargetId] = useState<string | null>(null);
   const [mergeAnimationKey, setMergeAnimationKey] = useState<string | null>(null);
+  // Tiles that were just produced (generate / regenerate / merge). HexCanvas
+  // applies a one-shot outer-glow pulse to each, then the key is removed
+  // ~700ms later. Replaces the per-action "Generated on-device" toasts —
+  // the new tile IS the success signal, so a confirmation toast on top
+  // was redundant. Reduced-motion users get no animation; the
+  // announcer (useHiveMindAnnouncer) covers VoiceOver semantics.
+  const [freshlyGeneratedNodes, setFreshlyGeneratedNodes] = useState<Set<string>>(
+    () => new Set()
+  );
+  const markFreshlyGenerated = useCallback((keys: string[]) => {
+    if (keys.length === 0) return;
+    setFreshlyGeneratedNodes((prev) => {
+      const next = new Set(prev);
+      keys.forEach((k) => next.add(k));
+      return next;
+    });
+    setTimeout(() => {
+      setFreshlyGeneratedNodes((prev) => {
+        const next = new Set(prev);
+        keys.forEach((k) => next.delete(k));
+        return next;
+      });
+    }, 700);
+  }, []);
   const [showKeyboardShortcuts, setShowKeyboardShortcuts] = useState(false);
   const [filterType, setFilterType] = useState<string | null>(null);
   const [showOnlyKeyThemes, setShowOnlyKeyThemes] = useState(false);
@@ -788,6 +812,9 @@ Generate 6 diverse related ideas. Connect to key themes when relevant.`;
       const currentNodes = nodesRef.current;
       const newNodes = { ...currentNodes };
       const nodesToAutoExpand: HexNode[] = [];
+      // Tiles to flash post-commit. Populated alongside newNodes inside
+      // the loop so we don't have to diff the records afterward.
+      const freshKeys: string[] = [];
       const MAX_AUTO_EXPAND_DEPTH = 2;
 
       DIRECTIONS.forEach((dir, i) => {
@@ -827,6 +854,7 @@ Generate 6 diverse related ideas. Connect to key themes when relevant.`;
           };
 
           newNodes[neighborKey] = newNode;
+          freshKeys.push(neighborKey);
 
           if (
             enableSmartExpansion &&
@@ -842,13 +870,10 @@ Generate 6 diverse related ideas. Connect to key themes when relevant.`;
 
       commitNodes(newNodes);
       haptics.expand();
-
-      if (viaOnDevice) {
-        toast("✦ Apple Intelligence", {
-          description: "Generated on-device",
-          duration: 1500,
-        });
-      }
+      // Tile flash replaces the prior "✦ Apple Intelligence — Generated
+      // on-device" toast. The tile IS the success signal; the toast was
+      // narrating something the user just watched happen.
+      markFreshlyGenerated(freshKeys);
 
       // Auto-expand
       if (nodesToAutoExpand.length > 0 && enableSmartExpansion) {
@@ -969,9 +994,11 @@ Generate 6 diverse related ideas. Connect to key themes when relevant.`;
       const updated = [{ title: node.text, description: node.description }, ...history].slice(0, 3);
       refreshHistoryRef.current.set(key, updated);
       haptics.expand();
-      if (viaOnDevice) {
-        toast("✦ Apple Intelligence", { description: "Regenerated on-device", duration: 1500 });
-      }
+      // Tile flash replaces the prior on-device "Regenerated" toast;
+      // the visible content change is itself the confirmation. Flash
+      // applies regardless of source (FM or cloud) so the UX is
+      // consistent across paths.
+      markFreshlyGenerated([key]);
     };
 
     try {
@@ -1168,9 +1195,8 @@ Generate 6 diverse related ideas. Connect to key themes when relevant.`;
           type: NODE_TYPES[result.synth.type] ? result.synth.type : latest[targetKey].type,
         },
       });
-      if (result.viaOnDevice) {
-        toast("✦ Apple Intelligence", { description: "Merged on-device", duration: 1500 });
-      }
+      // Tile flash replaces the prior on-device "Merged" toast.
+      markFreshlyGenerated([targetKey]);
     });
   };
 
@@ -1608,6 +1634,7 @@ Generate 6 diverse related ideas. Connect to key themes when relevant.`;
 
             <HexCanvas
               nodes={visibleNodes}
+              freshlyGeneratedNodes={freshlyGeneratedNodes}
               viewState={viewState}
               selectedNodeId={selectedNodeId}
               hoveredNodeId={hoveredNodeId}

@@ -32,6 +32,12 @@ interface ConnectionLine {
 
 interface HexCanvasProps {
   nodes: Record<string, HexNode>;
+  /**
+   * Node keys that should flash a one-shot outer-glow pulse on render.
+   * Parent (HexmindApp) adds keys after generate/regenerate/merge and
+   * clears them ~700ms later. CSS class respects prefers-reduced-motion.
+   */
+  freshlyGeneratedNodes?: Set<string>;
   viewState: ViewState;
   selectedNodeId: string | null;
   hoveredNodeId: string | null;
@@ -92,6 +98,8 @@ const HexTile = React.memo<{
   isDropTarget: boolean;
   isDimmed: boolean;
   isMergeAnimating: boolean;
+  /** True for ~700ms after the tile is created/regenerated/merged. */
+  isFreshlyGenerated: boolean;
   scale: number;
   strokeWidth: number;
   zIndex: number;
@@ -128,6 +136,7 @@ const HexTile = React.memo<{
   isDropTarget,
   isDimmed,
   isMergeAnimating,
+  isFreshlyGenerated,
   scale,
   strokeWidth,
   zIndex,
@@ -210,6 +219,7 @@ const HexTile = React.memo<{
           ${isLoading || isAutoExpanding ? 'animate-pulse' : ''}
           ${isDragged ? 'opacity-50' : ''}
           ${isDropTarget ? 'ring-4 ring-indigo-500 ring-opacity-75' : ''}
+          ${isFreshlyGenerated ? 'animate-tile-flash' : ''}
         `}
         style={{
           // iOS Safari / Capacitor WKWebView fires its own long-press menu
@@ -477,6 +487,7 @@ function getShadowClass(
  */
 export const HexCanvas = React.memo<HexCanvasProps>(({
   nodes,
+  freshlyGeneratedNodes,
   viewState,
   selectedNodeId,
   hoveredNodeId,
@@ -761,6 +772,7 @@ export const HexCanvas = React.memo<HexCanvasProps>(({
             isDropTarget={isDropTarget}
             isDimmed={isDimmed}
             isMergeAnimating={mergeAnimationKey === key}
+            isFreshlyGenerated={freshlyGeneratedNodes?.has(key) ?? false}
             scale={scale}
             strokeWidth={strokeWidth}
             zIndex={zIndex}
@@ -840,7 +852,12 @@ export const HexCanvas = React.memo<HexCanvasProps>(({
     // until another prop changes. The set is rebuilt only when
     // contextHistory keys change (parent useMemo), so reference equality
     // is the right check.
-    prevProps.answeredAskNodes === nextProps.answeredAskNodes
+    prevProps.answeredAskNodes === nextProps.answeredAskNodes &&
+    // Fresh-tile flash relies on a new Set reference from the parent
+    // each time markFreshlyGenerated runs add/clear. Reference equality
+    // catches both phases (flash on, flash off) and skips the diff
+    // when nothing is fresh.
+    prevProps.freshlyGeneratedNodes === nextProps.freshlyGeneratedNodes
   );
 });
 

@@ -522,6 +522,33 @@
   animation: merge-glow 0.6s ease-out forwards;
 }
 
+/* ── Fresh-tile flash ───────────────────────────────────────────────
+ * Single ~600ms outer-glow pulse applied to newly generated or
+ * regenerated tiles. Replaces the per-action "✦ Apple Intelligence"
+ * success toasts — the result is already on screen, so a confirmation
+ * toast was redundant. The flash signals "this tile is the new thing
+ * you just made" without stealing focus from the canvas.
+ *
+ * prefers-reduced-motion users see no animation; their VoiceOver
+ * announcement (via useHiveMindAnnouncer) carries the same semantic.
+ */
+@keyframes tile-flash {
+  0%   { box-shadow: 0 0 0 0 oklch(0.7 0.18 295 / 0.55); }
+  60%  { box-shadow: 0 0 0 14px oklch(0.7 0.18 295 / 0); }
+  100% { box-shadow: 0 0 0 0 oklch(0.7 0.18 295 / 0); }
+}
+
+.animate-tile-flash {
+  animation: tile-flash 0.6s ease-out;
+  border-radius: 9999px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .animate-tile-flash {
+    animation: none;
+  }
+}
+
 /* ── Bridge Connection Animation ──────────────────────────────── */
 @keyframes bridge-dash-flow {
   0% { stroke-dashoffset: 0; }

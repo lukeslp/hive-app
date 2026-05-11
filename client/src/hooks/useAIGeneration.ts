@@ -458,10 +458,10 @@ Generate 6 neighbor nodes.`;
         const newNodes = buildNeighborNodes(branches, centerNode, nodes, NODE_TYPES, forceRefresh);
         setIsGenerating(false);
         haptics.expand();
-        toast("✦ Apple Intelligence", {
-          description: "Generated on-device",
-          duration: 1500,
-        });
+        // Per-action "Generated on-device" toast removed: the new tiles
+        // appearing on the canvas are themselves the success signal.
+        // Callers drive the fresh-tile flash via markFreshlyGenerated;
+        // failures still toast (errorMsg path below).
         return newNodes;
       }
     }
