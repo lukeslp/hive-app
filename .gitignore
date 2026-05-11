@@ -130,6 +130,7 @@ xcuserdata/
 # AI tooling cruft
 .claude/
 CLAUDE.md
+*.mjd
 GEMINI.md
 AGENTS.md
 CRITIC.md
