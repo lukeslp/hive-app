@@ -286,11 +286,27 @@ export default function HexmindApp() {
   // Onboarding prompt (reuses ContextPromptModal for initial brainstorm)
   const [showOnboardingPrompt, setShowOnboardingPrompt] = useState(false);
   const [onboardingResponse, setOnboardingResponse] = useState("");
+  // Once-per-session dismissal flag. Set when the user closes the
+  // prompt via Escape / backdrop / Dismiss without submitting. Without
+  // this, the effect below re-opened the modal 600ms after every
+  // dismissal while nodes was empty — a HIG-prohibited "user cannot
+  // dismiss this dialog" pattern. Ref (not state) so dismissal doesn't
+  // trigger a re-render. Resets on page reload, which is the right
+  // semantic — the modal helps first-time-in-session users, annoys
+  // anyone who just closed it.
+  const dismissedOnboardingRef = useRef(false);
 
   // Auto-show the onboarding prompt when the board is empty
   useEffect(() => {
+    if (dismissedOnboardingRef.current) return;
     if (Object.keys(nodes).length === 0 && !showOnboardingPrompt) {
-      const timer = setTimeout(() => setShowOnboardingPrompt(true), 600);
+      const reduced = window.matchMedia(
+        "(prefers-reduced-motion: reduce)"
+      ).matches;
+      const timer = setTimeout(
+        () => setShowOnboardingPrompt(true),
+        reduced ? 100 : 600
+      );
       return () => clearTimeout(timer);
     }
   }, [nodes, showOnboardingPrompt]);
@@ -1654,6 +1670,15 @@ Generate 6 diverse related ideas. Connect to key themes when relevant.`;
             {Object.keys(nodes).length === 0 && (
               <div className="absolute top-0 left-0 -translate-x-1/2 -translate-y-1/2 flex flex-col items-center text-muted-foreground pointer-events-none">
                 <Layout className="w-16 h-16 mb-4 opacity-10" />
+                {!showOnboardingPrompt && (
+                  <div
+                    role="status"
+                    aria-live="polite"
+                    className="text-sm font-light tracking-wider opacity-50 motion-safe:animate-pulse select-none"
+                  >
+                    Tap anywhere to start a brainstorm
+                  </div>
+                )}
               </div>
             )}
           </div>
@@ -1811,6 +1836,11 @@ Generate 6 diverse related ideas. Connect to key themes when relevant.`;
           startBrainstorm("brainstorm");
         }}
         onClose={() => {
+          // Mark dismissed so the empty-board effect above doesn't
+          // re-open this modal 600ms later. onGenerate and onSkip
+          // don't set the flag because they seed nodes, which removes
+          // the empty condition anyway.
+          dismissedOnboardingRef.current = true;
           setShowOnboardingPrompt(false);
           setOnboardingResponse("");
         }}
