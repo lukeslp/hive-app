@@ -298,74 +298,92 @@ export const Toolbar = ({
                     className="fixed inset-0 z-40"
                     onClick={() => setMoreOpen(false)}
                   />
-                  <div className="absolute top-full right-0 mt-2 bg-card border border-border rounded-xl shadow-2xl z-50 min-w-[180px] py-1 animate-in fade-in slide-in-from-top-2 duration-150">
-                    <button
-                      onClick={() => { onToggleSearch(); setMoreOpen(false); }}
-                      className="w-full flex items-center gap-3 px-4 py-2.5 text-sm hover:bg-accent text-foreground"
-                    >
-                      <Search className="w-4 h-4 text-muted-foreground" />
-                      Search
-                    </button>
-                    <button
-                      onClick={() => { onToggleKeyThemes(); setMoreOpen(false); }}
-                      className={`w-full flex items-center gap-3 px-4 py-2.5 text-sm hover:bg-accent ${
-                        showOnlyKeyThemes ? "text-yellow-400" : "text-foreground"
-                      }`}
-                    >
-                      <Sparkles className="w-4 h-4 text-muted-foreground" />
-                      {showOnlyKeyThemes ? "Show All" : "Key Themes"}
-                    </button>
+                  {/* Search and Key Themes intentionally NOT duplicated
+                      here — Search has Cmd-F + own button slot on wider
+                      breakpoints; Key Themes lives in the Filter
+                      dropdown (commit f16ffb8). Repeating them in the
+                      overflow violated WCAG 3.2.4 (consistent
+                      identification) and pushed the menu to ~half the
+                      viewport. Sections below are labeled per axis so
+                      the visual rhythm distinguishes board export
+                      (image), board state (JSON sessions), and
+                      publishing (Share link). */}
+                  <div className="absolute top-full right-0 mt-2 bg-card border border-border rounded-xl shadow-2xl z-50 min-w-[200px] py-1 animate-in fade-in slide-in-from-top-2 duration-150">
+                    <div role="group" aria-labelledby="m-file-label">
+                      <div
+                        id="m-file-label"
+                        className="px-4 pt-2 pb-1 text-[10px] uppercase tracking-wider text-muted-foreground/70 font-semibold"
+                      >
+                        Image
+                      </div>
+                      <button
+                        onClick={() => { onExportPNG(); setMoreOpen(false); }}
+                        className="w-full flex items-center gap-3 px-4 py-2.5 text-sm hover:bg-accent text-foreground"
+                      >
+                        <Download className="w-4 h-4 text-muted-foreground" />
+                        Export PNG
+                      </button>
+                      <button
+                        onClick={() => { onExportSVG(); setMoreOpen(false); }}
+                        className="w-full flex items-center gap-3 px-4 py-2.5 text-sm hover:bg-accent text-foreground"
+                      >
+                        <Download className="w-4 h-4 text-muted-foreground" />
+                        Export SVG
+                      </button>
+                    </div>
                     <div className="h-px bg-border my-1" />
-                    <button
-                      onClick={() => { onExportPNG(); setMoreOpen(false); }}
-                      className="w-full flex items-center gap-3 px-4 py-2.5 text-sm hover:bg-accent text-foreground"
-                    >
-                      <Download className="w-4 h-4 text-muted-foreground" />
-                      Export PNG
-                    </button>
-                    <button
-                      onClick={() => { onExportSVG(); setMoreOpen(false); }}
-                      className="w-full flex items-center gap-3 px-4 py-2.5 text-sm hover:bg-accent text-foreground"
-                    >
-                      <Download className="w-4 h-4 text-muted-foreground" />
-                      Export SVG
-                    </button>
+                    <div role="group" aria-labelledby="m-session-label">
+                      <div
+                        id="m-session-label"
+                        className="px-4 pt-2 pb-1 text-[10px] uppercase tracking-wider text-muted-foreground/70 font-semibold"
+                      >
+                        Sessions
+                      </div>
+                      <button
+                        onClick={() => { onShowSessions(); setMoreOpen(false); }}
+                        className="w-full flex items-center gap-3 px-4 py-2.5 text-sm hover:bg-accent text-foreground"
+                      >
+                        <FolderOpen className="w-4 h-4 text-muted-foreground" />
+                        Saved boards
+                      </button>
+                      <button
+                        onClick={() => { onExportSession(); setMoreOpen(false); }}
+                        className="w-full flex items-center gap-3 px-4 py-2.5 text-sm hover:bg-accent text-foreground"
+                      >
+                        <Download className="w-4 h-4 text-muted-foreground" />
+                        Export JSON
+                      </button>
+                      <label className="w-full flex items-center gap-3 px-4 py-2.5 text-sm hover:bg-accent text-foreground cursor-pointer">
+                        <Upload className="w-4 h-4 text-muted-foreground" />
+                        Import JSON
+                        <input
+                          type="file"
+                          accept=".json"
+                          className="hidden"
+                          onChange={(e) => {
+                            if (e.target.files?.[0]) onImportSession(e.target.files[0]);
+                            setMoreOpen(false);
+                          }}
+                        />
+                      </label>
+                    </div>
                     <div className="h-px bg-border my-1" />
-                    <button
-                      onClick={() => { onShowSessions(); setMoreOpen(false); }}
-                      className="w-full flex items-center gap-3 px-4 py-2.5 text-sm hover:bg-accent text-foreground"
-                    >
-                      <FolderOpen className="w-4 h-4 text-muted-foreground" />
-                      Sessions
-                    </button>
-                    <button
-                      onClick={() => { onExportSession(); setMoreOpen(false); }}
-                      className="w-full flex items-center gap-3 px-4 py-2.5 text-sm hover:bg-accent text-foreground"
-                    >
-                      <Download className="w-4 h-4 text-muted-foreground" />
-                      Export JSON
-                    </button>
-                    <label className="w-full flex items-center gap-3 px-4 py-2.5 text-sm hover:bg-accent text-foreground cursor-pointer">
-                      <Upload className="w-4 h-4 text-muted-foreground" />
-                      Import JSON
-                      <input
-                        type="file"
-                        accept=".json"
-                        className="hidden"
-                        onChange={(e) => {
-                          if (e.target.files?.[0]) onImportSession(e.target.files[0]);
-                          setMoreOpen(false);
-                        }}
-                      />
-                    </label>
-                    <button
-                      onClick={() => { onShare(); setMoreOpen(false); }}
-                      disabled={nodeCount === 0}
-                      className="w-full flex items-center gap-3 px-4 py-2.5 text-sm hover:bg-accent text-foreground disabled:opacity-50"
-                    >
-                      <Share2 className="w-4 h-4 text-muted-foreground" />
-                      Share
-                    </button>
+                    <div role="group" aria-labelledby="m-share-label">
+                      <div
+                        id="m-share-label"
+                        className="px-4 pt-2 pb-1 text-[10px] uppercase tracking-wider text-muted-foreground/70 font-semibold"
+                      >
+                        Share
+                      </div>
+                      <button
+                        onClick={() => { onShare(); setMoreOpen(false); }}
+                        disabled={nodeCount === 0}
+                        className="w-full flex items-center gap-3 px-4 py-2.5 text-sm hover:bg-accent text-foreground disabled:opacity-50"
+                      >
+                        <Share2 className="w-4 h-4 text-muted-foreground" />
+                        Share link
+                      </button>
+                    </div>
                   </div>
                 </>
               )}
