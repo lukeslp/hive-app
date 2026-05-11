@@ -65,6 +65,26 @@ async function startServer() {
     });
   });
 
+  // Legal pages — must resolve to real HTML, not the SPA catchall. App
+  // Store Connect's Privacy Policy URL field is reviewed by humans who
+  // click it and expect a real document. Without these routes,
+  // /privacy and /terms get caught by the SPA fallback below and
+  // serve the React app (title "Hexmind"), which fails review.
+  app.get(["/privacy", "/privacy.html"], (_req, res) => {
+    res.sendFile("privacy.html", {
+      root: process.env.NODE_ENV === "production"
+        ? "dist/public"
+        : "client/public",
+    });
+  });
+  app.get(["/terms", "/terms.html"], (_req, res) => {
+    res.sendFile("terms.html", {
+      root: process.env.NODE_ENV === "production"
+        ? "dist/public"
+        : "client/public",
+    });
+  });
+
   // OAuth callback under /api/oauth/callback
   registerOAuthRoutes(app);
   // Hexpand LLM proxy routes
