@@ -1,49 +1,119 @@
 # Next steps — Hexmind
 
-> Pickup point as of 2026-05-10. Long /hitit + UX session landed the
-> tile-clarification redesign (Parts A.5 → A.4 → A.3 → A.2 → B → C → D
-> per `~/.claude/plans/enchanted-mapping-wall.md`), variety enforcement,
-> per-type tile coloring within WCAG, toolbar consolidation under a
-> folder dropdown, collapsible minimap, fullscreen icon removed, and
-> the onboarding tour deferred until the first generation settles
-> (with a new auto-expand step + media slots for GIFs).
+> Pickup point as of 2026-05-10 EOD. Today's session landed `prewarm`,
+> the WKWebView bounce fix, the AASA smoke-test script, the one-shot
+> onboarding modal + passive canvas hint, Capacitor-native PNG/SVG/JSON
+> exports, mobile-overflow declutter with three labeled sections, the
+> tile-flash UX that replaces on-device success toasts, and the static
+> Privacy Policy + Terms of Use pages at hexmind.app/privacy and
+> /terms with Express routes that beat the SPA catchall.
 >
-> Earlier in the day: rename Hexpand → Hexmind shipped in `85d2e9d`,
-> Designed-for-iPad in `f13f8c9`, multi-provider strip in `cfabcfe`,
-> light-mode icon + splash in `369324c` and the schema-placeholder
-> leak fix in `139c4a0` and `269a423`.
+> See `~/.claude/plans/get-context-doubt-and-partitioned-pascal.md`
+> for the doubt-pass that reframed the council's "starter tile" as
+> wrong-problem in favor of fixing the modal-trap and adding a
+> passive empty-canvas affordance.
 
-## What landed today (commits `cfabcfe` → `4ef72c0`)
+## What landed today (this session, on top of `c490190`)
 
-- **Multi-provider strip** — iOS bundle is Apple-Intelligence-only
-- **Tile clarification redesign** — `clarifyingQuestion` + 4 new schema
-  fields, post-hoc validator (30 unit tests), Gemini `responseSchema`,
-  modal chips that populate textbox, dashed-border + corner badge +
-  "Ask" pill, regenerate-on-edit checkbox
-- **UX polish** — variety prompt enforcement, per-type 20%-opacity
-  tile tint, toolbar consolidation (9 → 5 icons via folder dropdown),
-  collapsible minimap, fullscreen icon removed, tour now waits for
-  generation to fully settle before dimming + showing cards
+- **`25afbb5` iOS boot:** `prewarm()` warms Apple Intelligence on
+  app launch; `scrollView.bounces = false` kills accidental
+  pull-to-refresh during expand-cascade
+- **`08c1bcb` ops:** `scripts/check-aasa.sh` smoke-tests all 6 brand
+  domains; currently fails 6/6 because the deployed server still
+  serves SPA HTML at `/.well-known/...` (redeploy still pending)
+- **`a79b5fc` ux:** one-shot onboarding modal (`dismissedOnboardingRef`)
+  + passive "Tap anywhere to start a brainstorm" hint, `prefers-reduced-motion`
+  shortens the 600ms timer to 100ms
+- **`6e0cce3` fix:** PNG/SVG/JSON exports now go through `saveBlob()`
+  helper — `@capacitor/filesystem` + `@capacitor/share` on iOS,
+  `<a download>` on web. Plus Info.plist keys for Files.app visibility
+  and Photos save permission
+- **`3566329` ux:** mobile overflow dropped Search + Key Themes
+  (duplicate affordances) and grouped remaining 6 items into
+  Image / Sessions / Share labeled sections
+- **`573775d` legal:** static `privacy.html` + `terms.html` in
+  `client/public/`, served by Express `/privacy` and `/terms` routes
+  *before* the SPA catchall. Required for App Store Connect's
+  Privacy Policy URL field
 
-## Still queued (highest impact first)
+## What's still on you (in order)
 
-1. **Part A.1 — Swift `@Generable` BranchSet on iOS plugin.** Permanent
-   fix for the schema-placeholder-leak class of bugs. Without it, every
-   prompt edit risks the LLM emitting JSON-shape comments verbatim.
-   See `~/.claude/plans/enchanted-mapping-wall.md` Part A.1.
-2. **UIScene lifecycle migration.** Console warning every launch.
-   Apple says "will assert in a future release." Plan in
-   `MIGRATION_PLAN.md` (the Toolbar dedupe section is OBSOLETE — the
-   folder-dropdown consolidation in commit `919d152` addressed the
-   same dupe-button concern via a different mechanism).
-3. **Tour GIFs.** 5 commented-out `media:` slots in
-   `client/src/components/OnboardingTour.tsx`. Record short GIFs of
-   the actual interactions, drop into `client/public/tour/`, uncomment.
-4. **Server redeploy** — see below. Still blocks Universal Links.
-5. **Hardware verify on real device** — the prompt fixes shipped to
-   the simulator only. Real Pro device test still owed.
-6. **TestFlight upload** — see existing flow below.
-7. **Class 9 trademark filing** — unchanged.
+### Path to public TestFlight
+
+1. **Verify `@Generable` compiles** — Open Xcode → "Any iOS Device
+   (arm64)" → Cmd-B. If it fails, fix is an explicit
+   `init(from decoder:)` on `GeneratedBranch` in
+   `ios/App/App/FoundationModelsPlugin.swift`.
+2. **Server redeploy** — command in the "Right now" section below.
+   After redeploy, run `./scripts/check-aasa.sh` (expect 6/6 ✓) and
+   `curl -s https://hexmind.app/privacy | head -5` (expect HTML
+   starting `<!doctype html>` with title "Hexmind — Privacy Policy",
+   NOT the SPA).
+3. **Hardware run** — plug iPhone in, Cmd-R. Watch console for
+   `prewarm` path. Tap a tile — first-tap cold-start should be 1-2s
+   (kill criterion: >5s).
+4. **Test exports on hardware** — tap Export PNG → iOS share sheet
+   appears → AirDrop to another device → file arrives. Also: open
+   Files.app → "On My iPhone → Hexmind" → exported PNG present at
+   2000×2000.
+5. **App Store Connect — App Information** (one-time):
+   - Privacy Policy URL: `https://hexmind.app/privacy`
+   - Support URL: `https://hexmind.app/` (or mailto link)
+   - App Category: Productivity
+6. **App Store Connect — Privacy nutrition label** (one-time):
+   answer "Data Not Collected" for every category. Matches reality
+   (no analytics, no Sentry, no tracking SDKs).
+7. **Archive in Xcode** — Product → Archive (target: Any iOS Device).
+   No Mac Catalyst.
+8. **Distribute App** in Organizer → App Store Connect → Upload.
+   ~5–30 min processing.
+9. **App Store Connect — TestFlight tab**:
+   - Internal testers: add yourself, install via TestFlight app,
+     run the test plan in step 4 above on real hardware.
+   - **For public TestFlight**: external-test group → invite via
+     link → "Submit build for beta review" (faster than full App
+     Store review, usually ~24h). After approval, generate the
+     public link.
+10. **Beta App Description** in TestFlight tab — required for
+    external testing. Suggested copy:
+    > Hexmind is a hexagonal mind-mapping tool with on-device AI
+    > brainstorming via Apple Intelligence. Tap any hex to generate
+    > six related ideas; long-press and drag to merge two into one.
+    > Boards save locally — no account required.
+
+11. **What to Test** field — what testers should exercise:
+    > • Tap a tile to expand (first tap may take 1–2s)
+    > • Long-press + drag to merge two tiles
+    > • Export PNG/SVG → check Files.app or share to another device
+    > • Open a board on a Mac via Designed-for-iPad
+
+12. **Test Information** — email `luke@lukesteuber.com`.
+
+13. **Beta App Review Information** — flag that the app requires
+    Apple Intelligence; if reviewers are on older devices, the
+    tile-tap will surface a clear "Apple Intelligence isn't available
+    on this device" error rather than crash, but the core flow
+    needs an eligible device. Provide a test board JSON if asked.
+
+### Lower priority (defer to v1.0.1 per council)
+
+- UIScene lifecycle migration (warning has been live since iOS 13
+  without firing — engineer comfort, not user value)
+- iOS 18 icon variants (light/dark/tinted)
+- Cold-start streaming (`streamResponse(to:)`) — only after telemetry
+  confirms cold-start p50 is acceptable on real hardware
+- Class 9 trademark filing — defer 30 days post-launch (TEAS Plus
+  needs real product-page specimens, not TestFlight ones)
+
+### Bookkeeping
+
+- Build number must increment for every TestFlight upload.
+  Xcode → project settings → "Build" field, or use the auto-increment
+  trick in Build Settings (CURRENT_PROJECT_VERSION).
+- The duplicate-toast commits in the git history (`aac02be`,
+  `7b310ef`, both with the same message as `c3cb9cd`) are the
+  artifact of two parallel sessions auto-committing `LAST.mjd`
+  and the Capacitor SPM Package.swift. Harmless but ugly.
 
 ---
 
