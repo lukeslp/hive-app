@@ -5,7 +5,7 @@ declare global {
     }
 }
 const cp = (msg: string) => window.__checkpoint?.(msg);
-cp("main.tsx: top of file");
+cp("main.tsx: start");
 
 import { trpc } from "@/lib/trpc";
 import { UNAUTHED_ERR_MSG } from '@shared/const';
@@ -19,15 +19,7 @@ import { getTrpcUrl, isCapacitor } from "@/lib/platform";
 import { BootErrorBoundary } from "@/lib/BootErrorBoundary";
 import "./index.css";
 
-cp("main.tsx: imports done");
-
-// ── Analytics: web only, only when env vars are set ─────────────────
-// Previously this was a static <script> tag with %VITE_ANALYTICS_*%
-// placeholders. When the env vars weren't defined the literal
-// "%VITE_ANALYTICS_ENDPOINT%/umami" URL got fetched, the 404 HTML
-// response was parsed as JS, and startup crashed with
-// "SyntaxError: Unexpected token '<'". Capacitor builds also tried
-// to load it and broke. Inject at runtime instead, conditionally.
+// Analytics (web only): inject at runtime so missing env never loads a bogus URL as script (404 HTML → SyntaxError).
 const analyticsEndpoint = import.meta.env.VITE_ANALYTICS_ENDPOINT;
 const analyticsWebsiteId = import.meta.env.VITE_ANALYTICS_WEBSITE_ID;
 if (
@@ -65,10 +57,9 @@ if (isCapacitor()) {
     });
 }
 
-cp("main.tsx: side-effect blocks done");
+cp("main.tsx: bootstrap");
 
 const queryClient = new QueryClient();
-cp("main.tsx: queryClient created");
 
 const redirectToLoginIfUnauthorized = (error: unknown) => {
   if (!(error instanceof TRPCClientError)) return;
@@ -83,10 +74,7 @@ const redirectToLoginIfUnauthorized = (error: unknown) => {
   window.location.href = target;
 };
 
-// Capacitor's JS-to-native log bridge serializes objects via JSON.stringify,
-// which renders Error instances as "{}" and loses the message+stack. Build
-// a plain object of the useful fields before logging so the native side
-// (and remote logs) actually show something useful.
+// Capacitor bridge JSON-stringifies errors poorly — normalize before console.error.
 function describeError(error: unknown): Record<string, unknown> {
   if (error instanceof Error) {
     const out: Record<string, unknown> = {
@@ -105,10 +93,7 @@ function describeError(error: unknown): Record<string, unknown> {
   return { value: String(error) };
 }
 
-// Catch render-time and async-unhandled errors that the React Query
-// handlers below don't see. Without this, exceptions during React
-// commit phase show up as anonymous stack frames in the Capacitor log
-// with no message attached.
+// Global errors not surfaced through React Query (e.g. commit-phase throws on native).
 if (typeof window !== "undefined") {
     window.addEventListener("error", (event) => {
         console.error("[Window Error]", JSON.stringify({
@@ -146,11 +131,7 @@ queryClient.getMutationCache().subscribe(event => {
   }
 });
 
-cp("main.tsx: cache subscriptions wired");
-
-cp("main.tsx: about to call getTrpcUrl()");
 const trpcUrl = getTrpcUrl();
-cp("main.tsx: getTrpcUrl() returned " + trpcUrl);
 
 const trpcClient = trpc.createClient({
   links: [
@@ -166,10 +147,9 @@ const trpcClient = trpc.createClient({
     }),
   ],
 });
-cp("main.tsx: trpcClient created");
+cp("main.tsx: trpc");
 
 const rootEl = document.getElementById("root");
-cp("main.tsx: rootEl is " + (rootEl ? "present" : "MISSING"));
 if (!rootEl) {
   document.body.appendChild(Object.assign(document.createElement("div"), {
     textContent: "FATAL: #root element not found",
@@ -178,7 +158,6 @@ if (!rootEl) {
   throw new Error("#root element not found");
 }
 
-cp("main.tsx: calling createRoot.render()");
 createRoot(rootEl).render(
   <BootErrorBoundary>
     <trpc.Provider client={trpcClient} queryClient={queryClient}>
@@ -188,7 +167,7 @@ createRoot(rootEl).render(
     </trpc.Provider>
   </BootErrorBoundary>
 );
-cp("main.tsx: render() returned");
+cp("main.tsx: mounted");
 
 // Hide the native splash once React has rendered its first frame. The
 // double-rAF waits for the React commit + browser paint to land so the
@@ -198,7 +177,7 @@ if (isCapacitor()) {
         requestAnimationFrame(() => {
             requestAnimationFrame(() => {
                 void SplashScreen.hide({ fadeOutDuration: 200 });
-                cp("main.tsx: SplashScreen.hide() called");
+                cp("main.tsx: splash hidden");
             });
         });
     }).catch((e) => {

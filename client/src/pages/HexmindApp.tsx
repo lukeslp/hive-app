@@ -1,16 +1,4 @@
-/**
- * Hexpand - Spatial Brainstorming Tool
- * Clean orchestrator — all UI components and business logic extracted to
- * dedicated files. This file wires state, hooks, and components together.
- *
- * Design: Cyber-Hive Dark Mode
- * - Deep, immersive dark backgrounds
- * - Hexagonal geometry as foundational visual language
- * - Glassmorphic UI panels with blur and transparency
- * - Electric accent colors for node types
- * - Flow-state ideation with minimal interruptions
- * - Direct manipulation paradigm
- */
+/** Hexmind app shell: wires canvas, modals, AI, collab, and session state. */
 
 import { useState, useRef, useEffect, useCallback, useMemo } from "react";
 import { Layout, Loader2 } from "@/lib/icons";
