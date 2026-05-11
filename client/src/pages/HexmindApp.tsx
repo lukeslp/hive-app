@@ -57,6 +57,7 @@ import { buildApiUrl } from "@/lib/api";
 import { isCapacitor, getPlatform, isIos } from "@/lib/platform";
 import { tryOnDeviceFirst, tryOnDeviceBranchesFirst } from "@/lib/foundationModelsPlugin";
 import { sanitizeJson } from "@/lib/sanitize";
+import { saveBlob } from "@/lib/saveBlob";
 import { validateBranches } from "@/lib/clarificationValidator";
 import { BRANCH_SET_SCHEMA } from "@/lib/branchSchema";
 import {
@@ -1288,19 +1289,25 @@ Generate 6 diverse related ideas. Connect to key themes when relevant.`;
   };
 
   // ── Export ──────────────────────────────────────────────────────────────
-  const exportAsImage = () => {
+  // Both exports go through saveBlob, which branches on platform: browsers
+  // get the <a download> pattern, Capacitor writes the file to Documents
+  // and invokes the iOS share sheet. Before this, <a download> silently
+  // failed in WKWebView and the user saw nothing happen after tapping.
+  const exportAsImage = async () => {
     haptics.medium();
     const svgContent = document.getElementById("hex-canvas-layer")?.innerHTML;
     if (!svgContent) return;
     const fullSvg = `<svg xmlns="http://www.w3.org/2000/svg" width="2000" height="2000" viewBox="-1000 -1000 2000 2000"><style>text { font-family: sans-serif; fill: white; } path { stroke: gray; fill: #222; }</style><g transform="translate(0,0)">${svgContent}</g></svg>`;
     const blob = new Blob([fullSvg], { type: "image/svg+xml" });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = `hexmind-export-${Date.now()}.svg`;
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
+    try {
+      await saveBlob(blob, `hexmind-export-${Date.now()}.svg`, {
+        dialogTitle: "Share Hexmind SVG",
+      });
+    } catch (err) {
+      toast.error(
+        `SVG export failed: ${err instanceof Error ? err.message : "unknown error"}`
+      );
+    }
   };
 
   const exportAsPNG = () => {
@@ -1321,20 +1328,20 @@ Generate 6 diverse related ideas. Connect to key themes when relevant.`;
     img.onload = () => {
       ctx.drawImage(img, 0, 0);
       URL.revokeObjectURL(url);
-      canvas.toBlob((blob) => {
+      canvas.toBlob(async (blob) => {
         if (!blob) {
           toast.error("PNG export failed — couldn't encode the canvas.");
           return;
         }
-        const pngUrl = URL.createObjectURL(blob);
-        const a = document.createElement("a");
-        a.href = pngUrl;
-        a.download = `hexmind-export-${Date.now()}.png`;
-        document.body.appendChild(a);
-        a.click();
-        document.body.removeChild(a);
-        URL.revokeObjectURL(pngUrl);
-        toast.success("PNG exported");
+        try {
+          await saveBlob(blob, `hexmind-export-${Date.now()}.png`, {
+            dialogTitle: "Share Hexmind PNG",
+          });
+        } catch (err) {
+          toast.error(
+            `PNG export failed: ${err instanceof Error ? err.message : "unknown error"}`
+          );
+        }
       });
     };
     img.onerror = () => {

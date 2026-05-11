@@ -17,6 +17,7 @@ import { buildApiUrl } from "@/lib/api";
 import { isCapacitor } from "@/lib/platform";
 import { STORAGE_KEY, AUTOSAVE_KEY } from "@/lib/hexConstants";
 import { generateThumbnail } from "@/lib/canvasSnapshot";
+import { saveBlob } from "@/lib/saveBlob";
 import type { HexNode, ViewState } from "@/types/hivemind";
 
 interface SavedSession {
@@ -378,20 +379,25 @@ export function useSessionManagement({
   );
 
   // ── Export / Import ────────────────────────────────────────────────────
-  const exportSession = useCallback(() => {
+  const exportSession = useCallback(async () => {
     const data = {
       nodes,
       viewState,
       creativity,
       exportDate: new Date().toISOString(),
     };
-    const blob = new Blob([JSON.stringify(data, null, 2)], { type: "application/json" });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = `hexmind_${Date.now()}.json`;
-    a.click();
-    URL.revokeObjectURL(url);
+    const blob = new Blob([JSON.stringify(data, null, 2)], {
+      type: "application/json",
+    });
+    try {
+      await saveBlob(blob, `hexmind_${Date.now()}.json`, {
+        dialogTitle: "Share Hexmind session",
+      });
+    } catch (err) {
+      toast.error(
+        `Session export failed: ${err instanceof Error ? err.message : "unknown error"}`
+      );
+    }
   }, [nodes, viewState, creativity]);
 
   const importSession = useCallback(
