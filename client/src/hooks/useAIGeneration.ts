@@ -466,9 +466,13 @@ Generate 6 neighbor nodes.`;
       }
     }
 
-    // iOS is Apple-Intelligence-only: no cloud fallback. If FM didn't
-    // return usable text, surface a clear error and emit placeholder
-    // neighbors so the UI doesn't deadlock.
+    // iOS is Apple-Intelligence-only: no cloud fallback (privacy.html
+    // explicitly promises this — sending iOS prompts to the server would
+    // violate the contract the existing TestFlight cohort already
+    // accepted). When FM didn't produce usable text we return null so
+    // the caller falls through to its own UI affordance, rather than
+    // fabricating fake "Idea 1…Idea 6" placeholder neighbors that the
+    // user would reasonably mistake for real AI output.
     if (isIos()) {
       const errorMsg = fm
         ? "On-device returned unparseable output"
@@ -476,8 +480,7 @@ Generate 6 neighbor nodes.`;
       setError(errorMsg);
       toast.error(errorMsg);
       setIsGenerating(false);
-      const placeholderNodes = buildNeighborNodes([], centerNode, nodes, NODE_TYPES, forceRefresh);
-      return placeholderNodes;
+      return null;
     }
 
     if (fm) {
@@ -549,11 +552,14 @@ Generate 6 neighbor nodes.`;
       }));
       const errorMsg = err instanceof Error ? err.message : "Failed to generate ideas";
       setError(errorMsg);
+      toast.error(errorMsg);
       setIsGenerating(false);
 
-      // Placeholder fallback
-      const newNodes = buildNeighborNodes([], centerNode, nodes, NODE_TYPES, forceRefresh);
-      return newNodes;
+      // Return null on cloud failure rather than fabricating "Idea 1…6"
+      // placeholder neighbors. The placeholder path indistinguishably
+      // looked like real AI output to users and was the dominant
+      // misleading-UX surface for testers on the unhappy path.
+      return null;
     } finally {
       abortControllerRef.current = null;
     }
