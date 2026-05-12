@@ -119,9 +119,18 @@ export default function HexmindApp() {
   const [generatingNeighbors, setGeneratingNeighbors] = useState<Set<string>>(new Set());
   const [rootInput, setRootInput] = useState("");
 
-  // Settings
+  // Settings.
+  //
+  // NOTE: this preference key intentionally differs from `AUTOSAVE_KEY`
+  // ("hexpand_autosave") which stores the autosave JSON BLOB. Earlier
+  // builds reused the same key for both the boolean preference and the
+  // serialized state, so this useEffect's `localStorage.setItem(...,
+  // enableAutoSave.toString())` would overwrite the blob with the literal
+  // string "true"/"false" on every cold launch — every tester lost their
+  // in-progress board. The blob still lives at `hexpand_autosave`; the
+  // boolean now lives at `hexpand_autosave_enabled`.
   const [enableAutoSave, setEnableAutoSave] = useState(() => {
-    const saved = localStorage.getItem("hexpand_autosave");
+    const saved = localStorage.getItem("hexpand_autosave_enabled");
     return saved !== "false";
   });
   const [enableSmartExpansion, setEnableSmartExpansion] = useState(true);
@@ -462,7 +471,7 @@ export default function HexmindApp() {
     localStorage.setItem("hexpand_animations", enableAnimations.toString());
   }, [enableAnimations]);
   useEffect(() => {
-    localStorage.setItem("hexpand_autosave", enableAutoSave.toString());
+    localStorage.setItem("hexpand_autosave_enabled", enableAutoSave.toString());
   }, [enableAutoSave]);
   useEffect(() => {
     document.documentElement.style.setProperty(

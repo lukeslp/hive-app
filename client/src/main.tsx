@@ -172,15 +172,35 @@ cp("main.tsx: mounted");
 // Hide the native splash once React has rendered its first frame. The
 // double-rAF waits for the React commit + browser paint to land so the
 // user never sees a blank frame between splash and app. No-op on web.
+//
+// capacitor.config.ts pins `launchAutoHide: false`, so if the primary
+// path silently fails (dynamic-import rejection, OOM during JS init,
+// stale WebView profile) the splash never goes away and the tester
+// sees a forever loading screen. A 4 s setTimeout fallback re-attempts
+// the hide so the worst case is a four-second delay, not a permanent
+// freeze. `splashHidden` deduplicates so the user never sees a fade
+// happen twice.
 if (isCapacitor()) {
-    void import("@capacitor/splash-screen").then(({ SplashScreen }) => {
-        requestAnimationFrame(() => {
-            requestAnimationFrame(() => {
+    let splashHidden = false;
+    const hideSplash = (origin: "primary" | "fallback") =>
+        import("@capacitor/splash-screen")
+            .then(({ SplashScreen }) => {
+                if (splashHidden) return;
+                splashHidden = true;
                 void SplashScreen.hide({ fadeOutDuration: 200 });
-                cp("main.tsx: splash hidden");
+                cp(`main.tsx: splash hidden (${origin})`);
+            })
+            .catch((e) => {
+                console.warn(`Could not hide splash (${origin})`, e);
             });
+
+    requestAnimationFrame(() => {
+        requestAnimationFrame(() => {
+            void hideSplash("primary");
         });
-    }).catch((e) => {
-        console.warn("Could not load @capacitor/splash-screen", e);
     });
+
+    setTimeout(() => {
+        void hideSplash("fallback");
+    }, 4000);
 }
