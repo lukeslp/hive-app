@@ -11,6 +11,7 @@
  */
 
 import { Router, Request, Response } from "express";
+import rateLimit from "express-rate-limit";
 import { nanoid } from "nanoid";
 
 // ─── Types ──────────────────────────────────────────────────────────────────
@@ -31,6 +32,23 @@ interface NormalizedRequest {
   responseSchema?: unknown;
 }
 
+// ─── Public-facing safety limits ────────────────────────────────────────────
+//
+// The proxy serves six brand domains over a single Node process and falls
+// back to server-side env API keys when a tester hasn't pasted their own.
+// Without guardrails, anyone who finds the URL can drain the configured key.
+// These caps close the no-effort abuse vector; a determined adversary can
+// rotate IPs, but the casual / accidental misuse cases are covered.
+
+/** Per-IP requests per minute on /api/generate. */
+const GENERATE_RATE_PER_MINUTE = 12;
+/** Per-IP requests per hour on /api/generate. */
+const GENERATE_RATE_PER_HOUR = 120;
+/** Hard cap on request body bytes for /api/generate. */
+const GENERATE_MAX_BODY_BYTES = 64 * 1024;
+/** Hard server-side ceiling on per-call output tokens. */
+const GENERATE_MAX_OUTPUT_TOKENS = 4096;
+
 // ─── In-memory share store (persists across requests, not across deploys) ───
 // For a permanent solution, this should use the database, but for now
 // in-memory is fine for the share feature.
@@ -39,11 +57,14 @@ const shares = new Map<string, string>();
 // ─── Provider Functions ─────────────────────────────────────────────────────
 
 function extractRequest(body: any): NormalizedRequest {
+  const requestedMax = body.generationConfig?.maxOutputTokens ?? 2048;
   return {
     system: body.systemInstruction?.parts?.[0]?.text ?? "",
     userText: body.contents?.[0]?.parts?.[0]?.text ?? "",
     temperature: body.generationConfig?.temperature ?? 0.7,
-    maxTokens: body.generationConfig?.maxOutputTokens ?? 2048,
+    // Clamp server-side so a malicious client can't drain the configured
+    // env key with a single fat request (e.g. maxOutputTokens: 1_000_000).
+    maxTokens: Math.min(Math.max(1, Number(requestedMax) || 2048), GENERATE_MAX_OUTPUT_TOKENS),
     jsonMode: body.generationConfig?.responseMimeType === "application/json",
     responseSchema: body.generationConfig?.responseSchema,
   };
@@ -298,24 +319,73 @@ async function callProviderWithContext(
 export function createLlmProxyRouter(): Router {
   const apiRouter = Router();
 
-  // Generate endpoint
-  apiRouter.post("/generate", async (req: Request, res: Response) => {
-    try {
-      if (!req.body.contents) {
-        return res.status(400).json({ error: "Missing required field: contents" });
-      }
-      const resolved = resolveProvider(req);
-      // No fallback. If the chosen provider fails the error propagates and
-      // the client gets a 500 — the client knows to try Apple Foundation
-      // Models on iOS or surface an actionable error on web.
-      const text = await callProviderWithContext(req.body, resolved);
-      res.json(wrapResponse(text));
-    } catch (error) {
-      console.error("Error in /api/generate:", error);
-      const message = error instanceof Error ? error.message : "Unknown error";
-      res.status(500).json({ error: { message } });
-    }
+  // Skip rate limits in test runs so the suite can fire bursts at /generate
+  // without tripping a real limiter. Production traffic always passes
+  // through the limiters below; vitest sets VITEST=true on every worker.
+  const skipForTest = () => Boolean(process.env.VITEST || process.env.NODE_ENV === "test");
+
+  const generateMinuteLimiter = rateLimit({
+    windowMs: 60_000,
+    limit: GENERATE_RATE_PER_MINUTE,
+    standardHeaders: "draft-8",
+    legacyHeaders: false,
+    skip: skipForTest,
+    message: {
+      error: {
+        message: `Too many AI requests — try again in a moment. (Limit: ${GENERATE_RATE_PER_MINUTE}/min per IP.)`,
+      },
+    },
   });
+
+  const generateHourLimiter = rateLimit({
+    windowMs: 60 * 60_000,
+    limit: GENERATE_RATE_PER_HOUR,
+    standardHeaders: "draft-8",
+    legacyHeaders: false,
+    skip: skipForTest,
+    message: {
+      error: {
+        message: `Hourly AI rate limit reached — please try again later. (Limit: ${GENERATE_RATE_PER_HOUR}/hour per IP.)`,
+      },
+    },
+  });
+
+  // Generate endpoint
+  apiRouter.post(
+    "/generate",
+    generateMinuteLimiter,
+    generateHourLimiter,
+    async (req: Request, res: Response) => {
+      try {
+        if (!req.body.contents) {
+          return res.status(400).json({ error: "Missing required field: contents" });
+        }
+        // Pathological payloads get rejected before we ever resolve a
+        // provider or burn a token. The global 50 MB body parser exists
+        // for /api/share which legitimately needs it; AI generation never
+        // does. 64 KB is roughly 16k tokens of prompt — comfortably above
+        // any real tester usage.
+        const bodyBytes = JSON.stringify(req.body).length;
+        if (bodyBytes > GENERATE_MAX_BODY_BYTES) {
+          return res.status(413).json({
+            error: {
+              message: `Request too large (${bodyBytes} bytes > ${GENERATE_MAX_BODY_BYTES} byte cap).`,
+            },
+          });
+        }
+        const resolved = resolveProvider(req);
+        // No fallback. If the chosen provider fails the error propagates and
+        // the client gets a 500 — the client knows to try Apple Foundation
+        // Models on iOS or surface an actionable error on web.
+        const text = await callProviderWithContext(req.body, resolved);
+        res.json(wrapResponse(text));
+      } catch (error) {
+        console.error("Error in /api/generate:", error);
+        const message = error instanceof Error ? error.message : "Unknown error";
+        res.status(500).json({ error: { message } });
+      }
+    }
+  );
 
   // Provider info endpoint. The "default" is whichever provider has a
   // server env key configured (preference order matches the type list).

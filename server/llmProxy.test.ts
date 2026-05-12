@@ -76,7 +76,11 @@ describe("LLM Proxy Router", () => {
       );
       expect(layer).toBeDefined();
 
-      await layer!.route!.stack[0].handle(req, res, () => {});
+      // /generate is wrapped in rate-limit middlewares — invoke the
+      // actual handler entry (always the last in the route stack)
+      // rather than stack[0] (which is now a limiter).
+      const handler = layer!.route!.stack.at(-1);
+      await handler!.handle(req, res, () => {});
 
       expect(res._status).toBe(400);
       expect(res._json).toEqual({ error: "Missing required field: contents" });
@@ -100,13 +104,67 @@ describe("LLM Proxy Router", () => {
         (l: any) => l.route?.path === "/generate" && l.route?.methods?.post
       );
 
-      await layer!.route!.stack[0].handle(req, res, () => {});
+      const handler = layer!.route!.stack.at(-1);
+      await handler!.handle(req, res, () => {});
 
       expect(res._status).toBe(200);
       expect(res._json?.candidates?.[0]?.content?.parts?.[0]?.text).toBeTruthy();
       // Confirms it called the Gemini API.
       const calledUrl = mockFetch.mock.calls[0]?.[0];
       expect(String(calledUrl)).toContain("generativelanguage.googleapis.com");
+    });
+
+    it("returns 413 when body exceeds the 64KB safety cap", async () => {
+      process.env.GEMINI_API_KEY = "test-gemini-key";
+
+      // Build a payload that's clearly over 64 KB (a 200KB user-text blob).
+      const fatText = "x".repeat(200_000);
+      const req = mockReq({
+        headers: {},
+        body: {
+          contents: [{ parts: [{ text: fatText }] }],
+          generationConfig: { temperature: 0.7, maxOutputTokens: 512 },
+        },
+      });
+      const res = mockRes();
+
+      const layer = router.stack.find(
+        (l: any) => l.route?.path === "/generate" && l.route?.methods?.post
+      );
+      const handler = layer!.route!.stack.at(-1);
+      await handler!.handle(req, res, () => {});
+
+      expect(res._status).toBe(413);
+      expect(res._json?.error?.message).toMatch(/too large/i);
+      // Crucially, no upstream provider was contacted.
+      expect(mockFetch).not.toHaveBeenCalled();
+    });
+
+    it("clamps oversized maxOutputTokens server-side so a single call can't drain the env key", async () => {
+      process.env.GEMINI_API_KEY = "test-gemini-key";
+      mockFetch.mockResolvedValueOnce(geminiSuccessResponse());
+
+      const req = mockReq({
+        headers: {},
+        body: {
+          contents: [{ parts: [{ text: "hello" }] }],
+          // Pathological: client asks for a million output tokens.
+          generationConfig: { temperature: 0.7, maxOutputTokens: 1_000_000 },
+        },
+      });
+      const res = mockRes();
+
+      const layer = router.stack.find(
+        (l: any) => l.route?.path === "/generate" && l.route?.methods?.post
+      );
+      const handler = layer!.route!.stack.at(-1);
+      await handler!.handle(req, res, () => {});
+
+      // The upstream call body must have been clamped to the 4096 ceiling.
+      expect(mockFetch).toHaveBeenCalled();
+      const fetchInit = mockFetch.mock.calls[0]?.[1];
+      const upstreamBody = JSON.parse(fetchInit.body);
+      expect(upstreamBody.generationConfig.maxOutputTokens).toBe(4096);
     });
 
     it("returns 500 when no provider is configured anywhere", async () => {
@@ -133,7 +191,8 @@ describe("LLM Proxy Router", () => {
         (l: any) => l.route?.path === "/generate" && l.route?.methods?.post
       );
 
-      await layer!.route!.stack[0].handle(req, res, () => {});
+      const handler = layer!.route!.stack.at(-1);
+      await handler!.handle(req, res, () => {});
 
       expect(res._status).toBe(500);
       expect(res._json?.error?.message).toMatch(/No LLM provider configured/);
