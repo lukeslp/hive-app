@@ -154,22 +154,38 @@ Public TestFlight is already live — treat remaining items as **App Store submi
 
 ---
 
-## Right now — server redeploy is the only blocker for TestFlight
+## Right now — production Node (`hexmind.service`)
 
-The AASA file source was edited (`server/_core/index.ts` lines 52, 63
-now point at `596T7J7FB6.app.hexmind.ios` instead of the old hexpand
-identifier). **The deployed copy at dr.eamer.dev is still serving the
-old AASA**, so Universal Links from any brand domain will
-fail signature validation against the new App ID until this redeploys.
+**Source of truth:** GitHub [`lukeslp/hive-app`](https://github.com/lukeslp/hive-app) (this workspace). **systemd** runs the bundle from **`~/projects/hivemind/dist/`** (unit `hexmind.service`, `PORT=5057`), **not** `~/projects/hexpand` or `~/servers/hexpand`.
+
+### Deploy (ran successfully 2026-05-13)
 
 ```sh
-ssh dr.eamer.dev "cd ~/projects/hexpand && git pull && pnpm build && \
-  cp -r dist/* ~/servers/hexpand/dist/ && sm restart hexpand"
+ssh dr.eamer.dev 'set -euo pipefail
+REPO="$HOME/projects/hive-app"
+TARGET="$HOME/projects/hivemind/dist"
+if [ ! -d "$REPO/.git" ]; then
+  git clone https://github.com/lukeslp/hive-app.git "$REPO"
+else
+  cd "$REPO" && git fetch origin && git checkout main && git pull --ff-only origin main
+fi
+cd "$REPO" && pnpm install && pnpm build
+rsync -a --delete "$REPO/dist/" "$TARGET/"
+sm restart hexmind
+'
 ```
 
-(Substitute the actual deploy command if the repo path or sm service
-name differs. Per CLAUDE.md the pattern is `~/projects/<name>` source
-+ `~/servers/<name>` deploy + `sm restart <name>`.)
+**Smoke on the box** (bypasses Caddy): `curl -sSI http://127.0.0.1:5057/.well-known/apple-app-site-association` → `Content-Type: application/json`.
+
+### If public HTTPS still shows HTML for AASA
+
+Node is correct; **Caddy (or another edge)** is not forwarding `/.well-known/*` to `127.0.0.1:5057`. Fix the site block so those paths hit the same `reverse_proxy` as `/` (no static file override, no SPA-only catchall in front of the API). Same for **`ideatiles.app`** DNS + Caddy once Porkbun points at this host.
+
+Verify after edge fix + DNS:
+
+```sh
+./scripts/check-aasa.sh && pnpm verify:canonical
+```
 
 Verify after deploy:
 ```sh

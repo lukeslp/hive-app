@@ -40,14 +40,13 @@ cd /path/to/hexmind
 
 Expect **7/7** AASA passes and privacy/terms checks green on `ideatiles.app` and legacy domains.
 
-## 5. Deploy the Node app
+## 5. Deploy the Node app (production: `hexmind.service`)
 
-If the server is still on an older build (SPA at AASA, wrong `/privacy`), redeploy from the repo root that matches `main`:
+**systemd** unit **`hexmind.service`** on `dr.eamer.dev` (see **NEXT_STEPS.md** → *production Node*) runs **`node ~/projects/hivemind/dist/index.js`** with `PORT=5057` and `WorkingDirectory=/home/coolhand/projects/hivemind` (`.env` lives there). **Source code** is built from GitHub **`lukeslp/hive-app`** into a clone at `~/projects/hive-app`, then **`dist/`** is rsynced into **`~/projects/hivemind/dist/`** (atomically replacing the bundle). Restart with **`sm restart hexmind`** (wraps `systemctl restart hexmind`).
 
-```bash
-# Example — adjust paths/service name per CLAUDE.md / your host
-git pull && pnpm install && pnpm build && cp -r dist/* ~/servers/hexpand/dist/ && sm restart hexpand
-```
+See the exact one-liner block in [`NEXT_STEPS.md`](../../NEXT_STEPS.md) under **Right now — production Node**.
+
+**Bypass Caddy smoke:** on the server, `curl -sSI http://127.0.0.1:5057/.well-known/apple-app-site-association` must return `application/json`. If that passes but public HTTPS still returns HTML, fix **Caddy** routing (see §3), not Node.
 
 ## 6. iOS Associated Domains
 
