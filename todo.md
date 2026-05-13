@@ -1,5 +1,7 @@
 # Idea Tiles — migration & rename TODO (historical)
 
+> **Current ops and release steps:** use [`NEXT_STEPS.md`](NEXT_STEPS.md) — not this file.
+
 > Renamed Thought Tiles → Idea Tiles on 2026-05-13. Body below is kept for the original Hexpand → Hexmind → Thought Tiles history.
 
 > Renamed from "Hexpand" 2026-05-08 — see `RENAME_PLAN.md`. Historical

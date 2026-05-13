@@ -53,7 +53,7 @@ Order matters; later steps depend on earlier.
 - [ ] **`ios/App/App/Info.plist`**: `CFBundleDisplayName` → `Hexmind`, `CFBundleName` → `Hexmind`
 - [ ] **`pnpm cap sync ios`** — regenerates `ios/App/App/capacitor.config.json`
 - [ ] **AASA file**: `server/_core/index.ts` lines 52 + 63 — change `596T7J7FB6.dev.dreamer.hexpand` → `596T7J7FB6.<new bundle id>`
-- [ ] **Deploy server** — single Node deploy serves all 6 brand domains via Caddy reverse proxy (verified by recon seat). Run the existing deploy command (`cp -r dist/* ~/servers/hexpand/dist/ && sm restart hexpand` or equivalent — verify in ~/CLAUDE.md key paths).
+- [ ] **Deploy server** — single Node process serves all brand domains via Caddy. **Current recipe:** [`NEXT_STEPS.md`](NEXT_STEPS.md) → *Right now — production Node* (`lukeslp/hive-app` clone → `pnpm build` → `rsync dist/` → `~/projects/hivemind/dist/` → `sm restart hexmind`). **Not** `~/servers/hexpand` (obsolete path).
 - [ ] **Page rename**: `client/src/pages/HexpandApp.tsx` → `HexmindApp.tsx`. Update imports across the project. Internal class/component name `HexpandApp` → `HexmindApp`. (Repository file rename is a real grep-and-replace; ~12 import sites.)
 - [ ] **User-visible UI strings** (35 grep hits found by manager seat across these files):
   - `client/src/components/Toolbar.tsx:127` — header brand chip
@@ -167,7 +167,7 @@ After each phase:
 
 - **Phase 1:** `pnpm check && pnpm test` green; simulator build succeeds; tap a tile → on-device toast still fires (the rename doesn't touch the FM dispatch path)
 - **Phase 2:** Apple Developer portal shows new App ID with Associated Domains capability
-- **Phase 5:** Build appears in App Store Connect TestFlight tab within 30 min; install via TestFlight app on real device; verify Universal Link from at least 2 of 6 brand domains opens the app
+- **Phase 5:** Build appears in App Store Connect TestFlight tab within 30 min; install via TestFlight app on real device; verify Universal Link from at least 2 of **7** brand domains (six legacy + `ideatiles.app` when live) opens the app
 - **Phase 6:** USPTO TEAS confirmation email with serial number
 - **Phase 9:** Show HN goes live; track upvotes + TestFlight install metric in real time
 

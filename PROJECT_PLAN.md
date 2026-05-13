@@ -1,6 +1,6 @@
 # PROJECT_PLAN
 
-Last updated: 2026-05-12
+Last updated: 2026-05-13
 
 ## Objectives
 
@@ -21,7 +21,7 @@ Last updated: 2026-05-12
 
 - Use [`docs/RELEASE_SPEC.md`](docs/RELEASE_SPEC.md) + [`docs/APP_STORE_PACK.md`](docs/APP_STORE_PACK.md) for ASC submission and beta copy.
 - Resolve **High** items in [`docs/RELEASE_REVIEW.md`](docs/RELEASE_REVIEW.md) before App Store (share URL origin fixed in code; optional `VITE_PUBLIC_WEB_APP_URL` overrides `APP_PUBLIC_WEB_ORIGIN` / default `https://ideatiles.app`).
-- Complete deploy verification for AASA + legal pages where still relevant.
+- Complete **edge** verification for AASA + legal URLs on public hostnames (`pnpm verify:canonical` after Caddy/DNS); **localhost** checks alone are insufficient ([`NEXT_STEPS.md`](NEXT_STEPS.md) production Node section).
 
 ### 2) iOS Lifecycle and Stability
 

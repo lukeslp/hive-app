@@ -29,28 +29,26 @@ Public TestFlight is already live — treat remaining items as **App Store submi
 - Use `/team:research` when you need facts only.
 - Avoid council runs for small code changes where direct implementation + verification is faster and clearer.
 
-> Pickup point as of 2026-05-10 EOD. Today's session landed `prewarm`,
+> Pickup point as of 2026-05-10 EOD. That session landed `prewarm`,
 > the WKWebView bounce fix, the AASA smoke-test script, the one-shot
 > onboarding modal + passive canvas hint, Capacitor-native PNG/SVG/JSON
 > exports, mobile-overflow declutter with three labeled sections, the
 > tile-flash UX that replaces on-device success toasts, and the static
-> Privacy Policy + Terms of Use pages at ideatiles.app/privacy and
-> /terms (also at legacy brand domains) with Express routes that beat
-> the SPA catchall.
->
-> See `~/.claude/plans/get-context-doubt-and-partitioned-pascal.md`
-> for the doubt-pass that reframed the council's "starter tile" as
-> wrong-problem in favor of fixing the modal-trap and adding a
-> passive empty-canvas affordance.
+> Privacy Policy + Terms of Use pages at `/privacy` and `/terms` (also
+> at legacy brand domains) with Express routes that beat the SPA catchall.
+> A `/doubt` pass reframed the council's "starter tile" as wrong-problem
+> in favor of fixing the modal-trap and adding a passive empty-canvas affordance.
 
 ## What landed today (this session, on top of `c490190`)
 
 - **`25afbb5` iOS boot:** `prewarm()` warms Apple Intelligence on
   app launch; `scrollView.bounces = false` kills accidental
   pull-to-refresh during expand-cascade
-- **`08c1bcb` ops:** `scripts/check-aasa.sh` smoke-tests all brand
-  domains; currently fails 6/6 because the deployed server still
-  serves SPA HTML at `/.well-known/...` (redeploy still pending)
+- **`08c1bcb` ops:** `scripts/check-aasa.sh` smoke-tests **7** brand hosts
+  (legacy six + `ideatiles.app`). **Node** on `127.0.0.1:5057` serves JSON
+  AASA after the **2026-05-13** `hive-app` → `hivemind/dist` deploy; if
+  public HTTPS still fails, fix **Caddy** so `/.well-known/*` reaches that
+  upstream (see **Right now — production Node** below).
 - **`a79b5fc` ux:** one-shot onboarding modal (`dismissedOnboardingRef`)
   + passive "Tap anywhere to start a brainstorm" hint, `prefers-reduced-motion`
   shortens the 600ms timer to 100ms
@@ -394,9 +392,10 @@ field:
 > Foundation Models handles brainstorm generation on supported
 > hardware (iPhone 15 Pro+ / iPad M-series with Apple Intelligence
 > enabled), with cloud fallback for older devices. Universal Links
-> from hivemind.cx and 5 sister domains open the app via the
-> committed AASA file. Build supports iPad and runs natively on
-> Apple Silicon Macs via Designed-for-iPad.
+> from **ideatiles.app** (canonical) and the six legacy brand hostnames
+> open the app via the committed AASA when DNS + Caddy route
+> `/.well-known/*` to this Node build. Build supports iPad and runs
+> natively on Apple Silicon Macs via Designed-for-iPad.
 
 Adjust to match current state once verified on hardware.
 
@@ -418,27 +417,5 @@ Other two are now locked:
 
 ## Reference
 
-- `RENAME_PLAN.md` — the 10-phase rename execution plan (Phase 1
-  shipped in `85d2e9d`, Phase 5/Mac availability scaffold in `f13f8c9`,
-  Phases 2-4 + 6-10 are user-side or follow-up work)
-- `~/.swarm/snippets/2026-05-08-foundationmodels-bridge-bisect.md` —
-  six reusable patterns including the dual-layer timeout,
-  shadowing-dispatcher diagnosis, /team:technical right-sizing
-- `~/.swarm/snippets/2026-05-08-capacitor-ios-gotchas.md` — earlier
-  session's harvest with 9 patterns (plugin registration, safe-area,
-  visualViewport keyboard, etc.)
-- `~/.swarm/snippets/2026-05-08-xcode-testflight-upload-gotchas.md` —
-  Apple's silent-failure traps for TestFlight upload
-- `~/.swarm/snippets/2026-05-08-minimum-viable-change-discipline.md`
-  — when NOT to invoke the council on a small change
-- `~/.swarm/reports/2026-05-08-session-report.md` — full prior session
-  outcome summary
-
-## Parallel work in another session
-
-A separate session is reconciling the **whatcolor** repo's
-server↔local divergence (34 server commits + 12 local commits +
-unresolved Contents.json merge conflicts). That work is independent
-of Idea Tiles and lives in `~/.claude/plans/yeah-let-s-doublecheck-…md`.
-Mentioned only so context doesn't bleed if both sessions touch
-shared concepts (LICENSE, AppIcon, Bridge City Lab LLC entity).
+- `RENAME_PLAN.md` — historical Hexpand → Hexmind rename plan; current deploy recipe is in this file (*Right now — production Node*).
+- `PROJECT_PLAN.md` — priorities and workstreams snapshot.
