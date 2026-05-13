@@ -1,4 +1,4 @@
-# App Store Pack — Thought Tiles MVP
+# App Store Pack — Idea Tiles MVP
 
 Copy-paste oriented metadata + asset checklist for App Store Connect. Aligned to **current** product behavior: iOS on-device AI, snapshot share links, **no** native live collaboration. App Store **Name** / **Subtitle** below match in-app branding; bundle id and URLs may still reference `hexmind.app`. Update before each ASC submission.
 
@@ -15,7 +15,7 @@ Copy-paste oriented metadata + asset checklist for App Store Connect. Aligned to
 
 ## 0. Consensus + /team summary
 
-**Decision:** Position Thought Tiles as a **verb-first brainstorming canvas** for solo creative pros under deadline pressure. The on-device AI is the supporting moat, not the headline. Lead with the four core verbs (expand · merge · star · export); let "private, on-device" carry the second paragraph.
+**Decision:** Position Idea Tiles as a **verb-first brainstorming canvas** for solo creative pros under deadline pressure. The on-device AI is the supporting moat, not the headline. Lead with the four core verbs (expand · merge · star · export); let "private, on-device" carry the second paragraph. Name flipped from `Thought Tiles` to `Idea Tiles` on 2026-05-13 (post-`/team` review) — clearer search intent, less metaphor decoding, and "Idea" is exactly what users type when they're stuck.
 
 ### Voices consulted
 
@@ -31,7 +31,7 @@ Copy-paste oriented metadata + asset checklist for App Store Connect. Aligned to
 | cursor-agent | CLI | ❌ Unauthenticated |
 | Claude (this synthesis) | in-session | ✅ /team executive |
 
-The retry produced one repeat external voice rather than three fresh ones. Mistral's second pass agreed with the original on audience ranking and risk register, which raises confidence in the consensus block without changing it. To get a stronger panel, run `ollama signin` (interactive browser flow), regenerate the xAI key, and refill OpenAI; the `/consensus` prompt is preserved at `/tmp/consensus-thought-tiles-aso.txt`.
+The retry produced one repeat external voice rather than three fresh ones. Mistral's second pass agreed with the original on audience ranking and risk register, which raises confidence in the consensus block without changing it. The post-consensus rename (`Thought Tiles` → `Idea Tiles`, 2026-05-13) was a separate `/team` decision: cleaner search intent, less metaphor decoding, and a better fit for the new icon/splash artwork. To get a stronger panel for ASO, run `ollama signin` (interactive browser flow), regenerate the xAI key, and refill OpenAI, then re-run the consensus prompt with the new name spliced in.
 
 ### Audience verdict
 
@@ -49,7 +49,7 @@ The retry produced one repeat external voice rather than three fresh ones. Mistr
 
 1. **Apple Intelligence hardware gate** — On-device generation requires iPhone 15 Pro / 16+ / M-series iPad with Apple Intelligence enabled (~10–15% of installed base). Risk: 1-star reviews from "AI doesn't work" on ineligible devices. **Mitigation:** the ineligible-device path already shows a clear availability message; reinforce in screenshot 6 and review notes.
 2. **In-memory `/api/share` store** — Snapshot links break when the server restarts. Tester loops back two days later, sees "share not found," writes a complaint. **Mitigation:** lower the promise in Promo text ("snapshot link, opens in Safari" — not "permanent share"); a DB-backed `/api/share` is the right phase-2 fix (`docs/RELEASE_REVIEW.md` High #2).
-3. **Generic name in a crowded category** — "Thought Tiles" is descriptive but doesn't carry "hex" or "AI" by itself; competing against Mindly, MindNode, Heptabase, Scapple, Obsidian Canvas. **Mitigation:** keyword field carries `hexagon,mindmap,brainstorm,ondevice` so the index covers what the name doesn't. Reassess after the first Apple Search Ads cohort.
+3. **Generic name in a crowded category** — "Idea Tiles" is clearer than the prior "Thought Tiles" but still generic; "Idea" is a high-intent search root, but the name doesn't carry "hex" or "AI" by itself. Competing against Mindly, MindNode, Heptabase, Scapple, Obsidian Canvas. **Mitigation:** subtitle adds `Brainstorm with local AI` and the keyword field carries `hexagon,mindmap,outline,whiteboard,ondevice`. Reassess after the first Apple Search Ads cohort.
 
 ### Architecture fit (technical seat)
 
@@ -57,7 +57,7 @@ ASC submission only touches **metadata + the existing iOS binary**. No code chan
 
 ### Legal & IP (legal seat)
 
-`MIT` LICENSE in repo (commit `85d2e9d`). Bundle id `app.hexmind.ios` and Apple Team `596T7J7FB6` are the legal-of-record. Trademark posture (`Thought Tiles` word-mark, Class 9) tracked in `NEXT_STEPS.md` — non-blocking for this submission.
+`MIT` LICENSE in repo (commit `85d2e9d`). Bundle id `app.hexmind.ios` and Apple Team `596T7J7FB6` are the legal-of-record. Trademark posture (`Idea Tiles` word-mark, Class 9) tracked in `NEXT_STEPS.md` — non-blocking for this submission; descriptive-name strength is weaker than the prior `Thought Tiles` mark and warrants a real clearance pass before filing.
 
 ---
 
@@ -65,8 +65,8 @@ ASC submission only touches **metadata + the existing iOS binary**. No code chan
 
 | Field | Value | Limit |
 |-------|-------|-------|
-| **Name** | `Thought Tiles` (14) — fallback `Thought Tiles: Brainstorm` (25) if Apple flags the bare name | 30 chars |
-| **Subtitle** | `Expand ideas with local AI` (26) — alts: `Brainstorm on a hex canvas` (26), `On-device AI brainstorming` (26, privacy-led, from Mistral retry) | 30 chars |
+| **Name** | `Idea Tiles` (10) — fallback `Idea Tiles: Brainstorm` (22) if Apple flags the bare name | 30 chars |
+| **Subtitle** | `Brainstorm with local AI` (24) — alts: `Hex maps with local AI` (22), `On-device AI brainstorming` (26, privacy-led, from Mistral retry) | 30 chars |
 | **Primary category** | Productivity | — |
 | **Secondary category** | Graphics & Design | — |
 | **Content rights** | No third-party content requiring rights | confirm |
@@ -106,7 +106,7 @@ Paste verbatim. Plain text. No emojis. No competitor names. Every claim is prova
 ```
 Turn one idea into a whole canvas.
 
-Thought Tiles is a hexagonal brainstorming app for anyone who thinks in
+Idea Tiles is a hexagonal brainstorming app for anyone who thinks in
 fragments — writers chasing a stuck chapter, designers mapping a flow,
 indie product folks scoping the next feature, students breaking a topic
 into pieces. You start with a single tile. From there, four verbs:
@@ -163,13 +163,13 @@ license. We'd love your feedback at luke@lukesteuber.com.
 
 ## 5. Keywords (100 chars, comma-separated, no spaces)
 
-ASC indexes Name + Subtitle automatically, so this list deliberately avoids: *thought, tiles, expand, ideas, local, ai*.
+ASC indexes Name + Subtitle automatically, so this list deliberately avoids: *idea, tiles, brainstorm, local, ai*. Productivity is implicit via primary category.
 
 ```
-mindmap,brainstorm,hexagon,offline,private,ondevice,productivity,ideation,notes,canvas,diagram,focus
+mindmap,hexagon,offline,private,ondevice,ideation,notes,canvas,diagram,focus,outline,whiteboard,plan
 ```
 
-Length: 100 / 100. Twelve high-intent tokens. Considered and rejected: `apple intelligence` (Apple discourages branded keywords), `mind,map` split (wastes 2 chars vs. `mindmap` while indexing the same root), `writer` / `designer` (too persona-specific for a productivity listing).
+Length: 100 / 100. Thirteen high-intent tokens. Drops `brainstorm` (now auto-indexed via subtitle) and `productivity` (category-implicit) from the prior list; adds `outline`, `whiteboard`, and `plan` — higher-volume tokens that don't collide with Name/Subtitle. Considered and rejected: `apple intelligence` (Apple discourages branded keywords), `mind,map` split (wastes 2 chars vs. `mindmap` while indexing the same root), `writer` / `designer` (too persona-specific for a productivity listing).
 
 ---
 
@@ -252,7 +252,7 @@ Web injects Umami only on `!isCapacitor()` paths (see `client/src/main.tsx`); th
 ## 11. Review notes (paste into ASC)
 
 ```
-Thought Tiles is a hexagonal brainstorming app.
+Idea Tiles is a hexagonal brainstorming app.
 
 AI tile expansion uses Apple's on-device Foundation Models framework
 (iOS 26 or later, Apple Intelligence eligible hardware). There is no

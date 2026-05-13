@@ -4,7 +4,7 @@ Last updated: 2026-05-12
 
 ## Objectives
 
-1. Ship **Thought Tiles** as a stable cross-platform brainstorming tool (web + iOS first, Android next).
+1. Ship **Idea Tiles** as a stable cross-platform brainstorming tool (web + iOS first, Android next).
 2. Preserve user trust with privacy-first AI behavior and transparent platform differences.
 3. Keep launch and maintenance work focused: proof-of-concept MVP defers **native** live collaboration; snapshot sharing + web collab remain the split (see [`docs/RELEASE_SPEC.md`](docs/RELEASE_SPEC.md)).
 
@@ -13,7 +13,7 @@ Last updated: 2026-05-12
 - **Public TestFlight** is live; ongoing work is App Store polish, accurate metadata, and operational hardening—not “getting to TF.”
 - Core app is functional across web and Capacitor shells.
 - Collaboration, session persistence, merge workflows, and export flows are implemented **on web**; iOS ships snapshot share + local sessions for this MVP ([`docs/SHARING_MVP_POLICY.md`](docs/SHARING_MVP_POLICY.md)).
-- Display name **Thought Tiles** is wired through UI, legal pages, and native `appName` / `CFBundleDisplayName`; legacy storage keys remain intentionally unchanged.
+- Display name **Idea Tiles** is wired through UI, legal pages, and native `appName` / `CFBundleDisplayName`; legacy storage keys remain intentionally unchanged.
 
 ## Active Workstreams
 

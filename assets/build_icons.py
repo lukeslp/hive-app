@@ -1,6 +1,6 @@
 """Procedural icon + splash generator.
 
-Draws the Thought Tiles–style mark — a yellow point-up hexagon with a
+Draws the Idea Tiles–style mark — a yellow point-up hexagon with a
 white lightning bolt — on a warm cream background. Output sizes:
 
   AppIcon  : 1024x1024  flat (Apple masks corners + generates downscales)

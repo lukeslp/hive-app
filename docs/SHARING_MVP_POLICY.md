@@ -1,4 +1,4 @@
-# Sharing — MVP policy (Thought Tiles)
+# Sharing — MVP policy (Idea Tiles)
 
 **Single source of detail:** [`RELEASE_SPEC.md`](./RELEASE_SPEC.md) section **1. Sharing MVP policy**.
 

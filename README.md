@@ -1,6 +1,6 @@
-# Thought Tiles
+# Idea Tiles
 
-**Thought Tiles** (*Expand ideas with local AI*) is a hexagonal tile brainstorming app built as a React SPA with an Express backend, plus Capacitor shells for iOS and Android. Hosted domains and bundle identifiers may still use the legacy **hexmind** naming; user-facing copy uses Thought Tiles.
+**Idea Tiles** (*Brainstorm with local AI*) is a hexagonal tile brainstorming app built as a React SPA with an Express backend, plus Capacitor shells for iOS and Android. Hosted domains and bundle identifiers may still use the legacy **hexmind** naming; user-facing copy uses Idea Tiles.
 
 ## What This Project Does
 
@@ -15,7 +15,7 @@
 ## Current Product State (May 2026)
 
 - **TestFlight:** Public beta is live; release packaging is tracked under `docs/` (see below).
-- Brand display name is **Thought Tiles** while legacy storage keys intentionally remain `hexpand_*` for data continuity.
+- Brand display name is **Idea Tiles** while legacy storage keys intentionally remain `hexpand_*` for data continuity.
 - **Sharing MVP:** iOS uses **snapshot** share links only (public `https` origin, not `capacitor://`). **Live collaboration** is **web-only** for this proof-of-concept — see [`docs/SHARING_MVP_POLICY.md`](docs/SHARING_MVP_POLICY.md).
 - iOS behavior is intentionally privacy-first: tile generation on iOS is on-device only (no cloud fallback).
 - Universal Links/AASA and server operations remain in [`NEXT_STEPS.md`](NEXT_STEPS.md).

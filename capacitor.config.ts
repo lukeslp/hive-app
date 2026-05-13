@@ -2,7 +2,7 @@ import type { CapacitorConfig } from '@capacitor/cli';
 
 const config: CapacitorConfig = {
   appId: 'app.hexmind.ios',
-  appName: 'Thought Tiles',
+  appName: 'Idea Tiles',
   webDir: 'dist/public',
   // Production: ship info/warn/error to the native log but suppress the
   // debug-level bridge chatter (`⚡️ To Native ->` plugin call traces and

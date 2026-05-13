@@ -1,5 +1,5 @@
 /**
- * LLM proxy routes for Thought Tiles (web cloud fallback).
+ * LLM proxy routes for Idea Tiles (web cloud fallback).
  *
  * Provides /api/generate, /api/providers, /api/share endpoints.
  * Routes generation requests to the configured provider based on either

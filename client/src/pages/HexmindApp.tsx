@@ -1,4 +1,4 @@
-/** Thought Tiles app shell: wires canvas, modals, AI, collab, and session state. */
+/** Idea Tiles app shell: wires canvas, modals, AI, collab, and session state. */
 
 import { useState, useRef, useEffect, useCallback, useMemo } from "react";
 import { Layout, Loader2 } from "@/lib/icons";

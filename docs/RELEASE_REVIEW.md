@@ -1,4 +1,4 @@
-# Release Review: Thought Tiles (iOS / Capacitor)
+# Release Review: Idea Tiles (iOS / Capacitor)
 
 **Platform**: iOS (Capacitor WebView), web companion  
 **Distribution**: TestFlight (public beta) → App Store  

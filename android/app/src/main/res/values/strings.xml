@@ -1,7 +1,7 @@
 <?xml version='1.0' encoding='utf-8'?>
 <resources>
-    <string name="app_name">Thought Tiles</string>
-    <string name="title_activity_main">Thought Tiles</string>
+    <string name="app_name">Idea Tiles</string>
+    <string name="title_activity_main">Idea Tiles</string>
     <string name="package_name">dev.dreamer.hexpand</string>
     <string name="custom_url_scheme">dev.dreamer.hexpand</string>
 </resources>

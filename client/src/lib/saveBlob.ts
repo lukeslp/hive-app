@@ -5,7 +5,7 @@
  * is a silent no-op in WKWebView — taps appear to do nothing.
  *
  * On iOS the file lands in the app's Documents directory (visible in
- * Files.app under "On My iPhone → Thought Tiles" because Info.plist sets
+ * Files.app under "On My iPhone → Idea Tiles" because Info.plist sets
  * `UIFileSharingEnabled` and `LSSupportsOpeningDocumentsInPlace`).
  * The share sheet is then offered for AirDrop / Mail / Save Image.
  * If the user cancels the sheet, the file is still saved — no error

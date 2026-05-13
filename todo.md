@@ -1,4 +1,6 @@
-# Thought Tiles — migration & rename TODO (historical)
+# Idea Tiles — migration & rename TODO (historical)
+
+> Renamed Thought Tiles → Idea Tiles on 2026-05-13. Body below is kept for the original Hexpand → Hexmind → Thought Tiles history.
 
 > Renamed from "Hexpand" 2026-05-08 — see `RENAME_PLAN.md`. Historical
 > task references to "Hexpand" are intentional (timeline of work).

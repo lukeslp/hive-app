@@ -1,4 +1,4 @@
-# Release Specification: Thought Tiles
+# Release Specification: Idea Tiles
 
 **Version**: 1.0.x (match Xcode `MARKETING_VERSION`)  
 **Last updated**: 2026-05-12  
@@ -86,7 +86,7 @@ Document chosen values in internal release notes (not committed secrets).
 
 **Beta description (short):**
 
-> Thought Tiles is a hexagonal mind map. On supported devices, expansions use Apple Intelligence on-device. Merge tiles, export images, and share a **browser** snapshot link. Real-time “Collaborate” sessions are on the website in this build, not inside the iOS shell.
+> Idea Tiles is a hexagonal mind map. On supported devices, expansions use Apple Intelligence on-device. Merge tiles, export images, and share a **browser** snapshot link. Real-time “Collaborate” sessions are on the website in this build, not inside the iOS shell.
 
 **What to test:**
 
