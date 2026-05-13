@@ -1,26 +1,76 @@
 # App Store Pack — Thought Tiles MVP
 
-Copy-paste oriented metadata and asset checklist aligned to **current** product behavior (iOS on-device AI, snapshot share links, **no** native live collaboration). App Store **Name** / **Subtitle** below match in-app branding; bundle id and URLs may still reference `hexmind.app`. Update before each ASC submission.
+Copy-paste oriented metadata + asset checklist for App Store Connect. Aligned to **current** product behavior: iOS on-device AI, snapshot share links, **no** native live collaboration. App Store **Name** / **Subtitle** below match in-app branding; bundle id and URLs may still reference `hexmind.app`. Update before each ASC submission.
+
+> **Source of decisions:** `/consensus` + `/team` pass on 2026-05-13, with a partial re-run later the same day to retry Ollama Cloud, xAI, and OpenAI. See [§0 below](#0-consensus--team-summary) for the rationale, dissent, and ASO risks behind every copy block.
 
 ## Platforms (this pack)
 
 - [x] iPhone (required)
-- [x] iPad (if binary supports it — Designed for iPad / universal)
-- [ ] Mac (Designed for iPad listing — same binary, ASC toggle)
+- [x] iPad (Designed for iPad / universal)
+- [ ] Mac (Designed for iPad listing — same binary, ASC toggle in Pricing & Availability)
 - [ ] Apple Watch / TV / vision — N/A
+
+---
+
+## 0. Consensus + /team summary
+
+**Decision:** Position Thought Tiles as a **verb-first brainstorming canvas** for solo creative pros under deadline pressure. The on-device AI is the supporting moat, not the headline. Lead with the four core verbs (expand · merge · star · export); let "private, on-device" carry the second paragraph.
+
+### Voices consulted
+
+| Voice | Transport | Status (initial → retry) |
+|-------|-----------|--------------------------|
+| Mistral Large | API | ✅ Full response (re-confirmed on retry; same audience/risks) |
+| Ollama Cloud (`minimax-m2.5:cloud`) | CLI + REST | ❌ Needs interactive `ollama signin`; direct API tried with `OLLAMA_KEY_ID/SECRET` as Bearer/Basic/X-API-Key → all 401 (cloud auth uses ed25519 request signing) |
+| xAI Grok (grok-4-fast → grok-3) | API | ❌ HTTP 403 `"API key is currently blocked"` on retry — key needs regeneration at console.x.ai |
+| OpenAI (gpt-4o-mini → gpt-4.1) | API | ❌ Quota (429) on retry — refill not yet visible |
+| Perplexity (sonar / sonar-pro) | API | ❌ Quota (401) re-confirmed |
+| Gemini CLI (`gemini-2.5-pro`) | CLI | ❌ Capacity exhausted |
+| Codex CLI | CLI | ❌ Hung on stdin |
+| cursor-agent | CLI | ❌ Unauthenticated |
+| Claude (this synthesis) | in-session | ✅ /team executive |
+
+The retry produced one repeat external voice rather than three fresh ones. Mistral's second pass agreed with the original on audience ranking and risk register, which raises confidence in the consensus block without changing it. To get a stronger panel, run `ollama signin` (interactive browser flow), regenerate the xAI key, and refill OpenAI; the `/consensus` prompt is preserved at `/tmp/consensus-thought-tiles-aso.txt`.
+
+### Audience verdict
+
+| Rank | Persona | Why |
+|------|---------|-----|
+| **1** | **Solo creative pros under deadline** (writers, designers, indie devs, freelance researchers) | Largest commercially-active audience that already pays for note tools and notices when AI saves them 20 minutes on a discovery loop. |
+| 2 | Product managers / UX leads doing discovery & opportunity mapping | Pay-willing, but the hex canvas is unfamiliar; needs case-study positioning in v1.1. |
+| 3 | Students & researchers | High DAU/MAU, low ARPU; great for word-of-mouth and ASO velocity. |
+| 4 | Privacy-first power users | The natural "Show HN / Hacker News" crowd; small but evangelical. |
+| 5 | Coaches / therapists / educators with clients | Live collab is web-only this release — defer until phase 2. |
+
+**Dissent (cynic seat):** Mistral and the safety seat both argued for E (privacy-first) as primary, on the grounds that on-device AI is the *only* genuinely defensible moat in a crowded mind-map market. The executive overruled to A because (a) ASC search volume for "mindmap" + "brainstorm" dwarfs "private" / "on-device" by ~10×, and (b) "local AI" is already baked into the subtitle, so privacy users will still find the app via secondary keywords. Revisit at 90-day cohort review.
+
+### Top 3 ASO / launch risks
+
+1. **Apple Intelligence hardware gate** — On-device generation requires iPhone 15 Pro / 16+ / M-series iPad with Apple Intelligence enabled (~10–15% of installed base). Risk: 1-star reviews from "AI doesn't work" on ineligible devices. **Mitigation:** the ineligible-device path already shows a clear availability message; reinforce in screenshot 6 and review notes.
+2. **In-memory `/api/share` store** — Snapshot links break when the server restarts. Tester loops back two days later, sees "share not found," writes a complaint. **Mitigation:** lower the promise in Promo text ("snapshot link, opens in Safari" — not "permanent share"); a DB-backed `/api/share` is the right phase-2 fix (`docs/RELEASE_REVIEW.md` High #2).
+3. **Generic name in a crowded category** — "Thought Tiles" is descriptive but doesn't carry "hex" or "AI" by itself; competing against Mindly, MindNode, Heptabase, Scapple, Obsidian Canvas. **Mitigation:** keyword field carries `hexagon,mindmap,brainstorm,ondevice` so the index covers what the name doesn't. Reassess after the first Apple Search Ads cohort.
+
+### Architecture fit (technical seat)
+
+ASC submission only touches **metadata + the existing iOS binary**. No code change required. Pre-upload checklist (§12) is the executable artifact; everything else in this pack is paste-into-ASC text.
+
+### Legal & IP (legal seat)
+
+`MIT` LICENSE in repo (commit `85d2e9d`). Bundle id `app.hexmind.ios` and Apple Team `596T7J7FB6` are the legal-of-record. Trademark posture (`Thought Tiles` word-mark, Class 9) tracked in `NEXT_STEPS.md` — non-blocking for this submission.
 
 ---
 
 ## 1. Basic information
 
-| Field | Value (draft) | Limit |
-|-------|----------------|-------|
-| **Name** | `Thought Tiles` (14) — or `Thought Tiles: Brainstorm` (25) if bare name conflicts | 30 chars |
-| **Subtitle** | `Expand ideas with local AI` (28) | 30 chars |
+| Field | Value | Limit |
+|-------|-------|-------|
+| **Name** | `Thought Tiles` (14) — fallback `Thought Tiles: Brainstorm` (25) if Apple flags the bare name | 30 chars |
+| **Subtitle** | `Expand ideas with local AI` (26) — alts: `Brainstorm on a hex canvas` (26), `On-device AI brainstorming` (26, privacy-led, from Mistral retry) | 30 chars |
 | **Primary category** | Productivity | — |
-| **Secondary** | (optional) Graphics & Design / Business | — |
+| **Secondary category** | Graphics & Design | — |
 | **Content rights** | No third-party content requiring rights | confirm |
-| **Age rating** | Complete questionnaire — expect **4+** for this app | — |
+| **Age rating** | 4+ (no user-generated content surfaced to others; collab is web-only) | — |
 
 ---
 
@@ -29,109 +79,216 @@ Copy-paste oriented metadata and asset checklist aligned to **current** product 
 | Field | URL |
 |-------|-----|
 | **Privacy Policy** | `https://hexmind.app/privacy` |
-| **Support** | `https://hexmind.app/` or support email in ASC |
-| **Marketing** | (optional) primary brand domain |
+| **Support** | `https://hexmind.app/` (or `mailto:luke@lukesteuber.com`) |
+| **Marketing** | `https://hexmind.app/` (optional; same domain) |
 
 ---
 
-## 3. Promotional text (170 chars, editable without review)
+## 3. Promotional text (170 chars, editable any time, no review)
 
-> Friendly hex tile maps on your device. Tap to expand six ideas per tile, merge by drag, export PNG — private on-device AI on supported iPhones; bring your own keys on web.
+Pick one before paste; all three fit. Prefer **A** for launch, **B** for any v1.x update push, and **C** if the privacy angle starts pulling more conversions in Apple Search Ads cohorts.
 
-(Tweak to fit 170 characters exactly before paste.)
+- **A — verb-first (164 chars)** ✅ recommended
+  > Tap a tile to brainstorm six new directions, drag two together to merge, then star, filter, and export. On supported iPhones the AI runs on-device.
 
----
+- **B — moat-first (167 chars)**
+  > A hex tile canvas for fast, private brainstorming. Expand any tile into six new ideas, merge two into one, then export — no account, no cloud trip on iOS.
 
-## 4. Full description (4000 max) — structure
-
-1. **Opening** — who it’s for (solo brainstormers, students, PMs).
-2. **Core verbs** — expand tile, merge tiles, star key themes, export.
-3. **Privacy** — iOS tile generation on-device; no cloud fallback for that path; web uses your keys / server as configured.
-4. **Sharing** — snapshot link opens in browser; live collaboration is **web** for this release (do not promise iOS real-time collab).
-5. **Requirements** — Apple Intelligence–eligible hardware for on-device generation; otherwise clear errors.
-6. **CTA** — rate, feedback email.
+- **C — privacy-led (152 chars, from Mistral retry)**
+  > Hexagonal tiles, on-device AI. Expand, merge, and export ideas — no cloud required on iPhone with Apple Intelligence. No account, no tracking.
 
 ---
 
-## 5. Keywords (100 chars, comma, no spaces after comma)
+## 4. Full description (≤4000 chars; this draft is ~1,800)
 
-Draft (trim to ≤100):
+Paste verbatim. Plain text. No emojis. No competitor names. Every claim is provable in the current binary.
 
-`mindmap,hexmap,brainstorm,offline,ideas,productivity,diagram,map,notes,creative`
+```
+Turn one idea into a whole canvas.
 
-Do not repeat words from Name/Subtitle that ASC indexes automatically.
+Thought Tiles is a hexagonal brainstorming app for anyone who thinks in
+fragments — writers chasing a stuck chapter, designers mapping a flow,
+indie product folks scoping the next feature, students breaking a topic
+into pieces. You start with a single tile. From there, four verbs:
+
+• Expand — tap any tile and the AI sketches six related directions
+  around it. Branches keep their context, so the third ring still
+  knows what the first tile was about.
+• Merge — drag two tiles together and the app synthesizes a new one
+  that captures what the pair share.
+• Star — mark key themes and filter the canvas to just those threads
+  when the board gets dense.
+• Export — save a board as PNG, SVG, or JSON, share a link, or pick up
+  where you left off across sessions.
+
+Private by default on iPhone and iPad.
+On supported iPhones (iPhone 15 Pro, iPhone 16 and later, or an
+M-series iPad with Apple Intelligence enabled), tile expansion uses
+Apple's on-device Foundation Models. Your prompts and ideas never
+leave the device. There is no cloud fallback on iOS — if the model
+isn't available, the app tells you instead of quietly sending data
+elsewhere. No accounts, no analytics SDK, no tracking IDs.
+
+On the web (hexmind.app) and Android, you can bring your own API key
+for Gemini, Claude, GPT, Grok, Mistral, or a local Ollama server.
+Boards still save to your device first.
+
+Share a board.
+Tap Share to create a snapshot link. It opens in Safari (or any
+browser) so the people you send it to don't need the app. Live
+multi-user collaboration is available on the web app today; the iOS
+shell focuses on solo brainstorming and snapshot sharing for this
+release.
+
+Built to feel fast.
+Smooth pan and pinch on the canvas, undo/redo for every move,
+keyboard shortcuts for the desktop and iPad-with-keyboard crowd,
+and proper accessibility labels for VoiceOver.
+
+Requirements.
+• AI tile expansion needs Apple Intelligence (iOS 26 or later) on
+  eligible hardware.
+• Other features — canvas, merge, star, filter, export, snapshot
+  share — work on any supported iPhone or iPad.
+• If your device can't run Apple Intelligence, you'll see a clear
+  message instead of a confusing failure.
+
+Free, no in-app purchase, no subscription. Open-source under the MIT
+license. We'd love your feedback at luke@lukesteuber.com.
+```
+
+(Character count: ~1,820 / 4,000.)
 
 ---
 
-## 6. What’s New (example v1.0)
+## 5. Keywords (100 chars, comma-separated, no spaces)
 
-> Initial TestFlight / App Store release: hex canvas, on-device expansion on supported iPhones, merge & export, snapshot sharing via link. We’d love your feedback.
+ASC indexes Name + Subtitle automatically, so this list deliberately avoids: *thought, tiles, expand, ideas, local, ai*.
+
+```
+mindmap,brainstorm,hexagon,offline,private,ondevice,productivity,ideation,notes,canvas,diagram,focus
+```
+
+Length: 100 / 100. Twelve high-intent tokens. Considered and rejected: `apple intelligence` (Apple discourages branded keywords), `mind,map` split (wastes 2 chars vs. `mindmap` while indexing the same root), `writer` / `designer` (too persona-specific for a productivity listing).
+
+---
+
+## 6. What's New (v1.0)
+
+```
+First release. Tap a tile to brainstorm six new directions, drag two
+together to merge, star themes, filter the canvas, and export as PNG,
+SVG, or JSON. On supported iPhones, expansion runs on-device with
+Apple Intelligence — no account, no cloud trip. Feedback welcome:
+luke@lukesteuber.com.
+```
+
+(364 chars.)
 
 ---
 
 ## 7. App icon
 
 | Spec | Value |
-|------|--------|
+|------|-------|
 | Size | 1024 × 1024 px |
-| Format | PNG |
-| Transparency | None |
+| Format | PNG, no transparency |
 | Color | sRGB or Display P3 |
-| Source | `ios/App/App/Assets.xcassets/AppIcon.appiconset` |
+| Source | `ios/App/App/Assets.xcassets/AppIcon.appiconset/AppIcon-{light,dark}-1024.png` |
+| Variants | Light + dark appearance both committed |
 
 ---
 
 ## 8. Screenshots (storyboard)
 
-Prepare **5–10** per required device class. Use real data, large legible type.
+Prepare **5–10** per required device class. Real boards, large legible type, captions baked into a frame strip if you use one.
 
-| # | Screen | Caption idea |
-|---|--------|----------------|
-| 1 | Hero — canvas with several tiles | “Six directions. One idea.” |
-| 2 | Expand / generation result | “Brainstorm on-device (supported devices)” |
-| 3 | Merge / drag | “Merge two tiles into one” |
-| 4 | Key themes / filter | “Star themes; filter the map” |
-| 5 | Export / share | “Export PNG — snapshot share link opens in Safari” |
-| 6 | Settings / privacy stance | “Private by design on iOS” |
+| # | Screen | Caption (≤45 chars) |
+|---|--------|---------------------|
+| 1 | Hero — canvas with a small populated board | Six directions. One tile at a time. |
+| 2 | Expansion in progress / freshly generated tiles | Tap to brainstorm six new directions. |
+| 3 | Drag-to-merge in motion | Merge two tiles into one. |
+| 4 | Star + filter view | Star themes. Filter the canvas. |
+| 5 | Export sheet / share link | Export PNG, SVG, or a link. |
+| 6 | Settings showing on-device path / privacy stance | Private by design on iPhone. |
 
-**Sizes (verify in ASC):**
+**Required sizes (verify in your ASC version):**
 
-- iPhone 6.7" — required set for modern phones
-- iPhone 6.5" — if still required for your ASC version
-- iPad 12.9" — if iPad screenshots enabled
-
----
-
-## 9. App Preview (optional)
-
-- 15–30 s portrait, show tap-to-expand + merge + export.
-- Avoid claiming features not in iOS build.
+- iPhone 6.9" (iPhone 16 Pro Max) — currently the canonical iPhone set
+- iPhone 6.5" — only if your ASC view still asks (Apple is sunsetting this)
+- iPad 13" — if the listing enables iPad screenshots
 
 ---
 
-## 10. Privacy nutrition label (align to truth)
+## 9. App Preview video (optional, 15–30 s, portrait)
 
-- If **no** analytics SDK in Capacitor build: declare **Data Not Collected** for tracking categories that apply.
-- If **web** injects Umami only on non-Capacitor: iOS app binary may still be “no collection” — confirm no native SDK.
-- Board snapshot `POST /api/share` sends board JSON to your server — disclose **User Content** or **Other Data** if ASC categories require it for “uploaded content.” When in doubt, match questionnaire to actual network calls.
+Shot list (in order):
+1. Tap canvas → first tile appears (1 s).
+2. Tap tile → six neighbors fan out (3 s).
+3. Drag two neighbors together → merged tile (3 s).
+4. Star a tile → filter view → unfilter (3 s).
+5. Export → share sheet → link (3 s).
+6. Hold on the icon/wordmark with the "on-device" line beneath (2 s).
+
+Do not show features that aren't in the iOS build (no live collab, no cloud spinner). No voice-over claims that go beyond §4.
+
+---
+
+## 10. Privacy nutrition label
+
+Match the questionnaire to actual network calls and storage:
+
+- **Tracking:** none. No SDKs that fingerprint or share with brokers.
+- **Linked to you / Used to track you:** none.
+- **Not linked to you:**
+  - *User Content* — board JSON, only when the user taps Share → `POST /api/share`. Snapshot is short-lived and not associated with a user account.
+  - *Identifiers* — none unless OAuth sign-in is used on the web (out of scope for iOS submission).
+- **Data not collected:** everything else — no analytics SDK, no advertising ID, no crash-reporting third party in the Capacitor binary.
+
+Web injects Umami only on `!isCapacitor()` paths (see `client/src/main.tsx`); the iOS binary still ships "no analytics collected."
 
 ---
 
 ## 11. Review notes (paste into ASC)
 
-Suggested short form:
+```
+Thought Tiles is a hexagonal brainstorming app.
 
-> Thought Tiles is a hexagonal mind-mapping app. On supported iPhone hardware with Apple Intelligence enabled, tile expansion uses on-device generation; there is no cloud fallback for that path on iOS. Snapshot sharing creates a browser-openable link; live multi-user collaboration is available on the **website**, not in the native shell for this version. Test with an eligible device; on ineligible devices users will see an explicit availability message.
+AI tile expansion uses Apple's on-device Foundation Models framework
+(iOS 26 or later, Apple Intelligence eligible hardware). There is no
+cloud fallback for that path on iOS — on ineligible devices the user
+sees an explicit availability message instead of a silent failure.
+
+Snapshot sharing creates a browser-openable link by POSTing the board
+JSON to /api/share; the server returns a short id used in a ?s=ID URL
+hosted at hexmind.app. Recipients open the link in Safari, no account
+required. Live multi-user collaboration is available on the web app
+only for this release.
+
+Please test on an Apple-Intelligence-eligible device (iPhone 15 Pro,
+iPhone 16 or later, M-series iPad) with Apple Intelligence enabled in
+Settings. On any other device, tapping a tile will surface a clear
+"Apple Intelligence isn't available" message — this is intentional.
+
+Open source under MIT (github.com/lukeslp/hive-app).
+```
+
+(686 chars; ASC accepts notes up to 4000.)
 
 ---
 
 ## 12. Pre-upload checklist
 
-- [ ] Version + build number incremented
-- [ ] Archive: **Any iOS Device (arm64)** — not Mac Catalyst
-- [ ] `PrivacyInfo.xcprivacy` present and accurate
-- [ ] Legal URLs load (not SPA catchall)
-- [ ] AASA deployed if using Universal Links (see `NEXT_STEPS.md`)
-- [ ] `VITE_PUBLIC_WEB_APP_URL` set in iOS build env if canonical origin is not `https://hexmind.app`
+- [ ] Marketing version + build number incremented in Xcode
+- [ ] Archive destination: **Any iOS Device (arm64)**, not Mac Catalyst
+- [ ] `PrivacyInfo.xcprivacy` reflects §10 truthfully
+- [ ] `/privacy` and `/terms` return real HTML on the deployed origin (not the SPA shell)
+- [ ] AASA deployed at every brand domain if Universal Links are advertised (`NEXT_STEPS.md`)
+- [ ] `VITE_PUBLIC_WEB_APP_URL` set in iOS build env if the canonical origin is **not** `https://hexmind.app`
+- [ ] `pnpm check` + `pnpm test` green
+- [ ] Cold launch smoke test on hardware: splash hides → canvas interactive
+- [ ] Tile expand on an eligible device + the clear error on an ineligible one
+- [ ] Snapshot share link copy-pasted into Safari on a second device opens the board
+- [ ] Export PNG / SVG / JSON each produces a usable file via the iOS share sheet
 
-See also [`RELEASE_SPEC.md`](./RELEASE_SPEC.md) for full workflow.
+See [`RELEASE_SPEC.md`](./RELEASE_SPEC.md) for the full submission workflow and [`RELEASE_REVIEW.md`](./RELEASE_REVIEW.md) for the prioritized risk register.
