@@ -13,6 +13,7 @@ import { Button } from "@/components/ui/button";
 import { Users, Copy, LogOut, Check, Link, Share2, AlertCircle } from "@/lib/icons";
 import type { CollabParticipant } from "@/hooks/useCollaboration";
 import { haptics } from "@/lib/haptics";
+import { APP_DISPLAY_NAME } from "@shared/appBrand";
 
 interface CollabModalProps {
   isOpen: boolean;
@@ -121,7 +122,7 @@ export const CollabModal = ({
     if (navigator.share) {
       try {
         await navigator.share({
-          title: "Join my Hexmind board",
+          title: `Join my ${APP_DISPLAY_NAME} board`,
           text: "Collaborate on this brainstorm with me!",
           url: link,
         });

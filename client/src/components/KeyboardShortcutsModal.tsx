@@ -13,6 +13,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Keyboard } from "lucide-react";
+import { APP_DISPLAY_NAME } from "@shared/appBrand";
 
 interface KeyboardShortcutsModalProps {
   isOpen: boolean;
@@ -108,7 +109,7 @@ export function KeyboardShortcutsModal({
             </DialogTitle>
           </div>
           <DialogDescription className="text-muted-foreground">
-            Hexmind can be fully controlled via keyboard for accessibility
+            {APP_DISPLAY_NAME} can be fully controlled via keyboard for accessibility
           </DialogDescription>
         </DialogHeader>
 

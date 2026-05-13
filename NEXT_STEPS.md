@@ -1,4 +1,31 @@
-# Next steps — Hexmind
+# Next steps — Thought Tiles
+
+_Product name **Thought Tiles**; bundle id `app.hexmind.ios` and domains such as `hexmind.app` are unchanged for this release._
+
+## 2026-05-12 — MVP release alignment (docs + sharing)
+
+- **Release docs** (canonical): [`docs/RELEASE_SPEC.md`](docs/RELEASE_SPEC.md), [`docs/RELEASE_REVIEW.md`](docs/RELEASE_REVIEW.md), [`docs/APP_STORE_PACK.md`](docs/APP_STORE_PACK.md), [`docs/SHARING_MVP_POLICY.md`](docs/SHARING_MVP_POLICY.md).
+- **Sharing policy:** iOS = snapshot `?s=` links only (public https origin via `getPublicWebAppOrigin()` / optional `VITE_PUBLIC_WEB_APP_URL`). Live **Collaborate** remains **web-only** this release (`HexmindApp.tsx` gates toolbar + modal).
+- **Code:** `useSessionManagement.generateShareUrl` no longer uses `capacitor://` for shared links; `ShareModal` copy matches server-backed snapshots.
+
+Public TestFlight is already live — treat remaining items as **App Store submission** and **accuracy** (metadata, privacy questionnaire, AASA if using Universal Links), not “ship TF for the first time.”
+
+## 2026-05-12 doc sync + `/team` cleanup
+
+- Added `README.md` to provide an up-to-date project overview, architecture map, and run commands.
+- Added `PROJECT_PLAN.md` as the canonical priorities/workstreams snapshot.
+- Clarified council usage so `/team` is reserved for strategic decisions rather than routine implementation.
+- Planning docs are now split by purpose:
+  - `PROJECT_PLAN.md` = strategy and priorities
+  - `NEXT_STEPS.md` = immediate operational checklist
+  - `todo.md` = historical implementation log
+
+### `/team` usage rule of thumb
+
+- Use `/team --full` only for major go/no-go or positioning decisions.
+- Use `/team:technical` for architecture and rollout-risk checks.
+- Use `/team:research` when you need facts only.
+- Avoid council runs for small code changes where direct implementation + verification is faster and clearer.
 
 > Pickup point as of 2026-05-10 EOD. Today's session landed `prewarm`,
 > the WKWebView bounce fix, the AASA smoke-test script, the one-shot
@@ -47,14 +74,14 @@
 2. **Server redeploy** — command in the "Right now" section below.
    After redeploy, run `./scripts/check-aasa.sh` (expect 6/6 ✓) and
    `curl -s https://hexmind.app/privacy | head -5` (expect HTML
-   starting `<!doctype html>` with title "Hexmind — Privacy Policy",
+   starting `<!doctype html>` with title "Thought Tiles — Privacy Policy",
    NOT the SPA).
 3. **Hardware run** — plug iPhone in, Cmd-R. Watch console for
    `prewarm` path. Tap a tile — first-tap cold-start should be 1-2s
    (kill criterion: >5s).
 4. **Test exports on hardware** — tap Export PNG → iOS share sheet
    appears → AirDrop to another device → file arrives. Also: open
-   Files.app → "On My iPhone → Hexmind" → exported PNG present at
+   Files.app → "On My iPhone → Thought Tiles" → exported PNG present at
    2000×2000.
 5. **App Store Connect — App Information** (one-time):
    - Privacy Policy URL: `https://hexmind.app/privacy`
@@ -76,7 +103,7 @@
      public link.
 10. **Beta App Description** in TestFlight tab — required for
     external testing. Suggested copy:
-    > Hexmind is a hexagonal mind-mapping tool with on-device AI
+    > Thought Tiles is a hexagonal mind-mapping tool with on-device AI
     > brainstorming via Apple Intelligence. Tap any hex to generate
     > six related ideas; long-press and drag to merge two into one.
     > Boards save locally — no account required.
@@ -160,7 +187,7 @@ In Xcode (project should already be loaded):
 4. **Distribute App** (NOT "Export") → App Store Connect → Upload →
    accept defaults → Automatically manage signing → Upload
 5. Wait 5-30 min for TestFlight processing
-6. App Store Connect → My Apps → Hexmind → **TestFlight** tab → add
+6. App Store Connect → My Apps → Thought Tiles → **TestFlight** tab → add
    internal testers (yourself first)
 7. Install via TestFlight app on real iPhone
 
@@ -173,20 +200,20 @@ changes.
 
 ## Then — flip Mac availability in App Store Connect (~1 min)
 
-App Store Connect → My Apps → Hexmind → **Pricing and Availability**
+App Store Connect → My Apps → Thought Tiles → **Pricing and Availability**
 → tick **"Make this app available on Mac"**. Same iPad binary lists as
 a Mac app for Apple Silicon Macs. Zero rebuild, zero code change.
 
 ## Then — App Store name + subtitle confirmation
 
-Locked in (or to lock in) at App Store Connect → My Apps → Hexmind →
+Locked in (or to lock in) at App Store Connect → My Apps → Thought Tiles →
 **App Information**:
 
-- **Name** (30 chars): `Hexmind: Mind Maps Offline` (25) — or
-  `Hexmind — Brainstorm Maps` (24) if the longer string was rejected
-  for the same Apple-name-uniqueness reason "Hexmind" alone was. Apple
+- **Name** (30 chars): `Thought Tiles` (14) — or
+  `Thought Tiles: Brainstorm` (25) if Apple rejects the bare name.
+  Apple
   enforces uniqueness on the full Name string, not the brand root.
-- **Subtitle** (30 chars): `Private hex maps, on-device` (27)
+- **Subtitle** (30 chars): `Expand ideas with local AI` (28)
 - **Primary Category**: Productivity
 - **Privacy Policy URL**: `hexmind.app/privacy` (the route should
   redirect to your existing privacy.md / privacy.html)
@@ -214,6 +241,8 @@ After TestFlight install:
   with a healthy prompt)
 
 ## Then — Class 9 trademark filing this week (~1h, $250)
+
+Ship name is now **Thought Tiles**; adjust TEAS wording and specimens accordingly. The collision notes below still apply to the **hexmind.com** game studio and any legacy “Hexmind” App Store Connect reservations, not the Thought Tiles string.
 
 Hexmind Games (the video game studio at hexmind.com, English/Français
 site) is the senior user of "Hexmind" in Class 41 (entertainment
@@ -287,7 +316,7 @@ Per scout's HN data: drop "Apple Intelligence" from the headline.
 Top-ranked Foundation Models Show HN posts use "on-device" + "private"
 as the load-bearing phrases.
 
-Hook: **"Show HN: Hexmind — offline hex mind-maps, no servers, no
+Hook: **"Show HN: Thought Tiles — offline hex mind-maps, no servers, no
 accounts"**
 
 Body leads with the two core verbs (expand a tile, merge two tiles),
@@ -308,7 +337,7 @@ timeout pattern from `FoundationModelsPlugin.swift` and
 
 Send a one-paragraph email via hexmind.com contact form. Frame:
 "Heads-up, shipping a productivity app under the same word-mark in
-Class 9; always shipping as 'Hexmind: Mind Maps' to disambiguate.
+Class 9; always shipping as **Thought Tiles** to disambiguate.
 Happy to coordinate." Pre-empts a future weak cease-and-desist.
 Optional but cheap goodwill.
 
@@ -339,7 +368,7 @@ git push origin --delete feat/round-0-1-ports
 When submitting after TestFlight, paste this in the Review Notes
 field:
 
-> Hexmind is a hexagonal mind-mapping tool. The core canvas, gesture
+> Thought Tiles is a hexagonal mind-mapping tool. The core canvas, gesture
 > handling, native settings, share extension, and on-device LLM
 > integration are implemented natively in Swift / Capacitor. Apple
 > Foundation Models handles brainstorm generation on supported
@@ -390,6 +419,6 @@ Other two are now locked:
 A separate session is reconciling the **whatcolor** repo's
 server↔local divergence (34 server commits + 12 local commits +
 unresolved Contents.json merge conflicts). That work is independent
-of Hexmind and lives in `~/.claude/plans/yeah-let-s-doublecheck-…md`.
+of Thought Tiles and lives in `~/.claude/plans/yeah-let-s-doublecheck-…md`.
 Mentioned only so context doesn't bleed if both sessions touch
 shared concepts (LICENSE, AppIcon, Bridge City Lab LLC entity).

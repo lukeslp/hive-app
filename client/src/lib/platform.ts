@@ -45,6 +45,28 @@ function trimTrailingSlashes(value: string): string {
   return value.replace(/\/+$/, "");
 }
 
+/**
+ * Origin for **browser-openable** links (e.g. `?s=` snapshot shares).
+ * In the Capacitor shell `window.location.origin` is `capacitor://localhost`,
+ * which recipients cannot open — use an env override or the canonical web app.
+ *
+ * Set `VITE_PUBLIC_WEB_APP_URL` at build time (e.g. `https://hexmind.app`) for
+ * branded domains; defaults to `https://hexmind.app` on native when unset.
+ */
+export function getPublicWebAppOrigin(): string {
+  const fromEnv =
+    typeof import.meta.env.VITE_PUBLIC_WEB_APP_URL === "string"
+      ? import.meta.env.VITE_PUBLIC_WEB_APP_URL.trim()
+      : "";
+  if (fromEnv) return trimTrailingSlashes(fromEnv);
+
+  if (typeof window !== "undefined" && !isCapacitor()) {
+    return trimTrailingSlashes(`${window.location.protocol}//${window.location.host}`);
+  }
+
+  return "https://hexmind.app";
+}
+
 function getConfiguredNativeApiBaseUrl(): string | null {
   const configured =
     import.meta.env.VITE_CAPACITOR_API_BASE_URL ||

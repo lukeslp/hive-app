@@ -14,11 +14,12 @@ import { useState, useEffect, useCallback, useRef } from "react";
 import { toast } from "sonner";
 import { trpc } from "@/lib/trpc";
 import { buildApiUrl } from "@/lib/api";
-import { isCapacitor } from "@/lib/platform";
+import { getPublicWebAppOrigin, isCapacitor } from "@/lib/platform";
 import { STORAGE_KEY, AUTOSAVE_KEY } from "@/lib/hexConstants";
 import { generateThumbnail } from "@/lib/canvasSnapshot";
 import { saveBlob } from "@/lib/saveBlob";
 import type { HexNode, ViewState } from "@/types/hivemind";
+import { APP_DISPLAY_NAME, APP_EXPORT_FILE_PREFIX } from "@shared/appBrand";
 
 interface SavedSession {
   id: string | number;
@@ -390,8 +391,8 @@ export function useSessionManagement({
       type: "application/json",
     });
     try {
-      await saveBlob(blob, `hexmind_${Date.now()}.json`, {
-        dialogTitle: "Share Hexmind session",
+      await saveBlob(blob, `${APP_EXPORT_FILE_PREFIX}_${Date.now()}.json`, {
+        dialogTitle: `Share ${APP_DISPLAY_NAME} session`,
       });
     } catch (err) {
       toast.error(
@@ -432,7 +433,8 @@ export function useSessionManagement({
       });
       if (!res.ok) throw new Error("Failed to save");
       const { id } = await res.json();
-      const url = `${window.location.origin}${window.location.pathname}?s=${id}`;
+      const path = window.location.pathname || "/";
+      const url = `${getPublicWebAppOrigin()}${path}?s=${id}`;
       setShareUrl(url);
       setShowShareModal(true);
     } catch {

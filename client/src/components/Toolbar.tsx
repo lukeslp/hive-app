@@ -28,6 +28,7 @@ import {
   Users,
 } from "@/lib/icons";
 import { NODE_TYPES } from "@/lib/nodeTypes";
+import { APP_DISPLAY_NAME, APP_TAGLINE } from "@shared/appBrand";
 
 interface ToolbarProps {
   nodeCount: number;
@@ -116,7 +117,12 @@ export const Toolbar = ({
         {/* Logo */}
         <div className="flex items-center gap-1.5 sm:gap-2 flex-shrink-0">
           <Zap className="w-4 h-4 sm:w-5 sm:h-5 text-yellow-400 fill-yellow-400" />
-          <span className="font-bold hidden sm:inline text-sm">Hexmind</span>
+        <div className="flex flex-col justify-center min-w-0 hidden sm:flex leading-tight">
+          <span className="font-bold text-sm truncate">{APP_DISPLAY_NAME}</span>
+          <span className="text-[10px] text-muted-foreground font-medium truncate hidden md:block">
+            {APP_TAGLINE}
+          </span>
+        </div>
         </div>
         <div className="h-5 sm:h-6 w-px bg-accent flex-shrink-0" />
 

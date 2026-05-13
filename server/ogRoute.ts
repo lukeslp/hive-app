@@ -10,6 +10,11 @@
  */
 
 import { Router } from "express";
+import {
+  APP_DISPLAY_NAME,
+  APP_OG_DESCRIPTION,
+  APP_OG_TITLE,
+} from "@shared/appBrand";
 import { getSession } from "./db";
 
 const SOCIAL_CRAWLERS = [
@@ -57,18 +62,18 @@ export function createOGRouter(): Router {
 <html>
 <head>
   <meta charset="UTF-8" />
-  <title>Hexmind — Hexagonal Brainstorming</title>
+  <title>${APP_OG_TITLE}</title>
   <meta property="og:type" content="website" />
-  <meta property="og:title" content="Hexmind — Hexagonal Brainstorming" />
-  <meta property="og:description" content="Explore ideas on an infinite hex grid. Expand, merge, and discover connections between thoughts with LLM-assisted brainstorming." />
+  <meta property="og:title" content="${APP_OG_TITLE}" />
+  <meta property="og:description" content="${APP_OG_DESCRIPTION}" />
   <meta property="og:url" content="${req.protocol}://${req.get("host")}/" />
   <meta name="twitter:card" content="summary_large_image" />
-  <meta name="twitter:title" content="Hexmind — Hexagonal Brainstorming" />
-  <meta name="twitter:description" content="Explore ideas on an infinite hex grid." />
+  <meta name="twitter:title" content="${APP_OG_TITLE}" />
+  <meta name="twitter:description" content="${APP_OG_DESCRIPTION}" />
 </head>
 <body>
-  <h1>Hexmind</h1>
-  <p>Hexagonal brainstorming — explore ideas on an infinite hex grid.</p>
+  <h1>${APP_DISPLAY_NAME}</h1>
+  <p>${APP_OG_DESCRIPTION}</p>
 </body>
 </html>`;
 

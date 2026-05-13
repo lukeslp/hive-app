@@ -22,6 +22,7 @@ import {
 } from "@/lib/icons";
 import type { Provider, ApiKeys, ServerProviderInfo, ProviderConfig } from "@/hooks/useProviderSettings";
 import { isIos } from "@/lib/platform";
+import { APP_DISPLAY_NAME } from "@shared/appBrand";
 
 export interface SettingsModalProps {
   isOpen: boolean;
@@ -108,7 +109,7 @@ export const SettingsModal = ({
         <DialogHeader>
           <DialogTitle className="text-foreground">Settings</DialogTitle>
           <DialogDescription className="text-muted-foreground">
-            Customize your Hexmind experience
+            Customize your {APP_DISPLAY_NAME} experience
           </DialogDescription>
         </DialogHeader>
 
@@ -358,7 +359,7 @@ export const SettingsModal = ({
                     <div className="flex items-start gap-2 text-xs text-muted-foreground">
                       <Shield className="w-3.5 h-3.5 mt-0.5 flex-shrink-0" />
                       <span>
-                        Keys are stored locally in your browser and sent only to the Hexmind server
+                        Keys are stored locally in your browser and sent only to the {APP_DISPLAY_NAME} server
                         for proxying. They are never logged or shared with third parties.
                       </span>
                     </div>

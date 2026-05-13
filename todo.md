@@ -1,4 +1,4 @@
-# Hexmind Migration TODO
+# Thought Tiles — migration & rename TODO (historical)
 
 > Renamed from "Hexpand" 2026-05-08 — see `RENAME_PLAN.md`. Historical
 > task references to "Hexpand" are intentional (timeline of work).

@@ -8,6 +8,7 @@
 import type { HexNode, ViewState } from "@/types/hivemind";
 import { hexToPixel } from "@/lib/hexGrid";
 import { HEX_SIZE, CLUSTER_COLORS } from "@/lib/hexConstants";
+import { APP_DISPLAY_NAME } from "@shared/appBrand";
 
 const THUMB_WIDTH = 600;
 const THUMB_HEIGHT = 400;
@@ -304,7 +305,7 @@ export function generateOGImage(
         ctx.fillStyle = "#818cf8";
         ctx.font = "18px sans-serif";
         ctx.textAlign = "right";
-        ctx.fillText("Hexmind", OG_WIDTH - 40, OG_HEIGHT - 40);
+        ctx.fillText(APP_DISPLAY_NAME, OG_WIDTH - 40, OG_HEIGHT - 40);
       }
 
       resolve(canvas.toDataURL("image/png", 0.9));

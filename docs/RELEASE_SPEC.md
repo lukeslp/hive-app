@@ -1,0 +1,135 @@
+# Release Specification: Thought Tiles
+
+**Version**: 1.0.x (match Xcode `MARKETING_VERSION`)  
+**Last updated**: 2026-05-12  
+**Platform**: iOS 26+ (Capacitor), web companion  
+**Related docs**: [`RELEASE_REVIEW.md`](./RELEASE_REVIEW.md), [`APP_STORE_PACK.md`](./APP_STORE_PACK.md)
+
+---
+
+## 0. Quick start checklist
+
+### Before archive
+
+- [ ] `pnpm check` and `pnpm test` green
+- [ ] Cold launch: splash hides, canvas interactive
+- [ ] Tile expand on **eligible** hardware; clear error on ineligible
+- [ ] Share link from iOS: opens in Safari as **https** public URL (not `capacitor://`)
+- [ ] Export PNG/SVG/JSON on device
+- [ ] Privacy + Terms URLs return real HTML (`/privacy`, `/terms`)
+
+### App Store Connect
+
+- [ ] Metadata from [`APP_STORE_PACK.md`](./APP_STORE_PACK.md) pasted and character-limited verified
+- [ ] Screenshots uploaded per required device classes
+- [ ] Privacy questionnaire matches **actual** collection (including `/api/share` payload if disclosed)
+- [ ] Review notes describe Apple Intelligence requirement + snapshot vs live collab scope
+
+### After upload
+
+- [ ] Processing completes; internal TestFlight install smoke test
+- [ ] External testing text matches “What to Test”
+
+---
+
+## 1. Sharing MVP policy (product / engineering)
+
+**Locked for this proof-of-concept release:**
+
+| Capability | Web | iOS (Capacitor) |
+|------------|-----|-----------------|
+| **Snapshot share** (`?s=` via `POST /api/share`) | Yes | **Yes** — link must use public web origin (`getPublicWebAppOrigin()` / `VITE_PUBLIC_WEB_APP_URL`) |
+| **Live collaboration** (WebSocket `/ws/collab`, `?collab=`) | Yes | **No** — UI entry hidden; not MVP for native |
+
+**Rationale:** Live collab requires a production-safe WebSocket URL strategy and full UX parity; partial implementation would confuse testers and reviewers.
+
+**Phase 2 (non-MVP) prerequisites for iOS live collab:**
+
+1. WebSocket URL must not rely on `window.location.host` alone in native (use API host + `wss` path aligned with deployment).
+2. Reconnection, backgrounding, and host migration rules documented.
+3. Invite links must open app via Universal Link or custom scheme with tested routing.
+4. Optional: persist rooms or auth for abuse control.
+
+---
+
+## 2. Versioning and build
+
+- **Marketing version**: semantic `MAJOR.MINOR.PATCH` in Xcode.
+- **Build** (`CURRENT_PROJECT_VERSION`): increment every upload.
+- **Archive destination**: **Any iOS Device (arm64)** — not Mac Catalyst (see `CLAUDE.md` / Capacitor framework slices).
+
+---
+
+## 3. Environment / build-time config
+
+| Variable | Purpose |
+|----------|---------|
+| `VITE_CAPACITOR_API_BASE_URL` | Hosted API root for native HTTP (e.g. `https://dr.eamer.dev/hexpand/api`) |
+| `VITE_PUBLIC_WEB_APP_URL` | Origin for share links on native (default `https://hexmind.app` if unset) |
+
+Document chosen values in internal release notes (not committed secrets).
+
+---
+
+## 4. Submission workflow (Xcode → ASC)
+
+1. **Product → Archive** from release configuration.
+2. **Organizer → Validate App** — fix validation errors.
+3. **Distribute → App Store Connect → Upload**.
+4. Wait for processing (typically 5–30 minutes).
+5. In ASC → **TestFlight**: select build, add groups, fill **What to Test** / **Beta App Description**.
+6. For App Store: **App Store** tab → version → attach build → complete compliance → **Submit for Review**.
+
+---
+
+## 5. TestFlight copy (suggested)
+
+**Beta description (short):**
+
+> Thought Tiles is a hexagonal mind map. On supported devices, expansions use Apple Intelligence on-device. Merge tiles, export images, and share a **browser** snapshot link. Real-time “Collaborate” sessions are on the website in this build, not inside the iOS shell.
+
+**What to test:**
+
+> • Create a board, tap to expand  
+> • Merge two tiles  
+> • Share link — open in Safari (should be https, not capacitor)  
+> • Export PNG  
+> • Optional: open same snapshot on desktop web
+
+---
+
+## 6. Common rejection / confusion mitigations
+
+| Risk | Mitigation |
+|------|------------|
+| Apple Intelligence unavailable | Review notes + in-app error string; do not crash |
+| Metadata claims “real-time collab” on iOS | Remove; ASC copy matches §1 |
+| Privacy label vs `/api/share` | Disclose content upload if questionnaire asks |
+| Broken legal URLs | Ensure Express routes precede SPA catchall |
+
+---
+
+## 7. Post-launch (first 2 weeks)
+
+- Monitor **Crashes** in Xcode Organizer.
+- Respond to **TestFlight feedback** and ASC reviews within 48h.
+- Track share-ID 404 rate — if high, prioritize persisted share storage.
+
+---
+
+## 8. Document map
+
+| File | Role |
+|------|------|
+| [`RELEASE_REVIEW.md`](./RELEASE_REVIEW.md) | Prioritized risks and mitigations |
+| [`APP_STORE_PACK.md`](./APP_STORE_PACK.md) | ASC copy + asset checklist |
+| [`NEXT_STEPS.md`](../NEXT_STEPS.md) | Operational deploy / AASA / hardware steps |
+| [`PROJECT_PLAN.md`](../PROJECT_PLAN.md) | Strategy and workstreams |
+
+---
+
+## Document history
+
+| Version | Date | Notes |
+|---------|------|--------|
+| 1.0 | 2026-05-12 | Initial MVP release spec + sharing policy |

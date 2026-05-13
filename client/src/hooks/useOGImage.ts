@@ -6,6 +6,7 @@
  */
 
 import { useEffect } from "react";
+import { APP_DISPLAY_NAME } from "@shared/appBrand";
 
 export function useOGImage(thumbnailUrl: string | null | undefined, sessionName?: string) {
   useEffect(() => {
@@ -23,7 +24,7 @@ export function useOGImage(thumbnailUrl: string | null | undefined, sessionName?
       const ogTitle = document.querySelector('meta[property="og:title"]') as HTMLMetaElement | null;
       const twitterTitle = document.querySelector('meta[name="twitter:title"]') as HTMLMetaElement | null;
 
-      const title = `${sessionName} — Hexmind`;
+      const title = `${sessionName} — ${APP_DISPLAY_NAME}`;
       if (ogTitle) ogTitle.content = title;
       if (twitterTitle) twitterTitle.content = title;
     }

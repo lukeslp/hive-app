@@ -27,7 +27,9 @@ export const ShareModal = ({
     <Modal isOpen={isOpen} onClose={onClose} title="Share Brainstorm">
       <div className="space-y-4">
         <p className="text-sm text-muted-foreground">
-          Share this link with others to let them view and continue your brainstorm:
+          Share this link so others can open the same brainstorm in a browser (snapshot).
+          They can explore and expand from there on web; iOS stays on-device for new
+          generation in the app.
         </p>
         <div className="flex gap-2">
           <Input
@@ -55,15 +57,16 @@ export const ShareModal = ({
         </div>
         <div className="text-xs text-muted-foreground space-y-2">
           <p className="flex items-center gap-2">
-            <Lightbulb className="w-3.5 h-3.5 flex-shrink-0" /> The link contains your entire
-            brainstorm encoded in the URL
+            <Lightbulb className="w-3.5 h-3.5 flex-shrink-0" /> A short id in the URL loads your
+            board from the server (best-effort; links may expire after a restart or deploy).
           </p>
           <p className="flex items-center gap-2">
-            <Eye className="w-3.5 h-3.5 flex-shrink-0" /> No server storage - everything is
-            client-side
+            <Eye className="w-3.5 h-3.5 flex-shrink-0" /> Live multi-user editing from the iOS app
+            is not part of this release — use the web app for &quot;Collaborate&quot; sessions.
           </p>
           <p className="flex items-center gap-2">
-            <Zap className="w-3.5 h-3.5 flex-shrink-0" /> Recipients can view and expand your ideas
+            <Zap className="w-3.5 h-3.5 flex-shrink-0" /> Recipients with the link can open the
+            snapshot and continue in the browser where cloud generation is available.
           </p>
         </div>
       </div>

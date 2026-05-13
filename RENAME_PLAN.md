@@ -1,5 +1,7 @@
 # Hexpand → Hexmind rename plan
 
+> **2026-05-12:** The **user-facing** product name is now **Thought Tiles** (*Expand ideas with local AI*). Bundle id `app.hexmind.ios`, Universal Link domains (`hexmind.app`, etc.), and `hexpand_*` storage keys stay as-is for continuity. The body below records the earlier **Hexmind** working-title rename from Hexpand and is kept for history.
+
 Decided 2026-05-08 after a council pass with corrected facts. This plan
 supersedes the prior NEXT_STEPS sequencing — block all App Store Connect
 work until this rename completes; the cost asymmetry is roughly 5h now

@@ -1,4 +1,4 @@
-/** Hexmind app shell: wires canvas, modals, AI, collab, and session state. */
+/** Thought Tiles app shell: wires canvas, modals, AI, collab, and session state. */
 
 import { useState, useRef, useEffect, useCallback, useMemo } from "react";
 import { Layout, Loader2 } from "@/lib/icons";
@@ -55,6 +55,10 @@ import {
 } from "@/lib/branchPrompt";
 import type { HexNode, ViewState, ConfirmModalState } from "@/types/hivemind";
 import { getNodeKey } from "@/types/hexmind";
+import {
+  APP_DISPLAY_NAME,
+  APP_EXPORT_FILE_PREFIX,
+} from "@shared/appBrand";
 import {
   HEX_SIZE,
   HEX_WIDTH,
@@ -1323,8 +1327,8 @@ Generate 6 diverse related ideas. Connect to key themes when relevant.`;
     const fullSvg = `<svg xmlns="http://www.w3.org/2000/svg" width="2000" height="2000" viewBox="-1000 -1000 2000 2000"><style>text { font-family: sans-serif; fill: white; } path { stroke: gray; fill: #222; }</style><g transform="translate(0,0)">${svgContent}</g></svg>`;
     const blob = new Blob([fullSvg], { type: "image/svg+xml" });
     try {
-      await saveBlob(blob, `hexmind-export-${Date.now()}.svg`, {
-        dialogTitle: "Share Hexmind SVG",
+      await saveBlob(blob, `${APP_EXPORT_FILE_PREFIX}-export-${Date.now()}.svg`, {
+        dialogTitle: `Share ${APP_DISPLAY_NAME} SVG`,
       });
     } catch (err) {
       toast.error(
@@ -1357,8 +1361,8 @@ Generate 6 diverse related ideas. Connect to key themes when relevant.`;
           return;
         }
         try {
-          await saveBlob(blob, `hexmind-export-${Date.now()}.png`, {
-            dialogTitle: "Share Hexmind PNG",
+          await saveBlob(blob, `${APP_EXPORT_FILE_PREFIX}-export-${Date.now()}.png`, {
+            dialogTitle: `Share ${APP_DISPLAY_NAME} PNG`,
           });
         } catch (err) {
           toast.error(
@@ -1534,6 +1538,8 @@ Generate 6 diverse related ideas. Connect to key themes when relevant.`;
         onShare={sessions.generateShareUrl}
         onShowSettings={() => setShowSettingsModal(true)}
         onSetFilterType={setFilterType}
+        // MVP: Live collab is web-only. Native WebSocket URL + UX are not
+        // production-complete for Capacitor — see docs/RELEASE_SPEC.md §1.
         onShowCollab={!isCapacitor() ? () => setShowCollabModal(true) : undefined}
         isCollabConnected={!isCapacitor() && collab.isConnected}
         collabParticipantCount={!isCapacitor() ? collab.participants.length : 0}

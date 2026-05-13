@@ -2,7 +2,7 @@
  * Hex Grid Constants
  *
  * Shared constants for the hexagonal grid system.
- * Extracted from HexmindApp.tsx and useAIGeneration.ts to eliminate duplication.
+ * Extracted from HexmindApp.tsx (main shell) and useAIGeneration.ts to eliminate duplication.
  */
 
 // --- Gemini Model ---
@@ -40,7 +40,7 @@ export const CLUSTER_COLORS: Array<{ stroke: string; glow: string; accent: strin
 // --- Storage Keys ---
 //
 // Keys retain the `hexpand_` prefix from the pre-rename era (Hexpand →
-// Hexmind, 2026-05-08). DO NOT rename these — TestFlight tester data
+// Thought Tiles, 2026-05-08). DO NOT rename these — TestFlight tester data
 // (saved sessions, autosaves, API keys, provider selection) lives under
 // the old prefix in localStorage and would be lost on a key rename.
 // A migration shim is the only safe rename path; not worth the effort
