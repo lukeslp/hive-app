@@ -3,7 +3,7 @@
 # brand domains. Run after redeploying server/_core/index.ts whenever
 # the AASA payload (lines ~47-66) changes.
 #
-# All six brand domains are reverse-proxied by Caddy into the same Node
+# All brand domains are reverse-proxied by Caddy into the same Node
 # process, so they should all serve the same AASA. If even one returns
 # a different appID, the deploy is half-rolled and Universal Links will
 # silently fail signature validation on that domain.
@@ -21,6 +21,7 @@ DOMAINS=(
   "hexmind.io"
   "hexpand.app"
   "hexpander.app"
+  "ideatiles.app"
 )
 
 fail=0

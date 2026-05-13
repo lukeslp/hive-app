@@ -20,7 +20,7 @@ Last updated: 2026-05-12
 ### 1) Release Readiness (highest priority)
 
 - Use [`docs/RELEASE_SPEC.md`](docs/RELEASE_SPEC.md) + [`docs/APP_STORE_PACK.md`](docs/APP_STORE_PACK.md) for ASC submission and beta copy.
-- Resolve **High** items in [`docs/RELEASE_REVIEW.md`](docs/RELEASE_REVIEW.md) before App Store (share URL origin fixed in code; confirm `VITE_PUBLIC_WEB_APP_URL` for non-hexmind.app builds).
+- Resolve **High** items in [`docs/RELEASE_REVIEW.md`](docs/RELEASE_REVIEW.md) before App Store (share URL origin fixed in code; optional `VITE_PUBLIC_WEB_APP_URL` overrides `APP_PUBLIC_WEB_ORIGIN` / default `https://ideatiles.app`).
 - Complete deploy verification for AASA + legal pages where still relevant.
 
 ### 2) iOS Lifecycle and Stability

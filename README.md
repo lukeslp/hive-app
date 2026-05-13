@@ -1,6 +1,6 @@
 # Idea Tiles
 
-**Idea Tiles** (*Brainstorm with local AI*) is a hexagonal tile brainstorming app built as a React SPA with an Express backend, plus Capacitor shells for iOS and Android. Hosted domains and bundle identifiers may still use the legacy **hexmind** naming; user-facing copy uses Idea Tiles.
+**Idea Tiles** (*Brainstorm with local AI*) is a hexagonal tile brainstorming app built as a React SPA with an Express backend, plus Capacitor shells for iOS and Android. **Canonical marketing origin:** `https://ideatiles.app`. Bundle id and some legacy domains may still reference **hexmind**; user-facing copy uses Idea Tiles.
 
 ## What This Project Does
 
@@ -14,7 +14,7 @@
 
 ## Current Product State (May 2026)
 
-- **TestFlight:** Public beta is live; release packaging is tracked under `docs/` (see below).
+- **App Store:** Live; canonical ASC / marketing URLs use **ideatiles.app**.
 - Brand display name is **Idea Tiles** while legacy storage keys intentionally remain `hexpand_*` for data continuity.
 - **Sharing MVP:** iOS uses **snapshot** share links only (public `https` origin, not `capacitor://`). **Live collaboration** is **web-only** for this proof-of-concept — see [`docs/SHARING_MVP_POLICY.md`](docs/SHARING_MVP_POLICY.md).
 - iOS behavior is intentionally privacy-first: tile generation on iOS is on-device only (no cloud fallback).
@@ -51,8 +51,7 @@ pnpm cap:sync:android
 | Variable | Purpose |
 |----------|---------|
 | `VITE_CAPACITOR_API_BASE_URL` | Hosted `/api` root (required for device API calls). |
-| `VITE_PUBLIC_WEB_APP_URL` | Optional. Origin for **Share link** URLs on native; defaults to `https://hexmind.app` so links open in Safari. |
-
+| `VITE_PUBLIC_WEB_APP_URL` | Optional. Origin for **Share link** URLs on native; defaults to `https://ideatiles.app` (`APP_PUBLIC_WEB_ORIGIN` in `shared/appBrand.ts`) when unset so links open in Safari. |
 ## Architecture At A Glance
 
 - `client/`: React 19 SPA, canvas UX, hooks, UI components.

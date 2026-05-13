@@ -65,7 +65,7 @@
 | Variable | Purpose |
 |----------|---------|
 | `VITE_CAPACITOR_API_BASE_URL` | Hosted API root for native HTTP (e.g. `https://dr.eamer.dev/hexpand/api`) |
-| `VITE_PUBLIC_WEB_APP_URL` | Origin for share links on native (default `https://hexmind.app` if unset) |
+| `VITE_PUBLIC_WEB_APP_URL` | Origin for share links on native (default `https://ideatiles.app` via `APP_PUBLIC_WEB_ORIGIN` if unset) |
 
 Document chosen values in internal release notes (not committed secrets).
 

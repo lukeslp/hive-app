@@ -29,7 +29,7 @@ None for TestFlight-only, assuming testers are informed. Before **App Store** re
 **Files**: `client/src/hooks/useSessionManagement.ts` (generateShareUrl), `client/src/lib/platform.ts`  
 **Impact**: Recipients cannot open `capacitor://localhost/...` in Safari; snapshot sharing appears broken from iOS.
 
-**Mitigation**: Use a configurable public web origin (`VITE_PUBLIC_WEB_APP_URL`, default `https://hexmind.app`) when building `?s=` links in native builds. Implemented in this repo pass.
+**Mitigation**: Use a configurable public web origin (`VITE_PUBLIC_WEB_APP_URL`, default `https://ideatiles.app` from `APP_PUBLIC_WEB_ORIGIN`) when building `?s=` links in native builds. Implemented in this repo pass.
 
 ### Privacy / operations: `/api/share` is in-memory only
 

@@ -1,6 +1,6 @@
 # App Store Pack — Idea Tiles MVP
 
-Copy-paste oriented metadata + asset checklist for App Store Connect. Aligned to **current** product behavior: iOS on-device AI, snapshot share links, **no** native live collaboration. App Store **Name** / **Subtitle** below match in-app branding; bundle id and URLs may still reference `hexmind.app`. Update before each ASC submission.
+Copy-paste oriented metadata + asset checklist for App Store Connect. Aligned to **current** product behavior: iOS on-device AI, snapshot share links, **no** native live collaboration. App Store **Name** / **Subtitle** below match in-app branding; bundle id stays `app.hexmind.ios`. **Canonical marketing URLs** use `ideatiles.app`; legacy domains may still proxy to the same deployment. Update before each ASC submission.
 
 > **Source of decisions:** `/consensus` + `/team` pass on 2026-05-13, with a partial re-run later the same day to retry Ollama Cloud, xAI, and OpenAI. See [§0 below](#0-consensus--team-summary) for the rationale, dissent, and ASO risks behind every copy block.
 
@@ -78,9 +78,9 @@ ASC submission only touches **metadata + the existing iOS binary**. No code chan
 
 | Field | URL |
 |-------|-----|
-| **Privacy Policy** | `https://hexmind.app/privacy` |
-| **Support** | `https://hexmind.app/` (or `mailto:luke@lukesteuber.com`) |
-| **Marketing** | `https://hexmind.app/` (optional; same domain) |
+| **Privacy Policy** | `https://ideatiles.app/privacy` |
+| **Support** | `https://ideatiles.app/` (or `mailto:luke@lukesteuber.com`) |
+| **Marketing** | `https://ideatiles.app/` (optional; same domain) |
 
 ---
 
@@ -129,7 +129,7 @@ leave the device. There is no cloud fallback on iOS — if the model
 isn't available, the app tells you instead of quietly sending data
 elsewhere. No accounts, no analytics SDK, no tracking IDs.
 
-On the web (hexmind.app) and Android, you can bring your own API key
+On the web (ideatiles.app) and Android, you can bring your own API key
 for Gemini, Claude, GPT, Grok, Mistral, or a local Ollama server.
 Boards still save to your device first.
 
@@ -261,7 +261,7 @@ sees an explicit availability message instead of a silent failure.
 
 Snapshot sharing creates a browser-openable link by POSTing the board
 JSON to /api/share; the server returns a short id used in a ?s=ID URL
-hosted at hexmind.app. Recipients open the link in Safari, no account
+hosted at ideatiles.app (legacy brand domains still resolve). Recipients open the link in Safari, no account
 required. Live multi-user collaboration is available on the web app
 only for this release.
 
@@ -284,7 +284,7 @@ Open source under MIT (github.com/lukeslp/hive-app).
 - [ ] `PrivacyInfo.xcprivacy` reflects §10 truthfully
 - [ ] `/privacy` and `/terms` return real HTML on the deployed origin (not the SPA shell)
 - [ ] AASA deployed at every brand domain if Universal Links are advertised (`NEXT_STEPS.md`)
-- [ ] `VITE_PUBLIC_WEB_APP_URL` set in iOS build env if the canonical origin is **not** `https://hexmind.app`
+- [ ] `VITE_PUBLIC_WEB_APP_URL` set in iOS build env if the canonical origin should **not** be `https://ideatiles.app` (see `APP_PUBLIC_WEB_ORIGIN` in `shared/appBrand.ts`)
 - [ ] `pnpm check` + `pnpm test` green
 - [ ] Cold launch smoke test on hardware: splash hides → canvas interactive
 - [ ] Tile expand on an eligible device + the clear error on an ineligible one

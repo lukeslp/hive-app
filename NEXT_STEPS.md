@@ -1,6 +1,6 @@
 # Next steps — Idea Tiles
 
-_Product name **Idea Tiles**; bundle id `app.hexmind.ios` and domains such as `hexmind.app` are unchanged for this release._
+_Product name **Idea Tiles** (live on the App Store). **Canonical web / marketing origin:** `https://ideatiles.app` (Porkbun). Bundle id stays `app.hexmind.ios`; legacy brand domains (`hexmind.app`, `hivemind.cx`, …) still route to the same deployment until retired._
 
 ## 2026-05-12 — MVP release alignment (docs + sharing)
 
@@ -32,8 +32,9 @@ Public TestFlight is already live — treat remaining items as **App Store submi
 > onboarding modal + passive canvas hint, Capacitor-native PNG/SVG/JSON
 > exports, mobile-overflow declutter with three labeled sections, the
 > tile-flash UX that replaces on-device success toasts, and the static
-> Privacy Policy + Terms of Use pages at hexmind.app/privacy and
-> /terms with Express routes that beat the SPA catchall.
+> Privacy Policy + Terms of Use pages at ideatiles.app/privacy and
+> /terms (also at legacy brand domains) with Express routes that beat
+> the SPA catchall.
 >
 > See `~/.claude/plans/get-context-doubt-and-partitioned-pascal.md`
 > for the doubt-pass that reframed the council's "starter tile" as
@@ -45,7 +46,7 @@ Public TestFlight is already live — treat remaining items as **App Store submi
 - **`25afbb5` iOS boot:** `prewarm()` warms Apple Intelligence on
   app launch; `scrollView.bounces = false` kills accidental
   pull-to-refresh during expand-cascade
-- **`08c1bcb` ops:** `scripts/check-aasa.sh` smoke-tests all 6 brand
+- **`08c1bcb` ops:** `scripts/check-aasa.sh` smoke-tests all brand
   domains; currently fails 6/6 because the deployed server still
   serves SPA HTML at `/.well-known/...` (redeploy still pending)
 - **`a79b5fc` ux:** one-shot onboarding modal (`dismissedOnboardingRef`)
@@ -72,10 +73,11 @@ Public TestFlight is already live — treat remaining items as **App Store submi
    `init(from decoder:)` on `GeneratedBranch` in
    `ios/App/App/FoundationModelsPlugin.swift`.
 2. **Server redeploy** — command in the "Right now" section below.
-   After redeploy, run `./scripts/check-aasa.sh` (expect 6/6 ✓) and
-   `curl -s https://hexmind.app/privacy | head -5` (expect HTML
+   After redeploy, run `./scripts/check-aasa.sh` (expect 7/7 ✓) and
+   `curl -s https://ideatiles.app/privacy | head -5` (expect HTML
    starting `<!doctype html>` with title "Idea Tiles — Privacy Policy",
-   NOT the SPA).
+   NOT the SPA). Same check on `https://hexmind.app/privacy` if that
+   domain still proxies to this build.
 3. **Hardware run** — plug iPhone in, Cmd-R. Watch console for
    `prewarm` path. Tap a tile — first-tap cold-start should be 1-2s
    (kill criterion: >5s).
@@ -84,8 +86,8 @@ Public TestFlight is already live — treat remaining items as **App Store submi
    Files.app → "On My iPhone → Idea Tiles" → exported PNG present at
    2000×2000.
 5. **App Store Connect — App Information** (one-time):
-   - Privacy Policy URL: `https://hexmind.app/privacy`
-   - Support URL: `https://hexmind.app/` (or mailto link)
+   - Privacy Policy URL: `https://ideatiles.app/privacy`
+   - Support URL: `https://ideatiles.app/` (or mailto link)
    - App Category: Productivity
 6. **App Store Connect — Privacy nutrition label** (one-time):
    answer "Data Not Collected" for every category. Matches reality
@@ -155,7 +157,7 @@ Public TestFlight is already live — treat remaining items as **App Store submi
 The AASA file source was edited (`server/_core/index.ts` lines 52, 63
 now point at `596T7J7FB6.app.hexmind.ios` instead of the old hexpand
 identifier). **The deployed copy at dr.eamer.dev is still serving the
-old AASA**, so Universal Links from any of the 6 brand domains will
+old AASA**, so Universal Links from any brand domain will
 fail signature validation against the new App ID until this redeploys.
 
 ```sh
@@ -169,7 +171,7 @@ name differs. Per CLAUDE.md the pattern is `~/projects/<name>` source
 
 Verify after deploy:
 ```sh
-curl -s https://hexmind.app/.well-known/apple-app-site-association | \
+curl -s https://ideatiles.app/.well-known/apple-app-site-association | \
   python3 -c "import json,sys; d=json.load(sys.stdin); \
   print(d['applinks']['details'][0]['appIDs'])"
 # Expect: ['596T7J7FB6.app.hexmind.ios']
@@ -215,7 +217,7 @@ Locked in (or to lock in) at App Store Connect → My Apps → Idea Tiles →
   enforces uniqueness on the full Name string, not the brand root.
 - **Subtitle** (30 chars): `Brainstorm with local AI` (24)
 - **Primary Category**: Productivity
-- **Privacy Policy URL**: `hexmind.app/privacy` (the route should
+- **Privacy Policy URL**: `ideatiles.app/privacy` (the route should
   redirect to your existing privacy.md / privacy.html)
 
 ## Hardware verification of Apple Intelligence

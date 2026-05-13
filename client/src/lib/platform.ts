@@ -2,6 +2,8 @@
  * Platform detection and API helpers for Capacitor native builds.
  */
 
+import { APP_PUBLIC_WEB_ORIGIN } from "@shared/appBrand";
+
 declare global {
   interface Window {
     Capacitor?: {
@@ -50,8 +52,9 @@ function trimTrailingSlashes(value: string): string {
  * In the Capacitor shell `window.location.origin` is `capacitor://localhost`,
  * which recipients cannot open — use an env override or the canonical web app.
  *
- * Set `VITE_PUBLIC_WEB_APP_URL` at build time (e.g. `https://hexmind.app`) for
- * branded domains; defaults to `https://hexmind.app` on native when unset.
+ * Set `VITE_PUBLIC_WEB_APP_URL` at build time to override the default
+ * canonical origin; on native when unset, uses `APP_PUBLIC_WEB_ORIGIN`
+ * from `shared/appBrand.ts` (currently `https://ideatiles.app`).
  */
 export function getPublicWebAppOrigin(): string {
   const fromEnv =
@@ -64,7 +67,7 @@ export function getPublicWebAppOrigin(): string {
     return trimTrailingSlashes(`${window.location.protocol}//${window.location.host}`);
   }
 
-  return "https://hexmind.app";
+  return trimTrailingSlashes(APP_PUBLIC_WEB_ORIGIN);
 }
 
 function getConfiguredNativeApiBaseUrl(): string | null {

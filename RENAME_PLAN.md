@@ -1,6 +1,6 @@
 # Hexpand → Hexmind rename plan
 
-> **2026-05-13:** The **user-facing** product name is now **Idea Tiles** (*Brainstorm with local AI*). The prior **Thought Tiles** working title (2026-05-12) was retired in favor of the clearer, less metaphor-loaded "Idea Tiles" after a `/team` review. Bundle id `app.hexmind.ios`, Universal Link domains (`hexmind.app`, etc.), and `hexpand_*` storage keys stay as-is for continuity. The body below records the earlier **Hexmind** working-title rename from Hexpand and is kept for history.
+> **2026-05-13:** The **user-facing** product name is now **Idea Tiles** (*Brainstorm with local AI*). The prior **Thought Tiles** working title (2026-05-12) was retired in favor of the clearer, less metaphor-loaded "Idea Tiles" after a `/team` review. **Canonical marketing domain:** `ideatiles.app` (registered Porkbun). Bundle id `app.hexmind.ios`, Universal Link domains (`hexmind.app`, `ideatiles.app`, etc.), and `hexpand_*` storage keys stay as-is for continuity. The body below records the earlier **Hexmind** working-title rename from Hexpand and is kept for history.
 
 Decided 2026-05-08 after a council pass with corrected facts. This plan
 supersedes the prior NEXT_STEPS sequencing — block all App Store Connect

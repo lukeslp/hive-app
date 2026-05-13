@@ -42,8 +42,9 @@ async function startServer() {
   // Apple App-Site Association for Universal Links into the iOS app.
   // Apple wants the bare filename (no .json extension) served as
   // application/json. The same content resolves at every brand domain
-  // because Caddy reverse-proxies all six (hivemind.cx, hive-mind.pro,
-  // hexmind.app/io, hexpand.app, hexpander.app) into this Node process.
+  // because Caddy reverse-proxies all seven (hivemind.cx, hive-mind.pro,
+  // hexmind.app/io, hexpand.app, hexpander.app, ideatiles.app) into this
+  // Node process.
   app.get("/.well-known/apple-app-site-association", (_req, res) => {
     res.type("application/json").json({
       applinks: {
