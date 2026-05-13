@@ -82,6 +82,8 @@ ASC submission only touches **metadata + the existing iOS binary**. No code chan
 | **Support** | `https://ideatiles.app/` (or `mailto:luke@lukesteuber.com`) |
 | **Marketing** | `https://ideatiles.app/` (optional; same domain) |
 
+See also [`APP_STORE_CONNECT_CANONICAL.md`](./APP_STORE_CONNECT_CANONICAL.md) for a one-page ASC checklist.
+
 ---
 
 ## 3. Promotional text (170 chars, editable any time, no review)

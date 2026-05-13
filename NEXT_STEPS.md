@@ -2,6 +2,8 @@
 
 _Product name **Idea Tiles** (live on the App Store). **Canonical web / marketing origin:** `https://ideatiles.app` (Porkbun). Bundle id stays `app.hexmind.ios`; legacy brand domains (`hexmind.app`, `hivemind.cx`, …) still route to the same deployment until retired._
 
+**Canonical rollout (repo):** [`docs/infra/IDEATILES_DOMAIN.md`](docs/infra/IDEATILES_DOMAIN.md) · verify: `pnpm verify:canonical` · device gates: [`docs/DEVICE_RELEASE_GATES.md`](docs/DEVICE_RELEASE_GATES.md) · ASC URLs: [`docs/APP_STORE_CONNECT_CANONICAL.md`](docs/APP_STORE_CONNECT_CANONICAL.md).
+
 ## 2026-05-12 — MVP release alignment (docs + sharing)
 
 - **Release docs** (canonical): [`docs/RELEASE_SPEC.md`](docs/RELEASE_SPEC.md), [`docs/RELEASE_REVIEW.md`](docs/RELEASE_REVIEW.md), [`docs/APP_STORE_PACK.md`](docs/APP_STORE_PACK.md), [`docs/SHARING_MVP_POLICY.md`](docs/SHARING_MVP_POLICY.md).

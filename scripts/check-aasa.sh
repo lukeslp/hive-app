@@ -30,6 +30,13 @@ echo
 
 for d in "${DOMAINS[@]}"; do
   url="https://${d}/.well-known/apple-app-site-association"
+  ctype=$(curl -sS -I --max-time 10 "${url}" 2>/dev/null | tr -d '\r' | awk -F': ' 'tolower($1)=="content-type"{print $2; exit}')
+  if ! echo "${ctype}" | grep -qi 'application/json'; then
+    printf "  ✗ %-20s  bad Content-Type: %s (want application/json)\n" "${d}" "${ctype:-<none>}"
+    fail=1
+    continue
+  fi
+
   body=$(curl -fsSL --max-time 10 "${url}" 2>/dev/null) || {
     printf "  ✗ %-20s  fetch failed (%s)\n" "${d}" "${url}"
     fail=1

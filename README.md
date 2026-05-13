@@ -52,6 +52,8 @@ pnpm cap:sync:android
 |----------|---------|
 | `VITE_CAPACITOR_API_BASE_URL` | Hosted `/api` root (required for device API calls). |
 | `VITE_PUBLIC_WEB_APP_URL` | Optional. Origin for **Share link** URLs on native; defaults to `https://ideatiles.app` (`APP_PUBLIC_WEB_ORIGIN` in `shared/appBrand.ts`) when unset so links open in Safari. |
+
+**Canonical domain rollout:** [`docs/infra/IDEATILES_DOMAIN.md`](docs/infra/IDEATILES_DOMAIN.md) (DNS + Caddy). After deploy, run `pnpm verify:canonical` (AASA + `/privacy` / `/terms` on all brand hosts).
 ## Architecture At A Glance
 
 - `client/`: React 19 SPA, canvas UX, hooks, UI components.

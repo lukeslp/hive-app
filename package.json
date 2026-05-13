@@ -15,7 +15,8 @@
     "cap:build": "pnpm build && npx cap sync ios",
     "cap:open": "npx cap open ios",
     "cap:sync:android": "pnpm build && npx cap sync android",
-    "cap:sync:ios": "pnpm build && npx cap sync ios"
+    "cap:sync:ios": "pnpm build && npx cap sync ios",
+    "verify:canonical": "bash scripts/check-aasa.sh && bash scripts/verify-canonical-endpoints.sh"
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.693.0",
