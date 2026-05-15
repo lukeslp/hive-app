@@ -6,22 +6,26 @@
 import { Modal } from "@/components/Modal";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { Copy, Check, Lightbulb, Eye, Zap } from "@/lib/icons";
+import { Copy, Check, Lightbulb, Eye, Zap, Share2 } from "@/lib/icons";
 
 interface ShareModalProps {
   isOpen: boolean;
   onClose: () => void;
   shareUrl: string;
+  iosShareUrl: string;
   copied: boolean;
   onCopy: () => void;
+  onBringToIos: () => void;
 }
 
 export const ShareModal = ({
   isOpen,
   onClose,
   shareUrl,
+  iosShareUrl,
   copied,
   onCopy,
+  onBringToIos,
 }: ShareModalProps) => {
   return (
     <Modal isOpen={isOpen} onClose={onClose} title="Share Brainstorm">
@@ -55,6 +59,27 @@ export const ShareModal = ({
             )}
           </Button>
         </div>
+        {iosShareUrl && (
+          <div className="space-y-2">
+            <p className="text-xs text-muted-foreground">Bring to iOS (universal link)</p>
+            <div className="flex gap-2">
+              <Input
+                value={iosShareUrl}
+                readOnly
+                className="flex-1 bg-secondary border-border text-foreground font-mono text-sm"
+                onClick={(e) => e.currentTarget.select()}
+              />
+              <Button
+                onClick={onBringToIos}
+                variant="outline"
+                className="border-border text-foreground"
+              >
+                <Share2 className="w-4 h-4 mr-2" />
+                Bring to iOS
+              </Button>
+            </div>
+          </div>
+        )}
         <div className="text-xs text-muted-foreground space-y-2">
           <p className="flex items-center gap-2">
             <Lightbulb className="w-3.5 h-3.5 flex-shrink-0" /> A short id in the URL loads your

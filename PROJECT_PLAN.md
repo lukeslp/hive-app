@@ -1,6 +1,6 @@
 # PROJECT_PLAN
 
-Last updated: 2026-05-13
+Last updated: 2026-05-14
 
 ## Objectives
 
@@ -14,6 +14,13 @@ Last updated: 2026-05-13
 - Core app is functional across web and Capacitor shells.
 - Collaboration, session persistence, merge workflows, and export flows are implemented **on web**; iOS ships snapshot share + local sessions for this MVP ([`docs/SHARING_MVP_POLICY.md`](docs/SHARING_MVP_POLICY.md)).
 - Display name **Idea Tiles** is wired through UI, legal pages, and native `appName` / `CFBundleDisplayName`; legacy storage keys remain intentionally unchanged.
+- Native share-link reliability: fallback API base now resolves to canonical `${APP_PUBLIC_WEB_ORIGIN}/api` (instead of legacy `/hexpand/api` path that can serve static HTML on some hosts).
+- AI reliability hardening: failed/partial neighbor generation now leaves empty hexes untouched (no placeholder node injection), preventing synthetic context pollution on subsequent expansions.
+- Cross-platform handoff UX: share modal now exposes a dedicated “Bring to iOS” action using canonical universal-link URLs for easier web→iOS board continuation.
+- Settings UX compaction + accessibility controls: removed non-essential heading copy, added one-row quick controls, persisted accessibility fonts and manual high-contrast mode, and added explicit board deletion from settings.
+- Mobile readability pass: improved in-hex label wrapping behavior (balanced wrap, non-forced uppercase, reduced hard word-splitting) to avoid fragmented words in constrained tile geometry.
+- Provider regression containment: non-iOS builds now lock app-level provider selection to Anthropic and suppress provider-management UI in Settings to align with hosted product behavior.
+- Settings visual cohesion pass: shifted modal styling away from dense "admin panel" controls toward cleaner card/glass presentation aligned with the main canvas tone.
 
 ## Active Workstreams
 

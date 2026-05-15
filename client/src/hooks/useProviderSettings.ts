@@ -134,6 +134,8 @@ export interface UseProviderSettingsReturn {
   visibleProviders: ProviderConfig[];
 }
 
+const LOCKED_CLOUD_PROVIDER: Provider = "anthropic";
+
 export function useProviderSettings(): UseProviderSettingsReturn {
   const [appleIntelligenceAvailable, setAppleIntelligenceAvailable] = useState(false);
 
@@ -141,13 +143,7 @@ export function useProviderSettings(): UseProviderSettingsReturn {
     // iOS is Apple-Intelligence-only: never read localStorage, never let
     // a stale "gemini" value bleed through from a pre-strip install.
     if (isIos()) return "apple";
-    try {
-      const saved = localStorage.getItem(PROVIDER_STORAGE_KEY);
-      if (saved && PROVIDERS.some((p) => p.id === saved)) {
-        return saved as Provider;
-      }
-    } catch {}
-    return "gemini";
+    return LOCKED_CLOUD_PROVIDER;
   });
 
   const [apiKeys, setApiKeys] = useState<ApiKeys>(() => {
@@ -203,6 +199,10 @@ export function useProviderSettings(): UseProviderSettingsReturn {
 
   // Persist provider selection
   useEffect(() => {
+    if (!isIos()) {
+      setProviderState(LOCKED_CLOUD_PROVIDER);
+      return;
+    }
     try {
       localStorage.setItem(PROVIDER_STORAGE_KEY, provider);
     } catch {}
@@ -216,10 +216,12 @@ export function useProviderSettings(): UseProviderSettingsReturn {
   }, [apiKeys]);
 
   const setProvider = useCallback((p: Provider) => {
-    // iOS is locked to "apple" — ignore any setProvider call (the UI on
-    // iOS doesn't expose the picker, but tests/callers might still try).
-    if (isIos()) return;
-    setProviderState(p);
+    if (isIos()) {
+      setProviderState("apple");
+      return;
+    }
+    // Web/hosted builds intentionally lock to Anthropic.
+    setProviderState(LOCKED_CLOUD_PROVIDER);
   }, []);
 
   const setApiKey = useCallback((key: keyof ApiKeys, value: string) => {
@@ -291,10 +293,9 @@ export function useProviderSettings(): UseProviderSettingsReturn {
   //   don't see "Apple Intelligence" they can't use).
   // - On iOS: keep "apple" in the list; let isConfigured + the Settings
   //   UI surface whether it's actually available.
-  const visibleProviders = PROVIDERS.filter((p) => {
-    if (p.iosOnly && (!isCapacitor() || getPlatform() !== "ios")) return false;
-    return true;
-  });
+  const visibleProviders = isIos()
+    ? PROVIDERS.filter((p) => p.id === "apple")
+    : PROVIDERS.filter((p) => p.id === LOCKED_CLOUD_PROVIDER);
 
   return {
     provider,

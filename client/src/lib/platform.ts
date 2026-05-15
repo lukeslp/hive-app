@@ -90,7 +90,7 @@ function getConfiguredNativeApiBaseUrl(): string | null {
  */
 export function getApiBaseUrl(): string {
   if (isCapacitor()) {
-    return getConfiguredNativeApiBaseUrl() ?? "https://dr.eamer.dev/hexpand/api";
+    return getConfiguredNativeApiBaseUrl() ?? `${APP_PUBLIC_WEB_ORIGIN}/api`;
   }
 
   return "/api";

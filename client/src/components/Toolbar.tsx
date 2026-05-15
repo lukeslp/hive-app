@@ -1,9 +1,14 @@
 /**
- * Toolbar - Header bar with all controls
- * Mobile-responsive: collapses secondary actions into overflow menu on small screens
+ * Toolbar — single hex-anchored pill in the upper-right that expands
+ * leftward into a topbar of all board controls. Replaces the prior
+ * dual-cluster (left logo / right controls) layout.
+ *
+ * Collapsed: just the hex icon (visual brand + entry point).
+ * Expanded: horizontal pill with undo/redo, search, filter, files,
+ * collab, new board, and settings.
  */
 
-import React, { useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import { Input } from "@/components/ui/input";
 import {
   Tooltip,
@@ -11,8 +16,9 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 import {
+  Plus,
   Zap,
-  Info,
+  Hexagon,
   Download,
   Undo2,
   Redo2,
@@ -24,11 +30,9 @@ import {
   X,
   Settings,
   Filter,
-  MoreHorizontal,
   Users,
 } from "@/lib/icons";
 import { NODE_TYPES } from "@/lib/nodeTypes";
-import { APP_DISPLAY_NAME, APP_TAGLINE } from "@shared/appBrand";
 
 interface ToolbarProps {
   nodeCount: number;
@@ -95,345 +99,455 @@ export const Toolbar = ({
   isCollabConnected,
   collabParticipantCount,
 }: ToolbarProps) => {
-  const [moreOpen, setMoreOpen] = useState(false);
+  // Single source of truth: is the topbar expanded?
+  const [expanded, setExpanded] = useState(false);
   const [filesMenuOpen, setFilesMenuOpen] = useState(false);
   const [filterMenuOpen, setFilterMenuOpen] = useState(false);
+  const barRef = useRef<HTMLDivElement | null>(null);
+
+  const hasFilterActive = !!filterType || showOnlyKeyThemes;
+
+  const collapse = () => {
+    setExpanded(false);
+    setFilesMenuOpen(false);
+    setFilterMenuOpen(false);
+  };
+
+  // Sub-popovers close when topbar collapses.
+  useEffect(() => {
+    if (!expanded) {
+      setFilesMenuOpen(false);
+      setFilterMenuOpen(false);
+    }
+  }, [expanded]);
+
+  // Escape closes sub-popovers first, then the topbar itself.
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key !== "Escape") return;
+      if (filesMenuOpen || filterMenuOpen) {
+        setFilesMenuOpen(false);
+        setFilterMenuOpen(false);
+        return;
+      }
+      if (expanded) collapse();
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [expanded, filesMenuOpen, filterMenuOpen]);
+
+  // Click-away collapses the topbar (but never closes via canvas pan).
+  useEffect(() => {
+    if (!expanded) return;
+    const onPointer = (e: MouseEvent | TouchEvent) => {
+      const target = e.target as Node | null;
+      if (!target || !barRef.current) return;
+      if (barRef.current.contains(target)) return;
+      // Sub-menus render outside barRef; let their own backdrops handle close.
+      if ((target as HTMLElement).closest?.("[data-toolbar-popover]")) return;
+      collapse();
+    };
+    document.addEventListener("mousedown", onPointer);
+    document.addEventListener("touchstart", onPointer, { passive: true });
+    return () => {
+      document.removeEventListener("mousedown", onPointer);
+      document.removeEventListener("touchstart", onPointer);
+    };
+  }, [expanded]);
+
+  const iconBtn =
+    "h-10 w-10 sm:h-11 sm:w-11 flex items-center justify-center rounded-full text-foreground/80 hover:text-foreground hover:bg-accent/70 transition-colors disabled:opacity-30 disabled:cursor-not-allowed";
 
   return (
     <header
-      className="absolute top-0 left-0 right-0 z-20 px-2 sm:px-4 pb-2 sm:pb-4 flex items-center justify-between pointer-events-none gap-2"
+      className="absolute top-0 left-0 right-0 z-30 px-2 sm:px-4 pb-2 sm:pb-4 flex items-start justify-end pointer-events-none"
       style={{
-        // env(safe-area-inset-top) is 0 on browsers without notches, so
-        // desktop web behavior is unchanged. On iPhone with Dynamic Island
-        // the toolbar drops below it instead of being occluded.
+        // env(safe-area-inset-top) is 0 on browsers without notches; on
+        // iPhone the toolbar drops below the Dynamic Island instead of
+        // sitting under it.
         paddingTop: "max(0.5rem, env(safe-area-inset-top, 0px))",
       }}
     >
-      {/* Left Actions */}
       <div
-        aria-label="Main Controls"
-        className="interactive-ui bg-card/90 backdrop-blur border border-border p-1.5 sm:p-2 px-2.5 sm:px-4 rounded-xl flex items-center gap-1.5 sm:gap-4 pointer-events-auto shadow-2xl min-w-0 flex-shrink"
+        ref={barRef}
+        aria-label="Board controls"
+        className={`pointer-events-auto interactive-ui flex items-center gap-1 bg-card/85 backdrop-blur-xl border border-border/70 shadow-2xl rounded-full transition-all duration-200 ${
+          expanded ? "px-1.5 sm:px-2" : "px-1"
+        }`}
       >
-        {/* Logo */}
-        <div className="flex items-center gap-1.5 sm:gap-2 flex-shrink-0">
-          <Zap className="w-4 h-4 sm:w-5 sm:h-5 text-yellow-400 fill-yellow-400" />
-        <div className="flex flex-col justify-center min-w-0 hidden sm:flex leading-tight">
-          <span className="font-bold text-sm truncate">{APP_DISPLAY_NAME}</span>
-          <span className="text-[10px] text-muted-foreground font-medium truncate hidden md:block">
-            {APP_TAGLINE}
-          </span>
-        </div>
-        </div>
-        <div className="h-5 sm:h-6 w-px bg-accent flex-shrink-0" />
-
-        {nodeCount === 0 ? (
-          <button
-            onClick={onShowWelcome}
-            className="flex items-center gap-1.5 px-2 py-1 hover:bg-accent rounded-lg transition-colors text-muted-foreground hover:text-foreground"
+        {/* Expanded controls slide in from the right (closer to hex). */}
+        {expanded && (
+          <div
+            className="flex items-center gap-0.5 sm:gap-1 animate-in fade-in slide-in-from-right-2 duration-200"
+            role="group"
+            aria-label="Topbar actions"
           >
-            <span className="text-[10px] sm:text-xs uppercase tracking-widest whitespace-nowrap">
-              NEW BOARD
-            </span>
-            <Info className="w-3 h-3 sm:w-3.5 sm:h-3.5" />
-          </button>
-        ) : (
-          <div className="flex items-center gap-1 sm:gap-2">
-            {/* Generation counter — only show when generations have been used */}
-            {generationsThisSession > 0 && (
+            {/* Generation counter — purely informational, when used. */}
+            {nodeCount > 0 && generationsThisSession > 0 && (
               <span
-                className="flex items-center gap-0.5 text-[10px] sm:text-xs text-muted-foreground tabular-nums flex-shrink-0"
-                title={`${generationsThisSession} AI generation${generationsThisSession !== 1 ? 's' : ''} this session`}
+                className="hidden sm:flex items-center gap-1 px-2 text-[11px] text-muted-foreground tabular-nums"
+                title={`${generationsThisSession} AI generation${
+                  generationsThisSession === 1 ? "" : "s"
+                } this session`}
+                aria-label={`${generationsThisSession} AI generations this session`}
               >
-                <Zap className="w-3 h-3 text-amber-400/70" />
+                <Zap className="w-3 h-3 text-yellow-400/80" />
                 {generationsThisSession}
               </span>
             )}
 
-            {/* Undo/Redo — always visible */}
-            <div className="flex items-center gap-0.5 border-l border-border pl-1 sm:pl-2">
-              <button
-                onClick={onUndo}
-                disabled={!canUndo}
-                aria-label={`Undo last action${!canUndo ? " (unavailable)" : ""}`}
-                className="p-2.5 hover:bg-accent text-muted-foreground rounded-lg disabled:opacity-30"
-              >
-                <Undo2 className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
-              </button>
-              <button
-                onClick={onRedo}
-                disabled={!canRedo}
-                aria-label={`Redo last action${!canRedo ? " (unavailable)" : ""}`}
-                className="p-2.5 hover:bg-accent text-muted-foreground rounded-lg disabled:opacity-30"
-              >
-                <Redo2 className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
-              </button>
-            </div>
-
-            {/* Desktop-only actions */}
-            <div className="hidden sm:flex items-center gap-1">
-              {/* Search Toggle */}
-              <button
-                onClick={onToggleSearch}
-                aria-label={`${isSearchOpen ? "Close" : "Open"} search panel`}
-                aria-pressed={isSearchOpen}
-                className={`p-2.5 rounded-lg transition-colors ${
-                  isSearchOpen
-                    ? "bg-accent text-accent-foreground"
-                    : "hover:bg-accent text-muted-foreground"
-                }`}
-              >
-                <Search className="w-4 h-4" />
-              </button>
-
-              {/* Key Themes toggle moved into the Filter dropdown on
-                  the right cluster — same conceptual category (filter
-                  what's visible), one fewer top-level icon. */}
-
-              {/* Files & Sharing — folder icon opens a dropdown that
-                  consolidates Sessions, Export (PNG/SVG/JSON), Import,
-                  and Share into one menu, freeing up four toolbar slots
-                  on desktop. */}
-              <div className="relative border-l border-border pl-2 ml-1">
+            {/* Undo / Redo — only meaningful when there are nodes. */}
+            {nodeCount > 0 && (
+              <>
                 <Tooltip>
                   <TooltipTrigger asChild>
                     <button
-                      onClick={() => setFilesMenuOpen((v) => !v)}
-                      aria-label="Files and sharing"
-                      aria-expanded={filesMenuOpen}
-                      aria-haspopup="true"
-                      className={`p-2.5 rounded-lg transition-colors ${
-                        filesMenuOpen
-                          ? "bg-accent text-accent-foreground"
-                          : "hover:bg-accent text-muted-foreground"
-                      }`}
+                      type="button"
+                      onClick={onUndo}
+                      disabled={!canUndo}
+                      aria-label="Undo"
+                      className={iconBtn}
                     >
-                      <FolderOpen className="w-4 h-4" />
+                      <Undo2 className="w-4 h-4" />
                     </button>
                   </TooltipTrigger>
-                  <TooltipContent>Files & Sharing</TooltipContent>
+                  <TooltipContent>Undo</TooltipContent>
                 </Tooltip>
-                {filesMenuOpen && (
-                  <>
-                    {/* Backdrop captures outside-click for dismiss */}
-                    <div
-                      className="fixed inset-0 z-40"
-                      onClick={() => setFilesMenuOpen(false)}
-                    />
-                    <div
-                      // No role="menu" — the ARIA menu pattern requires
-                      // arrow-key nav, focus management, and home/end
-                      // handling we don't implement. Plain buttons in a
-                      // div are a11y-correct without breaking the menu
-                      // contract. Escape-to-close added on the trigger.
-                      onKeyDown={(e) => { if (e.key === "Escape") setFilesMenuOpen(false); }}
-                      className="absolute top-full right-0 mt-2 bg-card border border-border rounded-xl shadow-2xl z-50 min-w-[200px] py-1 animate-in fade-in slide-in-from-top-2 duration-150"
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <button
+                      type="button"
+                      onClick={onRedo}
+                      disabled={!canRedo}
+                      aria-label="Redo"
+                      className={iconBtn}
                     >
-                      <button
-                        onClick={() => { onShowSessions(); setFilesMenuOpen(false); }}
-                        className="w-full flex items-center gap-3 px-4 py-2.5 text-sm hover:bg-accent text-foreground"
-                      >
-                        <FolderOpen className="w-4 h-4 text-muted-foreground" />
-                        Sessions
-                      </button>
-                      <div className="h-px bg-border my-1" />
-                      <button
-                        onClick={() => { onExportSession(); setFilesMenuOpen(false); }}
-                        className="w-full flex items-center gap-3 px-4 py-2.5 text-sm hover:bg-accent text-foreground"
-                      >
-                        <Download className="w-4 h-4 text-muted-foreground" />
-                        Save (JSON)
-                      </button>
-                      <label
-                        className="w-full flex items-center gap-3 px-4 py-2.5 text-sm hover:bg-accent text-foreground cursor-pointer"
-                      >
-                        <Upload className="w-4 h-4 text-muted-foreground" />
-                        Load (JSON)
-                        <input
-                          type="file"
-                          accept=".json"
-                          className="hidden"
-                          onChange={(e) => {
-                            if (e.target.files?.[0]) onImportSession(e.target.files[0]);
-                            setFilesMenuOpen(false);
-                          }}
-                        />
-                      </label>
-                      <div className="h-px bg-border my-1" />
-                      <button
-                        onClick={() => { onExportPNG(); setFilesMenuOpen(false); }}
-                        className="w-full flex items-center gap-3 px-4 py-2.5 text-sm hover:bg-accent text-foreground"
-                      >
-                        <Download className="w-4 h-4 text-muted-foreground" />
-                        Export PNG
-                      </button>
-                      <button
-                        onClick={() => { onExportSVG(); setFilesMenuOpen(false); }}
-                        className="w-full flex items-center gap-3 px-4 py-2.5 text-sm hover:bg-accent text-foreground"
-                      >
-                        <Download className="w-4 h-4 text-muted-foreground" />
-                        Export SVG
-                      </button>
-                      <div className="h-px bg-border my-1" />
-                      <button
-                        onClick={() => { onShare(); setFilesMenuOpen(false); }}
-                        disabled={nodeCount === 0}
-                        className="w-full flex items-center gap-3 px-4 py-2.5 text-sm hover:bg-accent text-foreground disabled:opacity-50 disabled:cursor-not-allowed"
-                      >
-                        <Share2 className="w-4 h-4 text-muted-foreground" />
-                        Share Link
-                      </button>
-                    </div>
-                  </>
-                )}
-              </div>
-            </div>
+                      <Redo2 className="w-4 h-4" />
+                    </button>
+                  </TooltipTrigger>
+                  <TooltipContent>Redo</TooltipContent>
+                </Tooltip>
+                <span className="w-px h-5 bg-border/70 mx-0.5" aria-hidden="true" />
+              </>
+            )}
 
-            {/* Mobile overflow menu */}
-            <div className="relative sm:hidden">
-              <button
-                onClick={() => setMoreOpen(!moreOpen)}
-                className="p-2.5 hover:bg-accent text-muted-foreground rounded-lg"
-                aria-label="More actions"
-              >
-                <MoreHorizontal className="w-4 h-4" />
-              </button>
-              {moreOpen && (
-                <>
-                  {/* Backdrop to close menu */}
-                  <div
-                    className="fixed inset-0 z-40"
-                    onClick={() => setMoreOpen(false)}
-                  />
-                  {/* Search and Key Themes intentionally NOT duplicated
-                      here — Search has Cmd-F + own button slot on wider
-                      breakpoints; Key Themes lives in the Filter
-                      dropdown (commit f16ffb8). Repeating them in the
-                      overflow violated WCAG 3.2.4 (consistent
-                      identification) and pushed the menu to ~half the
-                      viewport. Sections below are labeled per axis so
-                      the visual rhythm distinguishes board export
-                      (image), board state (JSON sessions), and
-                      publishing (Share link). */}
-                  <div className="absolute top-full right-0 mt-2 bg-card border border-border rounded-xl shadow-2xl z-50 min-w-[200px] py-1 animate-in fade-in slide-in-from-top-2 duration-150">
-                    <div role="group" aria-labelledby="m-file-label">
-                      <div
-                        id="m-file-label"
-                        className="px-4 pt-2 pb-1 text-[10px] uppercase tracking-wider text-muted-foreground/70 font-semibold"
-                      >
-                        Image
-                      </div>
-                      <button
-                        onClick={() => { onExportPNG(); setMoreOpen(false); }}
-                        className="w-full flex items-center gap-3 px-4 py-2.5 text-sm hover:bg-accent text-foreground"
-                      >
-                        <Download className="w-4 h-4 text-muted-foreground" />
-                        Export PNG
-                      </button>
-                      <button
-                        onClick={() => { onExportSVG(); setMoreOpen(false); }}
-                        className="w-full flex items-center gap-3 px-4 py-2.5 text-sm hover:bg-accent text-foreground"
-                      >
-                        <Download className="w-4 h-4 text-muted-foreground" />
-                        Export SVG
-                      </button>
-                    </div>
-                    <div className="h-px bg-border my-1" />
-                    <div role="group" aria-labelledby="m-session-label">
-                      <div
-                        id="m-session-label"
-                        className="px-4 pt-2 pb-1 text-[10px] uppercase tracking-wider text-muted-foreground/70 font-semibold"
-                      >
-                        Sessions
-                      </div>
-                      <button
-                        onClick={() => { onShowSessions(); setMoreOpen(false); }}
-                        className="w-full flex items-center gap-3 px-4 py-2.5 text-sm hover:bg-accent text-foreground"
-                      >
-                        <FolderOpen className="w-4 h-4 text-muted-foreground" />
-                        Saved boards
-                      </button>
-                      <button
-                        onClick={() => { onExportSession(); setMoreOpen(false); }}
-                        className="w-full flex items-center gap-3 px-4 py-2.5 text-sm hover:bg-accent text-foreground"
-                      >
-                        <Download className="w-4 h-4 text-muted-foreground" />
-                        Export JSON
-                      </button>
-                      <label className="w-full flex items-center gap-3 px-4 py-2.5 text-sm hover:bg-accent text-foreground cursor-pointer">
-                        <Upload className="w-4 h-4 text-muted-foreground" />
-                        Import JSON
-                        <input
-                          type="file"
-                          accept=".json"
-                          className="hidden"
-                          onChange={(e) => {
-                            if (e.target.files?.[0]) onImportSession(e.target.files[0]);
-                            setMoreOpen(false);
-                          }}
-                        />
-                      </label>
-                    </div>
-                    <div className="h-px bg-border my-1" />
-                    <div role="group" aria-labelledby="m-share-label">
-                      <div
-                        id="m-share-label"
-                        className="px-4 pt-2 pb-1 text-[10px] uppercase tracking-wider text-muted-foreground/70 font-semibold"
-                      >
-                        Share
-                      </div>
-                      <button
-                        onClick={() => { onShare(); setMoreOpen(false); }}
-                        disabled={nodeCount === 0}
-                        className="w-full flex items-center gap-3 px-4 py-2.5 text-sm hover:bg-accent text-foreground disabled:opacity-50"
-                      >
-                        <Share2 className="w-4 h-4 text-muted-foreground" />
-                        Share link
-                      </button>
-                    </div>
-                  </div>
-                </>
-              )}
-            </div>
-          </div>
-        )}
-      </div>
-
-      {/* Filter Panel (Floating) */}
-      {filterType && (
-        <div className="interactive-ui pointer-events-auto absolute top-14 sm:top-20 right-2 sm:right-4 z-30 bg-card/90 backdrop-blur border border-border p-3 rounded-xl animate-in slide-in-from-top-2 shadow-xl max-w-[calc(100vw-1rem)]">
-          <p className="text-xs text-muted-foreground uppercase tracking-wider mb-2">
-            Filter by Type
-          </p>
-          <div className="space-y-1">
-            <button
-              onClick={() => onSetFilterType(null)}
-              className="w-full text-left px-3 py-2 rounded-lg hover:bg-accent text-sm transition-colors text-foreground"
-            >
-              All Types
-            </button>
-            {Object.entries(NODE_TYPES).map(([key, type]) => {
-              if (key === "default") return null;
-              const Icon = type.icon;
-              return (
+            {/* Search */}
+            <Tooltip>
+              <TooltipTrigger asChild>
                 <button
-                  key={key}
-                  onClick={() => onSetFilterType(key)}
-                  className={`w-full text-left px-3 py-2 rounded-lg hover:bg-accent text-sm transition-colors flex items-center gap-2 ${
-                    filterType === key ? "bg-accent" : ""
+                  type="button"
+                  onClick={onToggleSearch}
+                  aria-pressed={isSearchOpen}
+                  aria-label={isSearchOpen ? "Close search" : "Open search"}
+                  className={`${iconBtn} ${
+                    isSearchOpen ? "bg-accent text-foreground" : ""
                   }`}
                 >
-                  <Icon className={`w-4 h-4 ${type.color}`} />
-                  <span className="text-foreground">{type.label}</span>
+                  <Search className="w-4 h-4" />
                 </button>
-              );
-            })}
-          </div>
-        </div>
-      )}
+              </TooltipTrigger>
+              <TooltipContent>Search</TooltipContent>
+            </Tooltip>
 
-      {/* Search Bar (Floating) */}
+            {/* Files & Sharing */}
+            <div className="relative">
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setFilterMenuOpen(false);
+                      setFilesMenuOpen((v) => !v);
+                    }}
+                    aria-haspopup="true"
+                    aria-expanded={filesMenuOpen}
+                    aria-label="Files and sharing"
+                    className={`${iconBtn} ${
+                      filesMenuOpen ? "bg-accent text-foreground" : ""
+                    }`}
+                  >
+                    <FolderOpen className="w-4 h-4" />
+                  </button>
+                </TooltipTrigger>
+                <TooltipContent>Files &amp; sharing</TooltipContent>
+              </Tooltip>
+              {filesMenuOpen && (
+                <div
+                  data-toolbar-popover
+                  className="absolute top-full right-0 mt-2 bg-card/95 backdrop-blur-xl border border-border/70 rounded-2xl shadow-2xl z-40 min-w-[220px] py-1 animate-in fade-in slide-in-from-top-2 duration-150"
+                  onKeyDown={(e) => {
+                    if (e.key === "Escape") setFilesMenuOpen(false);
+                  }}
+                >
+                  <button
+                    onClick={() => {
+                      onShowSessions();
+                      setFilesMenuOpen(false);
+                    }}
+                    className="w-full flex items-center gap-3 px-4 py-2.5 text-sm hover:bg-accent text-foreground"
+                  >
+                    <FolderOpen className="w-4 h-4 text-muted-foreground" />
+                    Sessions
+                  </button>
+                  <div className="h-px bg-border my-1" />
+                  <button
+                    onClick={() => {
+                      onExportSession();
+                      setFilesMenuOpen(false);
+                    }}
+                    className="w-full flex items-center gap-3 px-4 py-2.5 text-sm hover:bg-accent text-foreground"
+                  >
+                    <Download className="w-4 h-4 text-muted-foreground" />
+                    Save (JSON)
+                  </button>
+                  <label className="w-full flex items-center gap-3 px-4 py-2.5 text-sm hover:bg-accent text-foreground cursor-pointer">
+                    <Upload className="w-4 h-4 text-muted-foreground" />
+                    Load (JSON)
+                    <input
+                      type="file"
+                      accept=".json"
+                      className="hidden"
+                      onChange={(e) => {
+                        if (e.target.files?.[0]) onImportSession(e.target.files[0]);
+                        setFilesMenuOpen(false);
+                      }}
+                    />
+                  </label>
+                  <div className="h-px bg-border my-1" />
+                  <button
+                    onClick={() => {
+                      onExportPNG();
+                      setFilesMenuOpen(false);
+                    }}
+                    className="w-full flex items-center gap-3 px-4 py-2.5 text-sm hover:bg-accent text-foreground"
+                  >
+                    <Download className="w-4 h-4 text-muted-foreground" />
+                    Export PNG
+                  </button>
+                  <button
+                    onClick={() => {
+                      onExportSVG();
+                      setFilesMenuOpen(false);
+                    }}
+                    className="w-full flex items-center gap-3 px-4 py-2.5 text-sm hover:bg-accent text-foreground"
+                  >
+                    <Download className="w-4 h-4 text-muted-foreground" />
+                    Export SVG
+                  </button>
+                  <div className="h-px bg-border my-1" />
+                  <button
+                    onClick={() => {
+                      onShare();
+                      setFilesMenuOpen(false);
+                    }}
+                    disabled={nodeCount === 0}
+                    className="w-full flex items-center gap-3 px-4 py-2.5 text-sm hover:bg-accent text-foreground disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    <Share2 className="w-4 h-4 text-muted-foreground" />
+                    Share link
+                  </button>
+                </div>
+              )}
+            </div>
+
+            {/* Filter (per-type + key themes) */}
+            <div className="relative">
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setFilesMenuOpen(false);
+                      setFilterMenuOpen((v) => !v);
+                    }}
+                    aria-haspopup="true"
+                    aria-expanded={filterMenuOpen}
+                    aria-label="Filter view"
+                    className={`${iconBtn} ${
+                      filterMenuOpen || hasFilterActive
+                        ? "bg-accent text-foreground"
+                        : ""
+                    }`}
+                  >
+                    <Filter className="w-4 h-4" />
+                  </button>
+                </TooltipTrigger>
+                <TooltipContent>Filter</TooltipContent>
+              </Tooltip>
+              {filterMenuOpen && (
+                <div
+                  data-toolbar-popover
+                  className="absolute top-full right-0 mt-2 bg-card/95 backdrop-blur-xl border border-border/70 rounded-2xl shadow-2xl z-40 min-w-[220px] py-1 animate-in fade-in slide-in-from-top-2 duration-150"
+                  onKeyDown={(e) => {
+                    if (e.key === "Escape") setFilterMenuOpen(false);
+                  }}
+                >
+                  <button
+                    onClick={() => {
+                      onToggleKeyThemes();
+                      setFilterMenuOpen(false);
+                    }}
+                    className="w-full flex items-center gap-3 px-4 py-2.5 text-sm hover:bg-accent text-foreground"
+                  >
+                    <Sparkles
+                      className={`w-4 h-4 ${
+                        showOnlyKeyThemes
+                          ? "text-yellow-300"
+                          : "text-muted-foreground"
+                      }`}
+                    />
+                    <span className="flex-1 text-left">
+                      {showOnlyKeyThemes
+                        ? "Show all (key themes only ON)"
+                        : "Show only key themes"}
+                    </span>
+                  </button>
+                  <div className="h-px bg-border my-1" />
+                  <button
+                    onClick={() => {
+                      onSetFilterType(null);
+                      setFilterMenuOpen(false);
+                    }}
+                    className={`w-full flex items-center gap-3 px-4 py-2.5 text-sm hover:bg-accent ${
+                      !filterType
+                        ? "text-foreground font-medium"
+                        : "text-muted-foreground"
+                    }`}
+                  >
+                    <span className="w-4 h-4 inline-block" aria-hidden="true" />
+                    All types
+                  </button>
+                  {Object.values(NODE_TYPES)
+                    .filter((t) => t.id !== "default" && t.id !== "root")
+                    .map((type) => {
+                      const Icon = type.icon;
+                      const isActive = filterType === type.id;
+                      return (
+                        <button
+                          key={type.id}
+                          onClick={() => {
+                            onSetFilterType(type.id);
+                            setFilterMenuOpen(false);
+                          }}
+                          className={`w-full flex items-center gap-3 px-4 py-2.5 text-sm hover:bg-accent ${
+                            isActive
+                              ? "text-foreground font-medium bg-accent/40"
+                              : "text-muted-foreground"
+                          }`}
+                        >
+                          <Icon className={`w-4 h-4 ${type.color}`} />
+                          Only {type.label}
+                        </button>
+                      );
+                    })}
+                </div>
+              )}
+            </div>
+
+            {/* Collab — web only (parent omits onShowCollab on Capacitor) */}
+            {onShowCollab && (
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <button
+                    type="button"
+                    onClick={onShowCollab}
+                    aria-label={
+                      isCollabConnected ? "Collaborating" : "Collaborate"
+                    }
+                    className={`relative ${iconBtn} ${
+                      isCollabConnected
+                        ? "text-emerald-400 hover:text-emerald-300"
+                        : ""
+                    }`}
+                  >
+                    <Users className="w-4 h-4" />
+                    {isCollabConnected &&
+                      (collabParticipantCount ?? 0) > 1 && (
+                        <span className="absolute -top-0.5 -right-0.5 bg-emerald-500 text-white text-[9px] font-bold w-4 h-4 rounded-full flex items-center justify-center">
+                          {collabParticipantCount}
+                        </span>
+                      )}
+                  </button>
+                </TooltipTrigger>
+                <TooltipContent>
+                  {isCollabConnected ? "Collaborating" : "Collaborate"}
+                </TooltipContent>
+              </Tooltip>
+            )}
+
+            {/* New board */}
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <button
+                  type="button"
+                  onClick={() => {
+                    onShowWelcome();
+                    collapse();
+                  }}
+                  aria-label="New board"
+                  className={iconBtn}
+                >
+                  <Plus className="w-4 h-4" />
+                </button>
+              </TooltipTrigger>
+              <TooltipContent>New board</TooltipContent>
+            </Tooltip>
+
+            {/* Settings */}
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <button
+                  type="button"
+                  onClick={() => {
+                    onShowSettings();
+                    collapse();
+                  }}
+                  aria-label="Settings"
+                  className={iconBtn}
+                >
+                  <Settings className="w-4 h-4" />
+                </button>
+              </TooltipTrigger>
+              <TooltipContent>Settings</TooltipContent>
+            </Tooltip>
+
+            <span className="w-px h-5 bg-border/70 mx-0.5" aria-hidden="true" />
+          </div>
+        )}
+
+        {/* Hex anchor — always visible. Toggles the topbar. */}
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <button
+              type="button"
+              onClick={() => setExpanded((v) => !v)}
+              aria-label={expanded ? "Close board controls" : "Open board controls"}
+              aria-expanded={expanded}
+              className={`h-11 w-11 sm:h-12 sm:w-12 flex items-center justify-center rounded-full transition-all duration-200 ${
+                expanded
+                  ? "bg-accent text-foreground"
+                  : "hover:bg-accent/60 text-foreground"
+              }`}
+            >
+              {expanded ? (
+                <X className="w-5 h-5" />
+              ) : (
+                <Hexagon
+                  className="w-5 h-5 sm:w-6 sm:h-6 text-yellow-400"
+                  strokeWidth={2.5}
+                />
+              )}
+            </button>
+          </TooltipTrigger>
+          <TooltipContent>
+            {expanded ? "Close" : "Board controls"}
+          </TooltipContent>
+        </Tooltip>
+      </div>
+
+      {/* Search Bar (Floating) — appears under the topbar when search is open */}
       {isSearchOpen && (
-        <div className="interactive-ui pointer-events-auto absolute top-14 sm:top-20 left-2 sm:left-4 z-30 bg-card/90 backdrop-blur border border-border p-2 rounded-xl flex items-center gap-2 animate-in slide-in-from-top-2 w-[calc(100vw-1rem)] sm:w-64 max-w-[280px] shadow-xl">
+        <div className="interactive-ui pointer-events-auto absolute top-14 sm:top-20 left-2 sm:left-4 z-30 bg-card/95 backdrop-blur-xl border border-border/70 p-2 rounded-2xl flex items-center gap-2 animate-in slide-in-from-top-2 w-[calc(100vw-1rem)] sm:w-72 max-w-[320px] shadow-2xl">
           <Search className="w-4 h-4 text-muted-foreground ml-2 flex-shrink-0" />
           <Input
             ref={searchInputRef}
@@ -451,126 +565,12 @@ export const Toolbar = ({
           <button
             onClick={onCloseSearch}
             className="p-1 hover:text-foreground text-muted-foreground flex-shrink-0"
+            aria-label="Close search"
           >
             <X className="w-3 h-3" />
           </button>
         </div>
       )}
-
-      {/* Right Controls */}
-      <div
-        aria-label="View Controls"
-        className="flex items-center gap-1 sm:gap-2 pointer-events-auto interactive-ui flex-shrink-0"
-      >
-        {onShowCollab && (
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <button
-                onClick={onShowCollab}
-                className={`relative p-2 sm:p-3 bg-card/90 backdrop-blur border border-border rounded-lg sm:rounded-xl transition-colors ${
-                  isCollabConnected ? "bg-green-500/10 border-green-500/30" : "hover:bg-accent"
-                }`}
-              >
-                <Users className="w-4 h-4 sm:w-5 sm:h-5" />
-                {isCollabConnected && (collabParticipantCount ?? 0) > 1 && (
-                  <span className="absolute -top-1 -right-1 bg-green-500 text-white text-[9px] font-bold w-4 h-4 rounded-full flex items-center justify-center">
-                    {collabParticipantCount}
-                  </span>
-                )}
-              </button>
-            </TooltipTrigger>
-            <TooltipContent>{isCollabConnected ? "Collaborating" : "Collaborate"}</TooltipContent>
-          </Tooltip>
-        )}
-
-        <Tooltip>
-          <TooltipTrigger asChild>
-            <button
-              onClick={onShowSettings}
-              className="p-2 sm:p-3 bg-card/90 backdrop-blur border border-border rounded-lg sm:rounded-xl hover:bg-accent transition-colors"
-            >
-              <Settings className="w-4 h-4 sm:w-5 sm:h-5" />
-            </button>
-          </TooltipTrigger>
-          <TooltipContent>Settings</TooltipContent>
-        </Tooltip>
-
-        {/* Filter dropdown — combines per-type filtering with the
-            key-themes toggle (was a separate icon on the desktop bar).
-            Active indicator on the trigger when ANY filter is on. */}
-        <div className="relative">
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <button
-                onClick={() => setFilterMenuOpen((v) => !v)}
-                aria-label="Filter view"
-                aria-expanded={filterMenuOpen}
-                aria-haspopup="true"
-                className={`p-2 sm:p-3 bg-card/90 border border-border rounded-lg sm:rounded-xl transition-colors ${
-                  (filterType || showOnlyKeyThemes || filterMenuOpen)
-                    ? "bg-accent"
-                    : "hover:bg-accent/50"
-                }`}
-              >
-                <Filter className="w-4 h-4 sm:w-5 sm:h-5" />
-              </button>
-            </TooltipTrigger>
-            <TooltipContent>Filter view</TooltipContent>
-          </Tooltip>
-          {filterMenuOpen && (
-            <>
-              <div
-                className="fixed inset-0 z-40"
-                onClick={() => setFilterMenuOpen(false)}
-              />
-              <div
-                onKeyDown={(e) => { if (e.key === "Escape") setFilterMenuOpen(false); }}
-                className="absolute top-full right-0 mt-2 bg-card border border-border rounded-xl shadow-2xl z-50 min-w-[200px] py-1 animate-in fade-in slide-in-from-top-2 duration-150"
-              >
-                {/* Key themes toggle (was the standalone Sparkles button) */}
-                <button
-                  onClick={() => { onToggleKeyThemes(); setFilterMenuOpen(false); }}
-                  className="w-full flex items-center gap-3 px-4 py-2.5 text-sm hover:bg-accent text-foreground"
-                >
-                  <Sparkles className={`w-4 h-4 ${showOnlyKeyThemes ? "text-yellow-300" : "text-muted-foreground"}`} />
-                  <span className="flex-1 text-left">
-                    {showOnlyKeyThemes ? "Show all (key themes only ON)" : "Show only key themes"}
-                  </span>
-                </button>
-                <div className="h-px bg-border my-1" />
-                {/* Per-type filter — null = all types visible */}
-                <button
-                  onClick={() => { onSetFilterType(null); setFilterMenuOpen(false); }}
-                  className={`w-full flex items-center gap-3 px-4 py-2.5 text-sm hover:bg-accent ${
-                    !filterType ? "text-foreground font-medium" : "text-muted-foreground"
-                  }`}
-                >
-                  <span className="w-4 h-4 inline-block" aria-hidden="true" />
-                  All types
-                </button>
-                {Object.values(NODE_TYPES)
-                  .filter((t) => t.id !== "default" && t.id !== "root")
-                  .map((type) => {
-                    const Icon = type.icon;
-                    const isActive = filterType === type.id;
-                    return (
-                      <button
-                        key={type.id}
-                        onClick={() => { onSetFilterType(type.id); setFilterMenuOpen(false); }}
-                        className={`w-full flex items-center gap-3 px-4 py-2.5 text-sm hover:bg-accent ${
-                          isActive ? "text-foreground font-medium bg-accent/40" : "text-muted-foreground"
-                        }`}
-                      >
-                        <Icon className={`w-4 h-4 ${type.color}`} />
-                        Only {type.label}
-                      </button>
-                    );
-                  })}
-              </div>
-            </>
-          )}
-        </div>
-      </div>
     </header>
   );
 };

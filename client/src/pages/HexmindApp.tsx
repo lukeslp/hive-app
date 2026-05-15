@@ -1,7 +1,7 @@
 /** Idea Tiles app shell: wires canvas, modals, AI, collab, and session state. */
 
 import { useState, useRef, useEffect, useCallback, useMemo } from "react";
-import { Layout, Loader2 } from "@/lib/icons";
+import { Loader2 } from "@/lib/icons";
 import { toast } from "sonner";
 import { useTheme } from "@/contexts/ThemeContext";
 import { useHiveMindAnnouncer } from "@/hooks/useAnnouncer";
@@ -142,6 +142,12 @@ export default function HexmindApp() {
   const [fontSizeMultiplier, setFontSizeMultiplier] = useState(() => {
     const saved = localStorage.getItem("hexpand_font_size");
     return saved ? parseFloat(saved) : 1.0;
+  });
+  const [fontFamily, setFontFamily] = useState(() => {
+    return localStorage.getItem("hexpand_accessibility_font") || "system";
+  });
+  const [enableHighContrast, setEnableHighContrast] = useState(() => {
+    return localStorage.getItem("hexpand_high_contrast") === "true";
   });
   const [enableAnimations, setEnableAnimations] = useState(() => {
     const saved = localStorage.getItem("hexpand_animations");
@@ -475,6 +481,12 @@ export default function HexmindApp() {
     localStorage.setItem("hexpand_animations", enableAnimations.toString());
   }, [enableAnimations]);
   useEffect(() => {
+    localStorage.setItem("hexpand_accessibility_font", fontFamily);
+  }, [fontFamily]);
+  useEffect(() => {
+    localStorage.setItem("hexpand_high_contrast", enableHighContrast.toString());
+  }, [enableHighContrast]);
+  useEffect(() => {
     localStorage.setItem("hexpand_autosave_enabled", enableAutoSave.toString());
   }, [enableAutoSave]);
   useEffect(() => {
@@ -483,6 +495,41 @@ export default function HexmindApp() {
       fontSizeMultiplier.toString()
     );
   }, [fontSizeMultiplier]);
+  useEffect(() => {
+    const fontStacks: Record<string, string> = {
+      system: "Inter, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif",
+      atkinson: "'Atkinson Hyperlegible', Inter, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif",
+      lexend: "'Lexend', Inter, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif",
+      "open-dyslexic": "'OpenDyslexic', 'Atkinson Hyperlegible', Inter, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif",
+      aptos: "Aptos, Calibri, Inter, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif",
+    };
+    const stack = fontStacks[fontFamily] || fontStacks.system;
+    document.documentElement.style.setProperty("--app-font-family", stack);
+  }, [fontFamily]);
+  useEffect(() => {
+    document.documentElement.classList.toggle("manual-high-contrast", enableHighContrast);
+  }, [enableHighContrast]);
+
+  const resetBoard = useCallback(() => {
+    resetHistory({});
+    setSelectedNodeId(null);
+    setInspectedNodeId(null);
+    setRootInput("");
+    resetTour();
+  }, [resetHistory, resetTour]);
+
+  const requestDeleteBoard = useCallback(() => {
+    setConfirmModal({
+      isOpen: true,
+      title: "Delete current board?",
+      message: "This clears all nodes on the current board. This cannot be undone.",
+      onConfirm: () => {
+        resetBoard();
+        setShowSettingsModal(false);
+        toast.success("Board deleted");
+      },
+    });
+  }, [resetBoard]);
 
   // ── Undo / Redo ─────────────────────────────────────────────────────────
   const handleUndo = useCallback(() => {
@@ -794,20 +841,14 @@ Generate 6 diverse related ideas. Connect to key themes when relevant.`;
         }
       }
 
-      // Validate clarification fields BEFORE padding — drops factual
+      // Validate clarification fields BEFORE rendering — drops factual
       // questions the LLM laundered as user-knowledge per the validator's
-      // regex patterns. Padded placeholder branches don't carry the
-      // shouldAsk fields so they pass through untouched.
+      // regex patterns.
       branches = validateBranches(branches);
 
-      // Pad to 6
-      const defaultTypes = ["concept", "action", "technical", "question", "risk", "concept"];
-      while (branches.length < 6) {
-        branches.push({
-          title: `Idea ${branches.length + 1}`,
-          description: `Related aspect of "${centerNode.text}"`,
-          type: defaultTypes[branches.length % defaultTypes.length],
-        });
+      if (branches.length === 0) {
+        toast.error("No neighbors generated. Empty slots were left untouched.");
+        return;
       }
 
       const currentNodes = nodesRef.current;
@@ -910,28 +951,7 @@ Generate 6 diverse related ideas. Connect to key themes when relevant.`;
         return;
       }
       console.error("AI Error:", error);
-      // Fallback placeholders
-      const currentNodes = nodesRef.current;
-      const newNodes = { ...currentNodes };
-      const defaultTypes = ["concept", "action", "technical", "question", "risk", "concept"];
-      DIRECTIONS.forEach((dir, i) => {
-        const nQ = centerNode.q + dir.q;
-        const nR = centerNode.r + dir.r;
-        const neighborKey = getNodeKey(nQ, nR);
-        if (!newNodes[neighborKey]) {
-          newNodes[neighborKey] = {
-            q: nQ,
-            r: nR,
-            text: `Explore ${i + 1}`,
-            description: `Click to expand from "${centerNode.text}"`,
-            type: defaultTypes[i],
-            depth: (centerNode.depth || 0) + 1,
-            parentId: key,
-            pinned: false,
-          };
-        }
-      });
-      commitNodes(newNodes);
+      toast.error("Could not generate neighbors. Empty slots were left untouched.");
     } finally {
       setLoadingNodes((prev) => {
         const next = new Set(prev);
@@ -1508,11 +1528,7 @@ Generate 6 diverse related ideas. Connect to key themes when relevant.`;
         showOnlyKeyThemes={showOnlyKeyThemes}
         filterType={filterType}
         onShowWelcome={() => {
-              resetHistory({});
-              setSelectedNodeId(null);
-              setInspectedNodeId(null);
-              setRootInput("");
-              resetTour();
+              resetBoard();
             }}
         onExportPNG={exportAsPNG}
         onExportSVG={exportAsImage}
@@ -1704,20 +1720,8 @@ Generate 6 diverse related ideas. Connect to key themes when relevant.`;
               }}
             />
 
-            {Object.keys(nodes).length === 0 && (
-              <div className="absolute top-0 left-0 -translate-x-1/2 -translate-y-1/2 flex flex-col items-center text-muted-foreground pointer-events-none">
-                <Layout className="w-16 h-16 mb-4 opacity-10" />
-                {!showOnboardingPrompt && (
-                  <div
-                    role="status"
-                    aria-live="polite"
-                    className="text-sm font-light tracking-wider opacity-50 motion-safe:animate-pulse select-none"
-                  >
-                    Tap anywhere to start a brainstorm
-                  </div>
-                )}
-              </div>
-            )}
+            {/* Empty canvas intentionally has no helper text/icon.
+                Users can tap anywhere to start without extra chrome. */}
           </div>
         </div>
 
@@ -1964,8 +1968,10 @@ Generate 6 diverse related ideas. Connect to key themes when relevant.`;
         isOpen={sessions.showShareModal}
         onClose={() => sessions.setShowShareModal(false)}
         shareUrl={sessions.shareUrl}
+        iosShareUrl={sessions.iosShareUrl}
         copied={sessions.copied}
         onCopy={sessions.copyShareUrl}
+        onBringToIos={sessions.bringToIos}
       />
 
       <SettingsModal
@@ -1977,6 +1983,10 @@ Generate 6 diverse related ideas. Connect to key themes when relevant.`;
         setCreativity={aiGeneration.setCreativity}
         fontSizeMultiplier={fontSizeMultiplier}
         setFontSizeMultiplier={setFontSizeMultiplier}
+        fontFamily={fontFamily}
+        setFontFamily={setFontFamily}
+        enableHighContrast={enableHighContrast}
+        setEnableHighContrast={setEnableHighContrast}
         enableAnimations={enableAnimations}
         setEnableAnimations={setEnableAnimations}
         enableAutoSave={enableAutoSave}
@@ -1994,6 +2004,7 @@ Generate 6 diverse related ideas. Connect to key themes when relevant.`;
         serverProviders={providerSettings.serverProviders}
         appleIntelligenceAvailable={providerSettings.appleIntelligenceAvailable}
         visibleProviders={providerSettings.visibleProviders}
+        onDeleteBoard={requestDeleteBoard}
       />
 
       {/* Minimap — always rendered when nodes exist; user collapses

@@ -19,7 +19,11 @@ import { STORAGE_KEY, AUTOSAVE_KEY } from "@/lib/hexConstants";
 import { generateThumbnail } from "@/lib/canvasSnapshot";
 import { saveBlob } from "@/lib/saveBlob";
 import type { HexNode, ViewState } from "@/types/hivemind";
-import { APP_DISPLAY_NAME, APP_EXPORT_FILE_PREFIX } from "@shared/appBrand";
+import {
+  APP_DISPLAY_NAME,
+  APP_EXPORT_FILE_PREFIX,
+  APP_PUBLIC_WEB_ORIGIN,
+} from "@shared/appBrand";
 
 interface SavedSession {
   id: string | number;
@@ -63,6 +67,7 @@ export function useSessionManagement({
   const [sessionName, setSessionName] = useState("");
   const [showShareModal, setShowShareModal] = useState(false);
   const [shareUrl, setShareUrl] = useState("");
+  const [iosShareUrl, setIosShareUrl] = useState("");
   const [copied, setCopied] = useState(false);
 
   /** The cloud session currently being worked on (for auto-save & overwrite) */
@@ -431,14 +436,21 @@ export function useSessionManagement({
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(data),
       });
-      if (!res.ok) throw new Error("Failed to save");
+      if (!res.ok) throw new Error(`Failed to save (HTTP ${res.status})`);
+      const contentType = res.headers.get("content-type") ?? "";
+      if (!contentType.toLowerCase().includes("application/json")) {
+        throw new Error(`Unexpected response type: ${contentType || "unknown"}`);
+      }
       const { id } = await res.json();
       const path = window.location.pathname || "/";
       const url = `${getPublicWebAppOrigin()}${path}?s=${id}`;
+      const iosUrl = `${APP_PUBLIC_WEB_ORIGIN}${path}?s=${id}`;
       setShareUrl(url);
+      setIosShareUrl(iosUrl);
       setShowShareModal(true);
-    } catch {
-      toast.error("Failed to create share link");
+    } catch (error) {
+      const detail = error instanceof Error ? error.message : "unknown error";
+      toast.error(`Failed to create share link: ${detail}`);
     }
   }, [nodes, viewState, creativity]);
 
@@ -447,6 +459,33 @@ export function useSessionManagement({
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
   }, [shareUrl]);
+
+  const bringToIos = useCallback(async () => {
+    const targetUrl = iosShareUrl || shareUrl;
+    if (!targetUrl) {
+      toast.error("No share link available yet");
+      return;
+    }
+
+    try {
+      if (typeof navigator.share === "function") {
+        await navigator.share({
+          title: `${APP_DISPLAY_NAME} board`,
+          text: `Open this board in ${APP_DISPLAY_NAME} on iOS`,
+          url: targetUrl,
+        });
+        return;
+      }
+
+      await navigator.clipboard.writeText(targetUrl);
+      toast.success("iOS link copied");
+    } catch (error) {
+      if (error instanceof DOMException && error.name === "AbortError") {
+        return;
+      }
+      toast.error("Could not open iOS share options");
+    }
+  }, [iosShareUrl, shareUrl]);
 
   const loadFromUrl = useCallback(async () => {
     const params = new URLSearchParams(window.location.search);
@@ -494,6 +533,7 @@ export function useSessionManagement({
     showShareModal,
     setShowShareModal,
     shareUrl,
+    iosShareUrl,
     copied,
     saveSession,
     renameSession,
@@ -504,6 +544,7 @@ export function useSessionManagement({
     importSession,
     generateShareUrl,
     copyShareUrl,
+    bringToIos,
     loadFromUrl,
     isSaving: createMutation.isPending || updateMutation.isPending,
     isDeleting: deleteMutation.isPending,

@@ -9,7 +9,7 @@
 
 import type { NodeTypeStyle } from '@/types/hexmind';
 import {
-  Zap,
+  Hexagon,
   Lightbulb,
   Activity,
   Terminal,
@@ -26,7 +26,7 @@ export const NODE_TYPES: Record<string, NodeTypeStyle> = {
     border: "stroke-yellow-500",
     bg: "fill-yellow-500/20",
     bgSolid: "#facc15",
-    icon: Zap,
+    icon: Hexagon,
   },
   concept: {
     id: "concept",

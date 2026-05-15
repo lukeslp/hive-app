@@ -17,7 +17,13 @@
 - **App Store:** Live; canonical ASC / marketing URLs use **ideatiles.app**.
 - Brand display name is **Idea Tiles** while legacy storage keys intentionally remain `hexpand_*` for data continuity.
 - **Sharing MVP:** iOS uses **snapshot** share links only (public `https` origin, not `capacitor://`). **Live collaboration** is **web-only** for this proof-of-concept — see [`docs/SHARING_MVP_POLICY.md`](docs/SHARING_MVP_POLICY.md).
+- Share modal includes a dedicated **Bring to iOS** action that prefers the canonical universal-link origin (`APP_PUBLIC_WEB_ORIGIN`) so boards can be handed off to the iOS app flow more reliably.
+- Settings modal now uses a compact, screen-space-first control row: theme toggle, accessibility font cycling (Atkinson/Lexend/OpenDyslexic/Aptos/System), font size +/- controls, animation toggle, high-contrast toggle, prominent Auto-Save, and a destructive "Delete Current Board" action.
+- Hex tile title rendering now favors readability: removed forced uppercase in-node labels and switched to balanced wrapping with normal word breaking to reduce awkward mid-word splits on mobile.
+- Hosted/web provider behavior is locked to Anthropic in-app (no provider picker exposed), matching ideatiles.app's managed default path.
+- Settings visual treatment now uses a softer glass/card style and removes dense provider-management controls for a cleaner, on-brand surface.
 - iOS behavior is intentionally privacy-first: tile generation on iOS is on-device only (no cloud fallback).
+- Neighbor-generation failures no longer synthesize placeholder tiles (`Explore 1...6` / `Idea N`); empty slots remain empty so downstream context only reflects model-produced nodes.
 - Universal Links/AASA and server operations remain in [`NEXT_STEPS.md`](NEXT_STEPS.md).
 
 ## Quick Start
@@ -50,7 +56,7 @@ pnpm cap:sync:android
 
 | Variable | Purpose |
 |----------|---------|
-| `VITE_CAPACITOR_API_BASE_URL` | Hosted `/api` root (required for device API calls). |
+| `VITE_CAPACITOR_API_BASE_URL` | Hosted `/api` root (required for device API calls). If unset, native fallback is `${APP_PUBLIC_WEB_ORIGIN}/api` (currently `https://ideatiles.app/api`). |
 | `VITE_PUBLIC_WEB_APP_URL` | Optional. Origin for **Share link** URLs on native; defaults to `https://ideatiles.app` (`APP_PUBLIC_WEB_ORIGIN` in `shared/appBrand.ts`) when unset so links open in Safari. |
 
 **Canonical domain rollout:** [`docs/infra/IDEATILES_DOMAIN.md`](docs/infra/IDEATILES_DOMAIN.md) (DNS + Caddy). After deploy, run `pnpm verify:canonical` (AASA + `/privacy` / `/terms` on all brand hosts).

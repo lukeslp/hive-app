@@ -366,8 +366,7 @@ const HexTile = React.memo<{
                 )}
               </div>
               <span
-                className="text-hex-node font-bold line-clamp-4 uppercase text-center text-foreground"
-                style={{ wordBreak: 'break-word' }}
+                className="text-hex-node font-bold line-clamp-4 text-center text-foreground break-normal [overflow-wrap:break-word] [text-wrap:balance] [hyphens:auto]"
               >
                 {node.text}
               </span>

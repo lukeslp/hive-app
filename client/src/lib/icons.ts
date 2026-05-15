@@ -15,6 +15,7 @@ export {
   Edit3,
   FileText,
   Box,
+  Hexagon,
   HelpCircle,
   Lightbulb,
   Activity,
