@@ -16,15 +16,15 @@ import { buildApiUrl } from "./api";
 import { tryOnDeviceFirst } from "./foundationModelsPlugin";
 
 export interface MergeInput {
-    text: string;
-    description?: string;
-    type?: string;
+  text: string;
+  description?: string;
+  type?: string;
 }
 
 export interface MergeSynthesis {
-    title: string;
-    description: string;
-    type: string;
+  title: string;
+  description: string;
+  type: string;
 }
 
 const MERGE_SYSTEM_PROMPT = `You are consolidating two related ideas on a hex mind-map into a single fused tile.
@@ -43,94 +43,96 @@ JSON schema:
 const TIMEOUT_MS = 1500;
 
 function buildUserPrompt(source: MergeInput, target: MergeInput): string {
-    return (
-        `SOURCE tile: "${source.text}"${source.type ? ` [${source.type}]` : ""}` +
-        (source.description ? `\nSource description: ${source.description}` : "") +
-        `\n\n` +
-        `TARGET tile: "${target.text}"${target.type ? ` [${target.type}]` : ""}` +
-        (target.description ? `\nTarget description: ${target.description}` : "") +
-        `\n\n` +
-        `Synthesize ONE merged tile.`
-    );
+  return (
+    `SOURCE tile: "${source.text}"${source.type ? ` [${source.type}]` : ""}` +
+    (source.description ? `\nSource description: ${source.description}` : "") +
+    `\n\n` +
+    `TARGET tile: "${target.text}"${target.type ? ` [${target.type}]` : ""}` +
+    (target.description ? `\nTarget description: ${target.description}` : "") +
+    `\n\n` +
+    `Synthesize ONE merged tile.`
+  );
 }
 
 function parseSynthJson(raw: string): MergeSynthesis | null {
-    if (!raw) return null;
-    const cleaned = raw
-        .replace(/^```json\s*/i, "")
-        .replace(/^```\s*/, "")
-        .replace(/\s*```$/, "")
-        .trim();
-    try {
-        const parsed = JSON.parse(cleaned);
-        if (typeof parsed?.title !== "string" || parsed.title.trim() === "") return null;
-        const allowedTypes = ["concept", "action", "technical", "question", "risk"];
-        const type = allowedTypes.includes(parsed?.type) ? parsed.type : "concept";
-        return {
-            title: parsed.title.trim(),
-            description: typeof parsed.description === "string" ? parsed.description.trim() : "",
-            type,
-        };
-    } catch {
-        return null;
-    }
+  if (!raw) return null;
+  const cleaned = raw
+    .replace(/^```json\s*/i, "")
+    .replace(/^```\s*/, "")
+    .replace(/\s*```$/, "")
+    .trim();
+  try {
+    const parsed = JSON.parse(cleaned);
+    if (typeof parsed?.title !== "string" || parsed.title.trim() === "")
+      return null;
+    const allowedTypes = ["concept", "action", "technical", "question", "risk"];
+    const type = allowedTypes.includes(parsed?.type) ? parsed.type : "concept";
+    return {
+      title: parsed.title.trim(),
+      description:
+        typeof parsed.description === "string" ? parsed.description.trim() : "",
+      type,
+    };
+  } catch {
+    return null;
+  }
 }
 
 async function tryFoundationModels(
-    source: MergeInput,
-    target: MergeInput
+  source: MergeInput,
+  target: MergeInput
 ): Promise<MergeSynthesis | null> {
-    // Silent diagnostics: drag-merge has its own UX (the viaOnDevice flag
-    // surfaces in synthesizeMerge's caller), so the shared helper's toasts
-    // would be redundant here.
-    const fm = await tryOnDeviceFirst({
-        prompt: buildUserPrompt(source, target),
-        systemPrompt: MERGE_SYSTEM_PROMPT,
-        temperature: 0.6,
-        maxTokens: 256,
-        // Synthesis is short — a 5s budget is plenty even on cold-start.
-        timeoutMs: 5000,
-        silentDiagnostics: true,
-    });
-    return fm ? parseSynthJson(fm.text) : null;
+  // Silent diagnostics: drag-merge has its own UX (the viaOnDevice flag
+  // surfaces in synthesizeMerge's caller), so the shared helper's toasts
+  // would be redundant here.
+  const fm = await tryOnDeviceFirst({
+    prompt: buildUserPrompt(source, target),
+    systemPrompt: MERGE_SYSTEM_PROMPT,
+    temperature: 0.6,
+    maxTokens: 256,
+    // Synthesis is short — a 5s budget is plenty even on cold-start.
+    timeoutMs: 5000,
+    silentDiagnostics: true,
+  });
+  return fm ? parseSynthJson(fm.text) : null;
 }
 
 async function tryCloudFallback(
-    source: MergeInput,
-    target: MergeInput,
-    extraHeaders: Record<string, string>
+  source: MergeInput,
+  target: MergeInput,
+  extraHeaders: Record<string, string>
 ): Promise<MergeSynthesis | null> {
-    try {
-        const controller = new AbortController();
-        const timer = setTimeout(() => controller.abort(), TIMEOUT_MS);
-        const response = await fetch(buildApiUrl("generate"), {
-            method: "POST",
-            headers: { "Content-Type": "application/json", ...extraHeaders },
-            body: JSON.stringify({
-                contents: [{ parts: [{ text: buildUserPrompt(source, target) }] }],
-                systemInstruction: { parts: [{ text: MERGE_SYSTEM_PROMPT }] },
-                generationConfig: {
-                    responseMimeType: "application/json",
-                    temperature: 0.6,
-                    maxOutputTokens: 256,
-                },
-            }),
-            signal: controller.signal,
-        });
-        clearTimeout(timer);
-        if (!response.ok) return null;
-        const result = await response.json();
-        const text = result?.candidates?.[0]?.content?.parts?.[0]?.text;
-        return parseSynthJson(text ?? "");
-    } catch {
-        return null;
-    }
+  try {
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), TIMEOUT_MS);
+    const response = await fetch(buildApiUrl("generate"), {
+      method: "POST",
+      headers: { "Content-Type": "application/json", ...extraHeaders },
+      body: JSON.stringify({
+        contents: [{ parts: [{ text: buildUserPrompt(source, target) }] }],
+        systemInstruction: { parts: [{ text: MERGE_SYSTEM_PROMPT }] },
+        generationConfig: {
+          responseMimeType: "application/json",
+          temperature: 0.6,
+          maxOutputTokens: 256,
+        },
+      }),
+      signal: controller.signal,
+    });
+    clearTimeout(timer);
+    if (!response.ok) return null;
+    const result = await response.json();
+    const text = result?.candidates?.[0]?.content?.parts?.[0]?.text;
+    return parseSynthJson(text ?? "");
+  } catch {
+    return null;
+  }
 }
 
 export interface SynthesizedMergeResult {
-    synth: MergeSynthesis;
-    /** True iff the synthesis came from Apple Foundation Models on-device. */
-    viaOnDevice: boolean;
+  synth: MergeSynthesis;
+  /** True iff the synthesis came from Apple Foundation Models on-device. */
+  viaOnDevice: boolean;
 }
 
 /**
@@ -140,23 +142,23 @@ export interface SynthesizedMergeResult {
  * should fall back to literal concat when null.
  */
 export async function synthesizeMerge(
-    source: MergeInput,
-    target: MergeInput,
-    extraHeaders: Record<string, string> = {}
+  source: MergeInput,
+  target: MergeInput,
+  extraHeaders: Record<string, string> = {}
 ): Promise<SynthesizedMergeResult | null> {
-    if (!isCapacitor()) {
-        return null; // Web: keep the existing literal-concat behavior.
-    }
+  if (!isCapacitor()) {
+    return null; // Web: keep the existing literal-concat behavior.
+  }
 
-    const onDevice = await tryFoundationModels(source, target);
-    if (onDevice) return { synth: onDevice, viaOnDevice: true };
+  const onDevice = await tryFoundationModels(source, target);
+  if (onDevice) return { synth: onDevice, viaOnDevice: true };
 
-    // iOS is Apple-Intelligence-only — if FM didn't synthesize, fall
-    // back to the caller's literal-concat (returning null). No cloud.
-    if (isIos()) return null;
+  // iOS is Apple-Intelligence-only — if FM didn't synthesize, fall
+  // back to the caller's literal-concat (returning null). No cloud.
+  if (isIos()) return null;
 
-    const cloud = await tryCloudFallback(source, target, extraHeaders);
-    if (cloud) return { synth: cloud, viaOnDevice: false };
+  const cloud = await tryCloudFallback(source, target, extraHeaders);
+  if (cloud) return { synth: cloud, viaOnDevice: false };
 
-    return null;
+  return null;
 }

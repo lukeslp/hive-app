@@ -68,5 +68,5 @@ export {
   LogOut,
   ArrowRight,
   GitMerge,
-  AlertCircle
-} from 'lucide-react';
+  AlertCircle,
+} from "lucide-react";

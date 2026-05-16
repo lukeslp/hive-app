@@ -62,7 +62,9 @@ export const FloatingActionBar = ({
               : "text-muted-foreground hover:text-amber-400 hover:bg-amber-500/20"
           }`}
           title={node.isKeyTheme ? "Remove key theme" : "Mark as key theme"}
-          aria-label={node.isKeyTheme ? "Remove key theme" : "Mark as key theme"}
+          aria-label={
+            node.isKeyTheme ? "Remove key theme" : "Mark as key theme"
+          }
         >
           <Sparkles className="w-4 h-4" aria-hidden="true" />
         </button>

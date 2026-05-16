@@ -44,24 +44,56 @@ type IncomingMessage =
   | { type: "ping" };
 
 type OutgoingMessage =
-  | { type: "joined"; roomId: string; userId: string; participants: Array<{ userId: string; userName: string; color: string }> }
-  | { type: "participant-joined"; userId: string; userName: string; color: string }
+  | {
+      type: "joined";
+      roomId: string;
+      userId: string;
+      participants: Array<{ userId: string; userName: string; color: string }>;
+    }
+  | {
+      type: "participant-joined";
+      userId: string;
+      userName: string;
+      color: string;
+    }
   | { type: "participant-left"; userId: string }
   | { type: "state-sync"; nodes: Record<string, unknown> }
   | { type: "node-update"; key: string; node: unknown; fromUserId: string }
   | { type: "node-delete"; key: string; fromUserId: string }
   | { type: "nodes-batch"; nodes: Record<string, unknown>; fromUserId: string }
-  | { type: "cursor"; userId: string; userName: string; color: string; x: number; y: number }
-  | { type: "node-presence"; userId: string; userName: string; color: string; nodeKey: string | null }
+  | {
+      type: "cursor";
+      userId: string;
+      userName: string;
+      color: string;
+      x: number;
+      y: number;
+    }
+  | {
+      type: "node-presence";
+      userId: string;
+      userName: string;
+      color: string;
+      nodeKey: string | null;
+    }
   | { type: "pong" }
   | { type: "error"; message: string };
 
 // ── Palette for participant cursors ──────────────────────────────────────
 
 const CURSOR_COLORS = [
-  "#ef4444", "#f97316", "#eab308", "#22c55e",
-  "#06b6d4", "#3b82f6", "#8b5cf6", "#ec4899",
-  "#14b8a6", "#f43f5e", "#a855f7", "#6366f1",
+  "#ef4444",
+  "#f97316",
+  "#eab308",
+  "#22c55e",
+  "#06b6d4",
+  "#3b82f6",
+  "#8b5cf6",
+  "#ec4899",
+  "#14b8a6",
+  "#f43f5e",
+  "#a855f7",
+  "#6366f1",
 ];
 
 let colorIndex = 0;
@@ -96,7 +128,11 @@ function cleanupRoom(roomId: string) {
   }
 }
 
-function broadcast(room: Room, message: OutgoingMessage, excludeUserId?: string) {
+function broadcast(
+  room: Room,
+  message: OutgoingMessage,
+  excludeUserId?: string
+) {
   const data = JSON.stringify(message);
   for (const [uid, participant] of Array.from(room.participants.entries())) {
     if (uid === excludeUserId) continue;
@@ -170,7 +206,10 @@ export function setupCollabWebSocket(_httpServer: Server) {
             const prevRoom = rooms.get(currentRoomId);
             if (prevRoom) {
               prevRoom.participants.delete(currentUserId);
-              broadcast(prevRoom, { type: "participant-left", userId: currentUserId });
+              broadcast(prevRoom, {
+                type: "participant-left",
+                userId: currentUserId,
+              });
               cleanupRoom(currentRoomId);
             }
           }
@@ -190,16 +229,32 @@ export function setupCollabWebSocket(_httpServer: Server) {
           currentUserId = userId;
 
           // Send join confirmation with participant list
-          const participantList = Array.from(room.participants.values()).map((p) => ({
-            userId: p.userId,
-            userName: p.userName,
-            color: p.color,
-          }));
+          const participantList = Array.from(room.participants.values()).map(
+            p => ({
+              userId: p.userId,
+              userName: p.userName,
+              color: p.color,
+            })
+          );
 
-          send(ws, { type: "joined", roomId, userId, participants: participantList });
+          send(ws, {
+            type: "joined",
+            roomId,
+            userId,
+            participants: participantList,
+          });
 
           // Notify others
-          broadcast(room, { type: "participant-joined", userId, userName: displayName, color }, userId);
+          broadcast(
+            room,
+            {
+              type: "participant-joined",
+              userId,
+              userName: displayName,
+              color,
+            },
+            userId
+          );
 
           // Send current state to new joiner (if host has synced state)
           if (room.currentState) {
@@ -217,7 +272,11 @@ export function setupCollabWebSocket(_httpServer: Server) {
           // Only the host (or first user) can set the authoritative state
           room.currentState = msg.nodes;
           // Broadcast to all other participants
-          broadcast(room, { type: "state-sync", nodes: msg.nodes }, currentUserId);
+          broadcast(
+            room,
+            { type: "state-sync", nodes: msg.nodes },
+            currentUserId
+          );
           break;
         }
 
@@ -231,12 +290,16 @@ export function setupCollabWebSocket(_httpServer: Server) {
             room.currentState[msg.key] = msg.node;
           }
 
-          broadcast(room, {
-            type: "node-update",
-            key: msg.key,
-            node: msg.node,
-            fromUserId: currentUserId,
-          }, currentUserId);
+          broadcast(
+            room,
+            {
+              type: "node-update",
+              key: msg.key,
+              node: msg.node,
+              fromUserId: currentUserId,
+            },
+            currentUserId
+          );
           break;
         }
 
@@ -249,11 +312,15 @@ export function setupCollabWebSocket(_httpServer: Server) {
             delete room.currentState[msg.key];
           }
 
-          broadcast(room, {
-            type: "node-delete",
-            key: msg.key,
-            fromUserId: currentUserId,
-          }, currentUserId);
+          broadcast(
+            room,
+            {
+              type: "node-delete",
+              key: msg.key,
+              fromUserId: currentUserId,
+            },
+            currentUserId
+          );
           break;
         }
 
@@ -265,11 +332,15 @@ export function setupCollabWebSocket(_httpServer: Server) {
           // Full state replacement
           room.currentState = msg.nodes;
 
-          broadcast(room, {
-            type: "nodes-batch",
-            nodes: msg.nodes,
-            fromUserId: currentUserId,
-          }, currentUserId);
+          broadcast(
+            room,
+            {
+              type: "nodes-batch",
+              nodes: msg.nodes,
+              fromUserId: currentUserId,
+            },
+            currentUserId
+          );
           break;
         }
 
@@ -281,14 +352,18 @@ export function setupCollabWebSocket(_httpServer: Server) {
           const participant = room.participants.get(currentUserId);
           if (participant) {
             participant.cursor = { x: msg.x, y: msg.y };
-            broadcast(room, {
-              type: "cursor",
-              userId: currentUserId,
-              userName: participant.userName,
-              color: participant.color,
-              x: msg.x,
-              y: msg.y,
-            }, currentUserId);
+            broadcast(
+              room,
+              {
+                type: "cursor",
+                userId: currentUserId,
+                userName: participant.userName,
+                color: participant.color,
+                x: msg.x,
+                y: msg.y,
+              },
+              currentUserId
+            );
           }
           break;
         }
@@ -300,13 +375,17 @@ export function setupCollabWebSocket(_httpServer: Server) {
 
           const participant = room.participants.get(currentUserId);
           if (participant) {
-            broadcast(room, {
-              type: "node-presence",
-              userId: currentUserId,
-              userName: participant.userName,
-              color: participant.color,
-              nodeKey: msg.nodeKey,
-            }, currentUserId);
+            broadcast(
+              room,
+              {
+                type: "node-presence",
+                userId: currentUserId,
+                userName: participant.userName,
+                color: participant.color,
+                nodeKey: msg.nodeKey,
+              },
+              currentUserId
+            );
           }
           break;
         }

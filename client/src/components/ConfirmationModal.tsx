@@ -30,7 +30,9 @@ export const ConfirmationModal = ({
       <DialogContent className="bg-card border-border max-w-sm">
         <DialogHeader>
           <DialogTitle className="text-foreground">{title}</DialogTitle>
-          <DialogDescription className="text-muted-foreground text-sm">{message}</DialogDescription>
+          <DialogDescription className="text-muted-foreground text-sm">
+            {message}
+          </DialogDescription>
         </DialogHeader>
         <div className="flex flex-col gap-4">
           <div className="flex justify-end gap-2">

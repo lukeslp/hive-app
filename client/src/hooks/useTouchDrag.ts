@@ -1,17 +1,17 @@
 /**
  * useTouchDrag - Touch-based drag-and-drop for hex tiles
- * 
+ *
  * Long-press a tile to pick it up, drag across the canvas,
  * drop on another tile to combine/merge ideas.
- * 
+ *
  * Uses refs for drag state to avoid stale closures in touch
  * event callbacks (critical for Chrome mobile).
  */
 
-import { useRef, useCallback, useState } from 'react';
-import { HEX_WIDTH } from '@/lib/hexConstants';
-import type { HexNode, ViewState } from '@/types/hivemind';
-import { haptics } from '@/lib/haptics';
+import { useRef, useCallback, useState } from "react";
+import { HEX_WIDTH } from "@/lib/hexConstants";
+import type { HexNode, ViewState } from "@/types/hivemind";
+import { haptics } from "@/lib/haptics";
 
 const LONG_PRESS_MS = 400;
 const MOVE_THRESHOLD = 10; // px before cancelling long-press
@@ -28,7 +28,10 @@ interface UseTouchDragOptions {
   viewState: ViewState;
   canvasRef: React.RefObject<HTMLDivElement | null>;
   onMerge: (sourceKey: string, targetKey: string) => void;
-  onDragStateChange: (draggedKey: string | null, dropTargetKey: string | null) => void;
+  onDragStateChange: (
+    draggedKey: string | null,
+    dropTargetKey: string | null
+  ) => void;
   hexToPixel: (q: number, r: number) => { x: number; y: number };
   /** External ref that this hook sets to true/false to signal active drag to other hooks */
   touchDragActiveRef: React.MutableRefObject<boolean>;
@@ -73,36 +76,42 @@ export function useTouchDrag({
   hexToPixelRef.current = hexToPixel;
 
   // Convert screen position to canvas-space position
-  const screenToCanvas = useCallback((clientX: number, clientY: number) => {
-    if (!canvasRef.current) return null;
-    const rect = canvasRef.current.getBoundingClientRect();
-    const vs = viewStateRef.current;
-    const x = (clientX - rect.left - rect.width / 2) / vs.zoom - vs.x;
-    const y = (clientY - rect.top - rect.height / 2) / vs.zoom - vs.y;
-    return { x, y };
-  }, [canvasRef]);
+  const screenToCanvas = useCallback(
+    (clientX: number, clientY: number) => {
+      if (!canvasRef.current) return null;
+      const rect = canvasRef.current.getBoundingClientRect();
+      const vs = viewStateRef.current;
+      const x = (clientX - rect.left - rect.width / 2) / vs.zoom - vs.x;
+      const y = (clientY - rect.top - rect.height / 2) / vs.zoom - vs.y;
+      return { x, y };
+    },
+    [canvasRef]
+  );
 
   // Find which node is under a canvas-space position
-  const findNodeAt = useCallback((canvasX: number, canvasY: number): string | null => {
-    let closest: string | null = null;
-    let closestDist = Infinity;
-    const currentNodes = nodesRef.current;
-    const currentDraggedKey = draggedKeyRef.current;
+  const findNodeAt = useCallback(
+    (canvasX: number, canvasY: number): string | null => {
+      let closest: string | null = null;
+      let closestDist = Infinity;
+      const currentNodes = nodesRef.current;
+      const currentDraggedKey = draggedKeyRef.current;
 
-    for (const [key, node] of Object.entries(currentNodes)) {
-      if (key === currentDraggedKey) continue;
-      if (node.pinned) continue;
-      const pos = hexToPixelRef.current(node.q, node.r);
-      const dx = canvasX - pos.x;
-      const dy = canvasY - pos.y;
-      const dist = Math.sqrt(dx * dx + dy * dy);
-      if (dist < HEX_WIDTH * 0.6 && dist < closestDist) {
-        closest = key;
-        closestDist = dist;
+      for (const [key, node] of Object.entries(currentNodes)) {
+        if (key === currentDraggedKey) continue;
+        if (node.pinned) continue;
+        const pos = hexToPixelRef.current(node.q, node.r);
+        const dx = canvasX - pos.x;
+        const dy = canvasY - pos.y;
+        const dist = Math.sqrt(dx * dx + dy * dy);
+        if (dist < HEX_WIDTH * 0.6 && dist < closestDist) {
+          closest = key;
+          closestDist = dist;
+        }
       }
-    }
-    return closest;
-  }, []);
+      return closest;
+    },
+    []
+  );
 
   const cancelLongPress = useCallback(() => {
     if (longPressTimer.current) {
@@ -124,7 +133,7 @@ export function useTouchDrag({
   const handleTouchStart = useCallback((key: string, e: React.TouchEvent) => {
     const currentNodes = nodesRef.current;
     const node = currentNodes[key];
-    if (!node || node.pinned || node.type === 'root') return;
+    if (!node || node.pinned || node.type === "root") return;
 
     const touch = e.touches[0];
     touchStartPos.current = { x: touch.clientX, y: touch.clientY };
@@ -148,51 +157,64 @@ export function useTouchDrag({
     }, LONG_PRESS_MS);
   }, []);
 
-  const handleTouchMove = useCallback((e: React.TouchEvent) => {
-    const touch = e.touches[0];
+  const handleTouchMove = useCallback(
+    (e: React.TouchEvent) => {
+      const touch = e.touches[0];
 
-    // If not yet dragging, check if finger moved too far (cancel long-press)
-    if (!isDraggingRef.current && longPressTimer.current && touchStartPos.current) {
-      const dx = touch.clientX - touchStartPos.current.x;
-      const dy = touch.clientY - touchStartPos.current.y;
-      if (Math.sqrt(dx * dx + dy * dy) > MOVE_THRESHOLD) {
-        cancelLongPress();
-        draggedKeyRef.current = null;
-        touchStartPos.current = null;
-        return;
+      // If not yet dragging, check if finger moved too far (cancel long-press)
+      if (
+        !isDraggingRef.current &&
+        longPressTimer.current &&
+        touchStartPos.current
+      ) {
+        const dx = touch.clientX - touchStartPos.current.x;
+        const dy = touch.clientY - touchStartPos.current.y;
+        if (Math.sqrt(dx * dx + dy * dy) > MOVE_THRESHOLD) {
+          cancelLongPress();
+          draggedKeyRef.current = null;
+          touchStartPos.current = null;
+          return;
+        }
       }
-    }
 
-    if (!isDraggingRef.current || !draggedKeyRef.current) return;
+      if (!isDraggingRef.current || !draggedKeyRef.current) return;
 
-    // Prevent canvas pan while dragging a tile
-    e.preventDefault();
-    e.stopPropagation();
+      // Prevent canvas pan while dragging a tile
+      e.preventDefault();
+      e.stopPropagation();
 
-    // Find drop target
-    const canvasPos = screenToCanvas(touch.clientX, touch.clientY);
-    const dropTarget = canvasPos ? findNodeAt(canvasPos.x, canvasPos.y) : null;
+      // Find drop target
+      const canvasPos = screenToCanvas(touch.clientX, touch.clientY);
+      const dropTarget = canvasPos
+        ? findNodeAt(canvasPos.x, canvasPos.y)
+        : null;
 
-    // Haptic feedback when entering a new drop target
-    if (dropTarget && dropTarget !== dropTargetKeyRef.current) {
-      haptics.dragHover();
-    }
+      // Haptic feedback when entering a new drop target
+      if (dropTarget && dropTarget !== dropTargetKeyRef.current) {
+        haptics.dragHover();
+      }
 
-    dropTargetKeyRef.current = dropTarget;
+      dropTargetKeyRef.current = dropTarget;
 
-    setState({
-      isDragging: true,
-      draggedKey: draggedKeyRef.current,
-      ghostPos: { x: touch.clientX, y: touch.clientY },
-      dropTargetKey: dropTarget,
-    });
-    onDragStateChangeRef.current(draggedKeyRef.current, dropTarget);
-  }, [screenToCanvas, findNodeAt, cancelLongPress]);
+      setState({
+        isDragging: true,
+        draggedKey: draggedKeyRef.current,
+        ghostPos: { x: touch.clientX, y: touch.clientY },
+        dropTargetKey: dropTarget,
+      });
+      onDragStateChangeRef.current(draggedKeyRef.current, dropTarget);
+    },
+    [screenToCanvas, findNodeAt, cancelLongPress]
+  );
 
   const handleTouchEnd = useCallback(() => {
     cancelLongPress();
 
-    if (isDraggingRef.current && draggedKeyRef.current && dropTargetKeyRef.current) {
+    if (
+      isDraggingRef.current &&
+      draggedKeyRef.current &&
+      dropTargetKeyRef.current
+    ) {
       haptics.success();
       onMergeRef.current(draggedKeyRef.current, dropTargetKeyRef.current);
     }

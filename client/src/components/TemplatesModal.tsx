@@ -23,11 +23,16 @@ export const TemplatesModal = ({
   onSelectTemplate,
 }: TemplatesModalProps) => {
   return (
-    <Modal isOpen={isOpen} onClose={onClose} title="Choose a Template" maxWidth="max-w-4xl">
+    <Modal
+      isOpen={isOpen}
+      onClose={onClose}
+      title="Choose a Template"
+      maxWidth="max-w-4xl"
+    >
       <div className="space-y-6">
         {/* Category Filter */}
         <div className="flex flex-wrap gap-2">
-          {TEMPLATE_CATEGORIES.map((cat) => (
+          {TEMPLATE_CATEGORIES.map(cat => (
             <Button
               key={cat.id}
               onClick={() => setSelectedCategory(cat.id)}
@@ -49,8 +54,8 @@ export const TemplatesModal = ({
         <div className="relative">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4 max-h-[60vh] overflow-y-auto scrollbar-none pr-1">
             {TEMPLATES.filter(
-              (t) => selectedCategory === "all" || t.category === selectedCategory
-            ).map((template) => (
+              t => selectedCategory === "all" || t.category === selectedCategory
+            ).map(template => (
               <div
                 key={template.id}
                 className="bg-accent/50 border border-border rounded-xl p-5 hover:border-yellow-500/50 hover:bg-accent transition-all cursor-pointer group"
@@ -62,11 +67,15 @@ export const TemplatesModal = ({
                     <h3 className="text-lg font-bold text-foreground group-hover:text-yellow-400 transition-colors">
                       {template.name}
                     </h3>
-                    <p className="text-sm text-muted-foreground">{template.description}</p>
+                    <p className="text-sm text-muted-foreground">
+                      {template.description}
+                    </p>
                     <div className="flex items-center gap-2 text-xs text-muted-foreground">
                       <span>{template.nodes.length} nodes</span>
                       <span>•</span>
-                      <span className="capitalize">{template.category.replace("-", " ")}</span>
+                      <span className="capitalize">
+                        {template.category.replace("-", " ")}
+                      </span>
                     </div>
                   </div>
                 </div>
@@ -79,9 +88,14 @@ export const TemplatesModal = ({
 
         <div className="flex justify-between items-center pt-4 border-t border-border">
           <p className="text-sm text-muted-foreground">
-            Templates provide a structured starting point. You can expand and customize them freely.
+            Templates provide a structured starting point. You can expand and
+            customize them freely.
           </p>
-          <Button onClick={onClose} variant="ghost" className="text-muted-foreground">
+          <Button
+            onClick={onClose}
+            variant="ghost"
+            className="text-muted-foreground"
+          >
             Cancel
           </Button>
         </div>

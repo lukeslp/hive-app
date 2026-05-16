@@ -53,7 +53,10 @@ export const Minimap = ({
     );
   }
 
-  let minX = Infinity, maxX = -Infinity, minY = Infinity, maxY = -Infinity;
+  let minX = Infinity,
+    maxX = -Infinity,
+    minY = Infinity,
+    maxY = -Infinity;
   nodeKeys.forEach(key => {
     const node = nodes[key];
     const x = HEX_SIZE * (Math.sqrt(3) * node.q + (Math.sqrt(3) / 2) * node.r);
@@ -74,16 +77,18 @@ export const Minimap = ({
 
   const vpWidth = (containerSize.width / viewState.zoom) * scale;
   const vpHeight = (containerSize.height / viewState.zoom) * scale;
-  const vpX = MINIMAP_SIZE / 2 - (viewState.x / viewState.zoom) * scale - vpWidth / 2;
-  const vpY = MINIMAP_SIZE / 2 - (viewState.y / viewState.zoom) * scale - vpHeight / 2;
+  const vpX =
+    MINIMAP_SIZE / 2 - (viewState.x / viewState.zoom) * scale - vpWidth / 2;
+  const vpY =
+    MINIMAP_SIZE / 2 - (viewState.y / viewState.zoom) * scale - vpHeight / 2;
 
   const handleMinimapClick = (e: React.MouseEvent) => {
     const rect = minimapRef.current?.getBoundingClientRect();
     if (!rect) return;
     const clickX = e.clientX - rect.left - MINIMAP_SIZE / 2;
     const clickY = e.clientY - rect.top - MINIMAP_SIZE / 2;
-    const worldX = -clickX / scale * viewState.zoom;
-    const worldY = -clickY / scale * viewState.zoom;
+    const worldX = (-clickX / scale) * viewState.zoom;
+    const worldY = (-clickY / scale) * viewState.zoom;
     onNavigate(worldX, worldY);
   };
 
@@ -93,7 +98,7 @@ export const Minimap = ({
           z-10 to sit above the SVG; pointer-events stay normal so the
           map's click-to-navigate doesn't fire when tapping this. */}
       <button
-        onClick={(e) => {
+        onClick={e => {
           e.stopPropagation();
           setIsCollapsed(true);
         }}
@@ -105,49 +110,50 @@ export const Minimap = ({
       >
         <X className="w-3.5 h-3.5" />
       </button>
-    <div
-      ref={minimapRef}
-      className="bg-card/90 backdrop-blur border border-border rounded-xl overflow-hidden cursor-crosshair shadow-xl"
-      style={{ width: MINIMAP_SIZE, height: MINIMAP_SIZE }}
-      onClick={handleMinimapClick}
-      role="navigation"
-      aria-label="Mind map overview"
-    >
-      <svg width={MINIMAP_SIZE} height={MINIMAP_SIZE}>
-        {nodeKeys.map(key => {
-          const node = nodes[key];
-          const x = HEX_SIZE * (Math.sqrt(3) * node.q + (Math.sqrt(3) / 2) * node.r);
-          const y = HEX_SIZE * ((3 / 2) * node.r);
-          const screenX = MINIMAP_SIZE / 2 + x * scale;
-          const screenY = MINIMAP_SIZE / 2 + y * scale;
-          const style = NODE_TYPES[node.type] || NODE_TYPES.default;
-          const isSelected = key === selectedNodeId;
+      <div
+        ref={minimapRef}
+        className="bg-card/90 backdrop-blur border border-border rounded-xl overflow-hidden cursor-crosshair shadow-xl"
+        style={{ width: MINIMAP_SIZE, height: MINIMAP_SIZE }}
+        onClick={handleMinimapClick}
+        role="navigation"
+        aria-label="Mind map overview"
+      >
+        <svg width={MINIMAP_SIZE} height={MINIMAP_SIZE}>
+          {nodeKeys.map(key => {
+            const node = nodes[key];
+            const x =
+              HEX_SIZE * (Math.sqrt(3) * node.q + (Math.sqrt(3) / 2) * node.r);
+            const y = HEX_SIZE * ((3 / 2) * node.r);
+            const screenX = MINIMAP_SIZE / 2 + x * scale;
+            const screenY = MINIMAP_SIZE / 2 + y * scale;
+            const style = NODE_TYPES[node.type] || NODE_TYPES.default;
+            const isSelected = key === selectedNodeId;
 
-          return (
-            <circle
-              key={key}
-              cx={screenX}
-              cy={screenY}
-              r={isSelected ? (isMobile ? 3 : 4) : (isMobile ? 1.5 : 2.5)}
-              className={`${isSelected ? 'fill-white' : style.color.replace('text-', 'fill-')}`}
-              style={{ opacity: isSelected ? 1 : 0.7 }}
-            />
-          );
-        })}
+            return (
+              <circle
+                key={key}
+                cx={screenX}
+                cy={screenY}
+                r={isSelected ? (isMobile ? 3 : 4) : isMobile ? 1.5 : 2.5}
+                className={`${isSelected ? "fill-white" : style.color.replace("text-", "fill-")}`}
+                style={{ opacity: isSelected ? 1 : 0.7 }}
+              />
+            );
+          })}
 
-        <rect
-          x={vpX}
-          y={vpY}
-          width={vpWidth}
-          height={vpHeight}
-          fill="none"
-          stroke="white"
-          strokeWidth="1"
-          strokeOpacity="0.5"
-          rx="2"
-        />
-      </svg>
-    </div>
+          <rect
+            x={vpX}
+            y={vpY}
+            width={vpWidth}
+            height={vpHeight}
+            fill="none"
+            stroke="white"
+            strokeWidth="1"
+            strokeOpacity="0.5"
+            rx="2"
+          />
+        </svg>
+      </div>
     </div>
   );
 };

@@ -31,7 +31,7 @@ export const MergeSuggestionIndicator = ({
 
   return (
     <>
-      {suggestions.map((suggestion) => {
+      {suggestions.map(suggestion => {
         const screenX = suggestion.midpoint.x * viewState.zoom + viewState.x;
         const screenY = suggestion.midpoint.y * viewState.zoom + viewState.y;
         const isExpanded = expandedId === suggestion.id;

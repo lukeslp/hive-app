@@ -8,7 +8,17 @@ import { useState } from "react";
 import { Modal } from "@/components/Modal";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { Clock, Save, Trash2, Cloud, HardDrive, Edit3, Check, X, Upload } from "@/lib/icons";
+import {
+  Clock,
+  Save,
+  Trash2,
+  Cloud,
+  HardDrive,
+  Edit3,
+  Check,
+  X,
+  Upload,
+} from "@/lib/icons";
 import { AUTOSAVE_KEY } from "@/lib/hexConstants";
 
 interface SavedSession {
@@ -113,7 +123,9 @@ export const SessionsModal = ({
                 </div>
               </div>
               <Button
-                onClick={() => onSave(activeCloudSessionName, activeCloudSessionId)}
+                onClick={() =>
+                  onSave(activeCloudSessionName, activeCloudSessionId)
+                }
                 disabled={isSaving || nodeCount === 0}
                 size="sm"
                 className="bg-blue-600 hover:bg-blue-500 text-foreground"
@@ -130,7 +142,9 @@ export const SessionsModal = ({
           <div className="bg-amber-500/10 border border-amber-500/30 rounded-lg p-4">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm font-bold text-amber-400">Auto-saved Session</p>
+                <p className="text-sm font-bold text-amber-400">
+                  Auto-saved Session
+                </p>
                 <p className="text-xs text-muted-foreground">
                   {autosaveInfo.nodeCount} nodes • Last saved:{" "}
                   {new Date(autosaveInfo.timestamp).toLocaleString()}
@@ -151,7 +165,7 @@ export const SessionsModal = ({
         <div className="flex gap-2">
           <Input
             value={sessionName}
-            onChange={(e) => setSessionName(e.target.value)}
+            onChange={e => setSessionName(e.target.value)}
             placeholder="New session name..."
             className="flex-1 bg-secondary border-border"
           />
@@ -163,17 +177,21 @@ export const SessionsModal = ({
             disabled={nodeCount === 0 || isSaving}
             className="bg-indigo-600 hover:bg-indigo-500"
           >
-            <Save className="w-4 h-4 mr-2" /> {isSaving ? "Saving..." : "Save New"}
+            <Save className="w-4 h-4 mr-2" />{" "}
+            {isSaving ? "Saving..." : "Save New"}
           </Button>
         </div>
 
         {/* Sessions List — grid for thumbnail view */}
         <div className="space-y-2 max-h-[400px] overflow-y-auto custom-scrollbar">
           {savedSessions.length === 0 ? (
-            <p className="text-muted-foreground text-center py-4">No saved sessions yet</p>
+            <p className="text-muted-foreground text-center py-4">
+              No saved sessions yet
+            </p>
           ) : (
-            savedSessions.map((session) => {
-              const isActive = session.isCloud && session.id === activeCloudSessionId;
+            savedSessions.map(session => {
+              const isActive =
+                session.isCloud && session.id === activeCloudSessionId;
               const isRenaming = session.isCloud && renamingId === session.id;
               const hasThumbnail = session.isCloud && session.thumbnailUrl;
 
@@ -190,7 +208,9 @@ export const SessionsModal = ({
                   {hasThumbnail && (
                     <div
                       className="w-full h-28 bg-cover bg-center cursor-pointer relative group"
-                      style={{ backgroundImage: `url(${session.thumbnailUrl})` }}
+                      style={{
+                        backgroundImage: `url(${session.thumbnailUrl})`,
+                      }}
                       onClick={() => onLoad(session.id, session.isCloud)}
                     >
                       <div className="absolute inset-0 bg-black/0 group-hover:bg-black/30 transition-colors flex items-center justify-center">
@@ -207,10 +227,10 @@ export const SessionsModal = ({
                         <div className="flex items-center gap-1.5">
                           <Input
                             value={renameValue}
-                            onChange={(e) => setRenameValue(e.target.value)}
+                            onChange={e => setRenameValue(e.target.value)}
                             className="h-7 text-sm bg-secondary border-border"
                             autoFocus
-                            onKeyDown={(e) => {
+                            onKeyDown={e => {
                               if (e.key === "Enter") confirmRename();
                               if (e.key === "Escape") cancelRename();
                             }}
@@ -240,7 +260,9 @@ export const SessionsModal = ({
                             ) : (
                               <HardDrive className="w-3.5 h-3.5 text-muted-foreground shrink-0" />
                             )}
-                            <p className="font-medium text-foreground truncate">{session.name}</p>
+                            <p className="font-medium text-foreground truncate">
+                              {session.name}
+                            </p>
                             {isActive && (
                               <span className="text-[10px] bg-blue-500/20 text-blue-300 px-1.5 py-0.5 rounded-full shrink-0">
                                 active
@@ -248,7 +270,8 @@ export const SessionsModal = ({
                             )}
                           </div>
                           <p className="text-xs text-muted-foreground ml-5">
-                            {new Date(session.date).toLocaleDateString()} • {session.nodeCount} nodes
+                            {new Date(session.date).toLocaleDateString()} •{" "}
+                            {session.nodeCount} nodes
                             {session.isCloud ? " • synced" : " • local only"}
                           </p>
                         </>
@@ -260,7 +283,9 @@ export const SessionsModal = ({
                           <Button
                             variant="ghost"
                             size="sm"
-                            onClick={() => startRename(session.id as number, session.name)}
+                            onClick={() =>
+                              startRename(session.id as number, session.name)
+                            }
                             className="text-muted-foreground hover:text-foreground h-8 w-8 p-0"
                             title="Rename"
                           >
@@ -271,7 +296,9 @@ export const SessionsModal = ({
                           <Button
                             variant="ghost"
                             size="sm"
-                            onClick={() => onSave(session.name, session.id as number)}
+                            onClick={() =>
+                              onSave(session.name, session.id as number)
+                            }
                             disabled={isSaving || nodeCount === 0}
                             className="text-blue-400 hover:text-blue-300 h-8 w-8 p-0"
                             title="Overwrite with current board"

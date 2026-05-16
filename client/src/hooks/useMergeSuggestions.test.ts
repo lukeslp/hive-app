@@ -96,26 +96,94 @@ describe("useMergeSuggestions - helper logic", () => {
 
 function extractWords(text: string): Set<string> {
   const stopWords = new Set([
-    "the", "and", "for", "are", "but", "not", "you", "all", "can", "had",
-    "her", "was", "one", "our", "out", "has", "his", "how", "its", "may",
-    "new", "now", "old", "see", "way", "who", "did", "get", "let", "say",
-    "she", "too", "use", "with", "this", "that", "from", "they", "been",
-    "have", "many", "some", "them", "than", "each", "make", "like", "into",
-    "just", "over", "such", "take", "also", "more", "what", "when", "will",
-    "about", "could", "other", "their", "which", "would", "these", "being",
-    "there", "where", "should",
+    "the",
+    "and",
+    "for",
+    "are",
+    "but",
+    "not",
+    "you",
+    "all",
+    "can",
+    "had",
+    "her",
+    "was",
+    "one",
+    "our",
+    "out",
+    "has",
+    "his",
+    "how",
+    "its",
+    "may",
+    "new",
+    "now",
+    "old",
+    "see",
+    "way",
+    "who",
+    "did",
+    "get",
+    "let",
+    "say",
+    "she",
+    "too",
+    "use",
+    "with",
+    "this",
+    "that",
+    "from",
+    "they",
+    "been",
+    "have",
+    "many",
+    "some",
+    "them",
+    "than",
+    "each",
+    "make",
+    "like",
+    "into",
+    "just",
+    "over",
+    "such",
+    "take",
+    "also",
+    "more",
+    "what",
+    "when",
+    "will",
+    "about",
+    "could",
+    "other",
+    "their",
+    "which",
+    "would",
+    "these",
+    "being",
+    "there",
+    "where",
+    "should",
   ]);
   return new Set(
     text
       .toLowerCase()
       .replace(/[^a-z0-9\s]/g, " ")
       .split(/\s+/)
-      .filter((w) => w.length >= 3 && !stopWords.has(w))
+      .filter(w => w.length >= 3 && !stopWords.has(w))
   );
 }
 
-function hexDistance(a: { q: number; r: number }, b: { q: number; r: number }): number {
-  return (Math.abs(a.q - b.q) + Math.abs(a.q + a.r - b.q - b.r) + Math.abs(a.r - b.r)) / 2;
+function hexDistance(
+  a: { q: number; r: number },
+  b: { q: number; r: number }
+): number {
+  return (
+    (Math.abs(a.q - b.q) +
+      Math.abs(a.q + a.r - b.q - b.r) +
+      Math.abs(a.r - b.r)) /
+    2
+  );
 }
 
 function overlapScore(a: any, b: any): { score: number; reason: string } {

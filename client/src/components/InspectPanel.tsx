@@ -40,7 +40,9 @@ export const InspectPanel = ({
       <div className="bg-card/95 backdrop-blur-lg border border-border rounded-xl shadow-lg p-4 pointer-events-auto">
         {/* Compact header: icon + title + star + close */}
         <div className="flex items-center gap-2.5 mb-2">
-          <div className={`p-1.5 rounded-lg ${style.bg} ${style.border} border flex-shrink-0`}>
+          <div
+            className={`p-1.5 rounded-lg ${style.bg} ${style.border} border flex-shrink-0`}
+          >
             <Icon className={`w-4 h-4 ${style.color}`} />
           </div>
           <h2 className="text-base font-semibold text-foreground flex-1 min-w-0 truncate">
@@ -55,7 +57,9 @@ export const InspectPanel = ({
                 : "text-muted-foreground/40 hover:text-amber-400"
             }`}
             title={node.isKeyTheme ? "Remove key idea" : "Mark as key idea"}
-            aria-label={node.isKeyTheme ? "Remove key idea" : "Mark as key idea"}
+            aria-label={
+              node.isKeyTheme ? "Remove key idea" : "Mark as key idea"
+            }
           >
             <Star
               className="w-4 h-4"
@@ -106,7 +110,10 @@ export const InspectPanel = ({
             aria-label="Refresh node"
           >
             {isLoading ? (
-              <Loader2 className="w-3.5 h-3.5 animate-spin" aria-hidden="true" />
+              <Loader2
+                className="w-3.5 h-3.5 animate-spin"
+                aria-hidden="true"
+              />
             ) : (
               <RefreshCw className="w-3.5 h-3.5" aria-hidden="true" />
             )}
@@ -119,7 +126,9 @@ export const InspectPanel = ({
                 : "text-muted-foreground hover:text-blue-400 hover:bg-blue-500/10"
             }`}
             title={node.contextInfo ? "Edit context" : "Add context"}
-            aria-label={node.contextInfo ? "Update context info" : "Add context info"}
+            aria-label={
+              node.contextInfo ? "Update context info" : "Add context info"
+            }
           >
             <Info className="w-3.5 h-3.5" aria-hidden="true" />
           </button>

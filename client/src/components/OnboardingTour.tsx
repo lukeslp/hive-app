@@ -102,7 +102,7 @@ function TutorialMedia({ src }: { src: string }) {
       alt=""
       className="w-full rounded-lg mb-3 bg-black/40"
       aria-hidden="true"
-      onError={(e) => {
+      onError={e => {
         (e.target as HTMLImageElement).style.display = "none";
       }}
     />
@@ -114,12 +114,23 @@ function getTutorialSteps(isTouch: boolean): TutorialStep[] {
   const tap = isTouch ? "Tap" : "Click";
   const drag = isTouch ? "Long-press and drag" : "Drag";
   const doubleTap = isTouch ? "Double-tap" : "Double-click";
-  const panAction = isTouch ? "Drag to pan, pinch to zoom" : "Drag to pan, scroll to zoom";
+  const panAction = isTouch
+    ? "Drag to pan, pinch to zoom"
+    : "Drag to pan, scroll to zoom";
 
   return [
     {
       icon: (
-        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+        <svg
+          width="20"
+          height="20"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="1.5"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+        >
           <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z" />
         </svg>
       ),
@@ -128,7 +139,16 @@ function getTutorialSteps(isTouch: boolean): TutorialStep[] {
     },
     {
       icon: (
-        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+        <svg
+          width="20"
+          height="20"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="1.5"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+        >
           <path d="M8 3H5a2 2 0 0 0-2 2v3" />
           <path d="M21 8V5a2 2 0 0 0-2-2h-3" />
           <path d="M3 16v3a2 2 0 0 0 2 2h3" />
@@ -142,7 +162,16 @@ function getTutorialSteps(isTouch: boolean): TutorialStep[] {
     },
     {
       icon: (
-        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+        <svg
+          width="20"
+          height="20"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="1.5"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+        >
           <circle cx="8" cy="8" r="4" />
           <circle cx="18" cy="16" r="4" />
           <path d="M12 4h4" />
@@ -154,7 +183,16 @@ function getTutorialSteps(isTouch: boolean): TutorialStep[] {
     },
     {
       icon: (
-        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+        <svg
+          width="20"
+          height="20"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="1.5"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+        >
           <path d="M5 9l2-2 2 2" />
           <path d="M15 15l2 2 2-2" />
           <rect x="2" y="2" width="20" height="20" rx="2" />
@@ -167,7 +205,16 @@ function getTutorialSteps(isTouch: boolean): TutorialStep[] {
     },
     {
       icon: (
-        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+        <svg
+          width="20"
+          height="20"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="1.5"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+        >
           <path d="M13 2 3 14h9l-1 8 10-12h-9l1-8z" />
         </svg>
       ),
@@ -235,7 +282,7 @@ export const OnboardingTour: React.FC<OnboardingTourProps> = ({
 
   const handleTutorialNext = useCallback(() => {
     if (tutorialStep < tutorialSteps.length - 1) {
-      setTutorialStep((s) => s + 1);
+      setTutorialStep(s => s + 1);
     } else {
       setFadeOut(true);
       setTimeout(() => {
@@ -304,7 +351,9 @@ export const OnboardingTour: React.FC<OnboardingTourProps> = ({
                   <TutorialMedia src={currentTutorial.media} />
                 </div>
               )}
-              <div className={`px-5 pb-4 ${currentTutorial.media ? "pt-0" : "pt-5"}`}>
+              <div
+                className={`px-5 pb-4 ${currentTutorial.media ? "pt-0" : "pt-5"}`}
+              >
                 <div className="flex items-start gap-3.5">
                   <div className="text-amber-400/80 mt-0.5 flex-shrink-0">
                     {currentTutorial.icon}
@@ -329,8 +378,8 @@ export const OnboardingTour: React.FC<OnboardingTourProps> = ({
                         i === tutorialStep
                           ? "bg-amber-400/80 w-4"
                           : i < tutorialStep
-                          ? "bg-amber-400/30 w-1.5"
-                          : "bg-white/10 w-1.5"
+                            ? "bg-amber-400/30 w-1.5"
+                            : "bg-white/10 w-1.5"
                       }`}
                     />
                   ))}

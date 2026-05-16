@@ -50,7 +50,9 @@ export const ContextPromptModal = ({
 }: ContextPromptModalProps) => {
   const inputRef = useRef<HTMLInputElement>(null);
   const contentRef = useRef<HTMLDivElement>(null);
-  const headingId = useRef(`prompt-heading-${Math.random().toString(36).slice(2, 8)}`).current;
+  const headingId = useRef(
+    `prompt-heading-${Math.random().toString(36).slice(2, 8)}`
+  ).current;
   const previouslyFocused = useRef<HTMLElement | null>(null);
   const [selectedChip, setSelectedChip] = useState<string | null>(null);
 
@@ -177,7 +179,7 @@ export const ContextPromptModal = ({
             role="group"
             aria-label="Suggested answers — tap to use as a starting point, then edit"
           >
-            {suggestedAnswers!.map((chip) => {
+            {suggestedAnswers!.map(chip => {
               const isSelected = selectedChip === chip;
               return (
                 <button
@@ -186,9 +188,11 @@ export const ContextPromptModal = ({
                   onClick={() => handleChipTap(chip)}
                   className={`px-3 py-1.5 rounded-full text-sm font-light
                               transition-all duration-150 backdrop-blur-md
-                              ${isSelected
-                                ? "bg-purple-500/70 text-white border border-purple-400/60"
-                                : "bg-white/[0.06] text-white/75 border border-white/[0.12] hover:bg-white/[0.1] hover:border-white/[0.2]"}`}
+                              ${
+                                isSelected
+                                  ? "bg-purple-500/70 text-white border border-purple-400/60"
+                                  : "bg-white/[0.06] text-white/75 border border-white/[0.12] hover:bg-white/[0.1] hover:border-white/[0.2]"
+                              }`}
                   aria-pressed={isSelected}
                 >
                   {chip}
@@ -204,7 +208,7 @@ export const ContextPromptModal = ({
             ref={inputRef}
             type="text"
             value={response}
-            onChange={(e) => setResponse(e.target.value)}
+            onChange={e => setResponse(e.target.value)}
             onKeyDown={handleKeyDown}
             placeholder={hasChips ? "Or type your own answer..." : placeholder}
             className="w-full px-5 py-4 bg-white/[0.08] border border-white/[0.12] rounded-2xl
@@ -222,10 +226,10 @@ export const ContextPromptModal = ({
             disabled={!response.trim()}
             className={`absolute right-2 top-1/2 -translate-y-1/2 p-2.5 rounded-xl
                        transition-all duration-200 ${
-              response.trim()
-                ? "bg-purple-500/80 text-white hover:bg-purple-500 scale-100"
-                : "bg-white/5 text-white/20 scale-95 pointer-events-none"
-            }`}
+                         response.trim()
+                           ? "bg-purple-500/80 text-white hover:bg-purple-500 scale-100"
+                           : "bg-white/5 text-white/20 scale-95 pointer-events-none"
+                       }`}
             aria-label="Generate"
           >
             <Sparkles className="w-4 h-4" />
@@ -236,7 +240,10 @@ export const ContextPromptModal = ({
         <div className="flex items-center justify-center gap-4 mt-4">
           {!isOnboarding && (
             <button
-              onClick={() => { haptics.tap(); onSkip(); }}
+              onClick={() => {
+                haptics.tap();
+                onSkip();
+              }}
               className="flex items-center gap-1.5 text-white/25 text-xs font-light
                          hover:text-white/40 transition-colors"
             >
@@ -245,7 +252,10 @@ export const ContextPromptModal = ({
             </button>
           )}
           <button
-            onClick={() => { haptics.tap(); onClose(); }}
+            onClick={() => {
+              haptics.tap();
+              onClose();
+            }}
             className="flex items-center gap-1.5 text-white/25 text-xs font-light
                        hover:text-white/40 transition-colors"
           >

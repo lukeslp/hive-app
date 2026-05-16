@@ -13,9 +13,9 @@
  * announce('Error occurred', 'assertive');
  */
 
-import { useEffect, useRef, useCallback } from 'react';
+import { useEffect, useRef, useCallback } from "react";
 
-export type Politeness = 'polite' | 'assertive' | 'off';
+export type Politeness = "polite" | "assertive" | "off";
 
 interface AnnouncementQueue {
   message: string;
@@ -38,26 +38,26 @@ export function useAnnouncer() {
   useEffect(() => {
     // Create polite live region
     if (!politeRegionRef.current) {
-      const politeRegion = document.createElement('div');
-      politeRegion.setAttribute('role', 'status');
-      politeRegion.setAttribute('aria-live', 'polite');
-      politeRegion.setAttribute('aria-atomic', 'true');
-      politeRegion.className = 'sr-only';
+      const politeRegion = document.createElement("div");
+      politeRegion.setAttribute("role", "status");
+      politeRegion.setAttribute("aria-live", "polite");
+      politeRegion.setAttribute("aria-atomic", "true");
+      politeRegion.className = "sr-only";
       politeRegion.style.cssText =
-        'position: absolute; left: -10000px; width: 1px; height: 1px; overflow: hidden;';
+        "position: absolute; left: -10000px; width: 1px; height: 1px; overflow: hidden;";
       document.body.appendChild(politeRegion);
       politeRegionRef.current = politeRegion;
     }
 
     // Create assertive live region
     if (!assertiveRegionRef.current) {
-      const assertiveRegion = document.createElement('div');
-      assertiveRegion.setAttribute('role', 'alert');
-      assertiveRegion.setAttribute('aria-live', 'assertive');
-      assertiveRegion.setAttribute('aria-atomic', 'true');
-      assertiveRegion.className = 'sr-only';
+      const assertiveRegion = document.createElement("div");
+      assertiveRegion.setAttribute("role", "alert");
+      assertiveRegion.setAttribute("aria-live", "assertive");
+      assertiveRegion.setAttribute("aria-atomic", "true");
+      assertiveRegion.className = "sr-only";
       assertiveRegion.style.cssText =
-        'position: absolute; left: -10000px; width: 1px; height: 1px; overflow: hidden;';
+        "position: absolute; left: -10000px; width: 1px; height: 1px; overflow: hidden;";
       document.body.appendChild(assertiveRegion);
       assertiveRegionRef.current = assertiveRegion;
     }
@@ -88,13 +88,13 @@ export function useAnnouncer() {
     if (!announcement) return;
 
     const region =
-      announcement.politeness === 'assertive'
+      announcement.politeness === "assertive"
         ? assertiveRegionRef.current
         : politeRegionRef.current;
 
     if (region) {
       // Clear previous content
-      region.textContent = '';
+      region.textContent = "";
 
       // Small delay to ensure screen readers detect the change
       setTimeout(() => {
@@ -103,7 +103,7 @@ export function useAnnouncer() {
 
       // Clear after announcement to prepare for next one
       timeoutRef.current = setTimeout(() => {
-        region.textContent = '';
+        region.textContent = "";
         processQueue(); // Process next in queue
       }, 1000);
     }
@@ -113,8 +113,8 @@ export function useAnnouncer() {
    * Announce a message to screen readers
    */
   const announce = useCallback(
-    (message: string, politeness: Politeness = 'polite') => {
-      if (!message || politeness === 'off') return;
+    (message: string, politeness: Politeness = "polite") => {
+      if (!message || politeness === "off") return;
 
       // Add to queue
       queueRef.current.push({
@@ -145,37 +145,37 @@ export function useHiveMindAnnouncer() {
       (count: number = 1) => {
         const message =
           count === 1
-            ? 'Node generated successfully'
+            ? "Node generated successfully"
             : `${count} nodes generated successfully`;
-        announce(message, 'polite');
+        announce(message, "polite");
       },
       [announce]
     ),
 
     announceNodeSelected: useCallback(
       (nodeText: string) => {
-        announce(`Selected: ${nodeText}`, 'polite');
+        announce(`Selected: ${nodeText}`, "polite");
       },
       [announce]
     ),
 
     announceNodeDeleted: useCallback(
       (nodeText: string) => {
-        announce(`Deleted: ${nodeText}`, 'polite');
+        announce(`Deleted: ${nodeText}`, "polite");
       },
       [announce]
     ),
 
     announceTemplateLoaded: useCallback(
       (templateName: string) => {
-        announce(`Template loaded: ${templateName}`, 'polite');
+        announce(`Template loaded: ${templateName}`, "polite");
       },
       [announce]
     ),
 
     announceError: useCallback(
       (error: string) => {
-        announce(`Error: ${error}`, 'assertive');
+        announce(`Error: ${error}`, "assertive");
       },
       [announce]
     ),
@@ -184,34 +184,34 @@ export function useHiveMindAnnouncer() {
       (count: number) => {
         const message =
           count === 0
-            ? 'No results found'
+            ? "No results found"
             : count === 1
-              ? '1 result found'
+              ? "1 result found"
               : `${count} results found`;
-        announce(message, 'polite');
+        announce(message, "polite");
       },
       [announce]
     ),
 
     announceUndo: useCallback(() => {
-      announce('Action undone', 'polite');
+      announce("Action undone", "polite");
     }, [announce]),
 
     announceRedo: useCallback(() => {
-      announce('Action redone', 'polite');
+      announce("Action redone", "polite");
     }, [announce]),
 
     announceNodeNavigated: useCallback(
       (nodeText: string, direction?: string) => {
-        const directionText = direction ? ` (${direction})` : '';
-        announce(`Navigated to: ${nodeText}${directionText}`, 'polite');
+        const directionText = direction ? ` (${direction})` : "";
+        announce(`Navigated to: ${nodeText}${directionText}`, "polite");
       },
       [announce]
     ),
 
     announceNavigationBlocked: useCallback(
       (direction: string) => {
-        announce(`No node ${direction}`, 'polite');
+        announce(`No node ${direction}`, "polite");
       },
       [announce]
     ),

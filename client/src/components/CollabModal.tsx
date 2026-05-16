@@ -10,7 +10,15 @@ import { useState, useEffect } from "react";
 import { Modal } from "@/components/Modal";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { Users, Copy, LogOut, Check, Link, Share2, AlertCircle } from "@/lib/icons";
+import {
+  Users,
+  Copy,
+  LogOut,
+  Check,
+  Link,
+  Share2,
+  AlertCircle,
+} from "@/lib/icons";
 import type { CollabParticipant } from "@/hooks/useCollaboration";
 import { haptics } from "@/lib/haptics";
 import { APP_DISPLAY_NAME } from "@shared/appBrand";
@@ -136,7 +144,8 @@ export const CollabModal = ({
 
   // Show the connected/active state when connected OR when we have a pending room
   const showActiveState = isConnected && roomId;
-  const showPendingState = !showActiveState && (isConnecting || effectiveRoomId);
+  const showPendingState =
+    !showActiveState && (isConnecting || effectiveRoomId);
 
   return (
     <Modal isOpen={isOpen} onClose={onClose} title="Collaborate">
@@ -151,7 +160,8 @@ export const CollabModal = ({
                   Live session
                 </span>
                 <span className="text-xs text-muted-foreground ml-auto">
-                  {participants.length} {participants.length === 1 ? "person" : "people"}
+                  {participants.length}{" "}
+                  {participants.length === 1 ? "person" : "people"}
                 </span>
               </div>
 
@@ -196,7 +206,7 @@ export const CollabModal = ({
                 Participants
               </p>
               <div className="space-y-1.5">
-                {participants.map((p) => (
+                {participants.map(p => (
                   <div
                     key={p.userId}
                     className="flex items-center gap-2 px-3 py-2 bg-accent/50 rounded-lg"
@@ -205,7 +215,9 @@ export const CollabModal = ({
                       className="w-3 h-3 rounded-full shrink-0"
                       style={{ backgroundColor: p.color }}
                     />
-                    <span className="text-sm text-foreground">{p.userName}</span>
+                    <span className="text-sm text-foreground">
+                      {p.userName}
+                    </span>
                   </div>
                 ))}
               </div>
@@ -317,7 +329,8 @@ export const CollabModal = ({
           <>
             {/* ── Not connected state ─────────────────────────────── */}
             <p className="text-sm text-muted-foreground leading-relaxed">
-              Start a live session and share the invite link with others to brainstorm together in real time.
+              Start a live session and share the invite link with others to
+              brainstorm together in real time.
             </p>
 
             <div className="space-y-3">
@@ -327,7 +340,7 @@ export const CollabModal = ({
                 </label>
                 <Input
                   value={userName}
-                  onChange={(e) => setUserName(e.target.value)}
+                  onChange={e => setUserName(e.target.value)}
                   placeholder="Anonymous"
                   className="bg-secondary border-border"
                 />
@@ -345,8 +358,8 @@ export const CollabModal = ({
             </Button>
 
             <p className="text-xs text-muted-foreground text-center leading-relaxed">
-              Once started, you'll get an invite link to share with collaborators.
-              Anyone with the link can join instantly.
+              Once started, you'll get an invite link to share with
+              collaborators. Anyone with the link can join instantly.
             </p>
           </>
         )}

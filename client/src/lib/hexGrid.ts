@@ -7,7 +7,7 @@
  * Coordinate system: axial (q, r) with pointy-top hexagons.
  */
 
-import { HEX_SIZE } from './hexConstants';
+import { HEX_SIZE } from "./hexConstants";
 
 /**
  * Convert axial hex coordinates to pixel (canvas) coordinates.
@@ -24,7 +24,7 @@ export function hexToPixel(q: number, r: number): { x: number; y: number } {
  * Uses rounding to snap to the closest hex center.
  */
 export function pixelToHex(x: number, y: number): { q: number; r: number } {
-  const q = Math.round((Math.sqrt(3) / 3 * x - 1 / 3 * y) / HEX_SIZE);
-  const r = Math.round((2 / 3 * y) / HEX_SIZE);
+  const q = Math.round(((Math.sqrt(3) / 3) * x - (1 / 3) * y) / HEX_SIZE);
+  const r = Math.round(((2 / 3) * y) / HEX_SIZE);
   return { q, r };
 }

@@ -92,7 +92,7 @@ const shortcuts: ShortcutItem[] = [
   },
 ];
 
-const categories = Array.from(new Set(shortcuts.map((s) => s.category)));
+const categories = Array.from(new Set(shortcuts.map(s => s.category)));
 
 export function KeyboardShortcutsModal({
   isOpen,
@@ -109,19 +109,20 @@ export function KeyboardShortcutsModal({
             </DialogTitle>
           </div>
           <DialogDescription className="text-muted-foreground">
-            {APP_DISPLAY_NAME} can be fully controlled via keyboard for accessibility
+            {APP_DISPLAY_NAME} can be fully controlled via keyboard for
+            accessibility
           </DialogDescription>
         </DialogHeader>
 
         <div className="overflow-y-auto custom-scrollbar flex-1 space-y-6">
-          {categories.map((category) => (
+          {categories.map(category => (
             <div key={category}>
               <h3 className="text-sm font-bold uppercase tracking-wider text-muted-foreground mb-3">
                 {category}
               </h3>
               <div className="space-y-2">
                 {shortcuts
-                  .filter((s) => s.category === category)
+                  .filter(s => s.category === category)
                   .map((shortcut, idx) => (
                     <div
                       key={idx}
@@ -148,25 +149,29 @@ export function KeyboardShortcutsModal({
               <li className="flex items-start gap-2">
                 <span className="text-primary">•</span>
                 <span>
-                  All hexagons can be navigated using Tab key in a logical spiral order (center outward)
+                  All hexagons can be navigated using Tab key in a logical
+                  spiral order (center outward)
                 </span>
               </li>
               <li className="flex items-start gap-2">
                 <span className="text-primary">•</span>
                 <span>
-                  Focus indicators show a glowing outline around the active element
+                  Focus indicators show a glowing outline around the active
+                  element
                 </span>
               </li>
               <li className="flex items-start gap-2">
                 <span className="text-primary">•</span>
                 <span>
-                  Screen readers will announce node content, type, and state changes
+                  Screen readers will announce node content, type, and state
+                  changes
                 </span>
               </li>
               <li className="flex items-start gap-2">
                 <span className="text-primary">•</span>
                 <span>
-                  All functionality available via mouse is also available via keyboard
+                  All functionality available via mouse is also available via
+                  keyboard
                 </span>
               </li>
             </ul>

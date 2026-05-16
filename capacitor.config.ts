@@ -1,14 +1,14 @@
-import type { CapacitorConfig } from '@capacitor/cli';
+import type { CapacitorConfig } from "@capacitor/cli";
 
 const config: CapacitorConfig = {
-  appId: 'app.hexmind.ios',
-  appName: 'Idea Tiles',
-  webDir: 'dist/public',
+  appId: "app.hexmind.ios",
+  appName: "Idea Tiles",
+  webDir: "dist/public",
   // Production: ship info/warn/error to the native log but suppress the
   // debug-level bridge chatter (`⚡️ To Native ->` plugin call traces and
   // JS↔native message bodies) that we used during the FoundationModels
   // dispatch bisect. Switch back to 'debug' for diagnostic sessions.
-  loggingBehavior: 'production',
+  loggingBehavior: "production",
   plugins: {
     // Patch fetch + XMLHttpRequest in the WebView to route through
     // native HTTP. Bypasses WKWebView's CORS entirely — the live
@@ -34,10 +34,10 @@ const config: CapacitorConfig = {
       // the plugin can't pick a different backgroundColor per appearance
       // in v8, so this is only the brief pre-image flash for cold
       // launches; the imageset's solid bg covers the rest.
-      backgroundColor: '#fcfbfc',
+      backgroundColor: "#fcfbfc",
       showSpinner: true,
-      iosSpinnerStyle: 'medium',
-      spinnerColor: '#fbbf24',
+      iosSpinnerStyle: "medium",
+      spinnerColor: "#fbbf24",
       splashFullScreen: true,
       splashImmersive: true,
     },

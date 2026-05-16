@@ -34,10 +34,20 @@ export const Modal = ({
       >
         <DialogHeader>
           <DialogTitle className="text-foreground">{title}</DialogTitle>
-          {description && <DialogDescription className="text-muted-foreground">{description}</DialogDescription>}
-          {!description && <DialogDescription className="sr-only">{title} dialog</DialogDescription>}
+          {description && (
+            <DialogDescription className="text-muted-foreground">
+              {description}
+            </DialogDescription>
+          )}
+          {!description && (
+            <DialogDescription className="sr-only">
+              {title} dialog
+            </DialogDescription>
+          )}
         </DialogHeader>
-        <div className="overflow-y-auto custom-scrollbar flex-1">{children}</div>
+        <div className="overflow-y-auto custom-scrollbar flex-1">
+          {children}
+        </div>
       </DialogContent>
     </Dialog>
   );

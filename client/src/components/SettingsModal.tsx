@@ -16,10 +16,23 @@ import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import {
-  Moon, Sun, Type, Sparkles, Activity, Save, Zap,
-  Shield, Check, Trash2,
+  Moon,
+  Sun,
+  Type,
+  Sparkles,
+  Activity,
+  Save,
+  Zap,
+  Shield,
+  Check,
+  Trash2,
 } from "@/lib/icons";
-import type { Provider, ApiKeys, ServerProviderInfo, ProviderConfig } from "@/hooks/useProviderSettings";
+import type {
+  Provider,
+  ApiKeys,
+  ServerProviderInfo,
+  ProviderConfig,
+} from "@/hooks/useProviderSettings";
 import { isIos } from "@/lib/platform";
 import { APP_DISPLAY_NAME } from "@shared/appBrand";
 
@@ -91,8 +104,10 @@ export const SettingsModal = ({
 }: SettingsModalProps) => {
   const iosOnly = isIos();
 
-  const currentProviderConfig = visibleProviders.find((p) => p.id === provider);
-  const aiControlsAvailable = iosOnly ? appleIntelligenceAvailable : isProviderConfigured;
+  const currentProviderConfig = visibleProviders.find(p => p.id === provider);
+  const aiControlsAvailable = iosOnly
+    ? appleIntelligenceAvailable
+    : isProviderConfigured;
   const accessibilityFonts = [
     { id: "system", label: "System" },
     { id: "atkinson", label: "Atkinson" },
@@ -102,19 +117,24 @@ export const SettingsModal = ({
   ];
   const currentFontIndex = Math.max(
     0,
-    accessibilityFonts.findIndex((f) => f.id === fontFamily)
+    accessibilityFonts.findIndex(f => f.id === fontFamily)
   );
   const currentFontLabel =
     accessibilityFonts[currentFontIndex]?.label ?? accessibilityFonts[0].label;
   const cycleFontFamily = () => {
-    const next = accessibilityFonts[(currentFontIndex + 1) % accessibilityFonts.length];
+    const next =
+      accessibilityFonts[(currentFontIndex + 1) % accessibilityFonts.length];
     setFontFamily(next.id);
   };
   const increaseFontSize = () => {
-    setFontSizeMultiplier(Math.min(1.5, Math.round((fontSizeMultiplier + 0.05) * 100) / 100));
+    setFontSizeMultiplier(
+      Math.min(1.5, Math.round((fontSizeMultiplier + 0.05) * 100) / 100)
+    );
   };
   const decreaseFontSize = () => {
-    setFontSizeMultiplier(Math.max(0.8, Math.round((fontSizeMultiplier - 0.05) * 100) / 100));
+    setFontSizeMultiplier(
+      Math.max(0.8, Math.round((fontSizeMultiplier - 0.05) * 100) / 100)
+    );
   };
 
   return (
@@ -135,7 +155,11 @@ export const SettingsModal = ({
                 className="h-11 min-w-11 gap-2"
                 aria-label={`Switch to ${theme === "dark" ? "light" : "dark"} theme`}
               >
-                {theme === "dark" ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4" />}
+                {theme === "dark" ? (
+                  <Sun className="w-4 h-4" />
+                ) : (
+                  <Moon className="w-4 h-4" />
+                )}
                 {theme === "dark" ? "Light" : "Dark"}
               </Button>
               <Button
@@ -229,12 +253,16 @@ export const SettingsModal = ({
             </div>
 
             {iosOnly ? (
-              <div className={`flex items-start gap-2 text-xs rounded-lg p-3 ${
-                appleIntelligenceAvailable
-                  ? "text-muted-foreground bg-emerald-500/5 border border-emerald-500/20"
-                  : "text-muted-foreground bg-amber-500/5 border border-amber-500/20"
-              }`}>
-                <Zap className={`w-3.5 h-3.5 mt-0.5 flex-shrink-0 ${appleIntelligenceAvailable ? "text-emerald-400" : "text-amber-400"}`} />
+              <div
+                className={`flex items-start gap-2 text-xs rounded-lg p-3 ${
+                  appleIntelligenceAvailable
+                    ? "text-muted-foreground bg-emerald-500/5 border border-emerald-500/20"
+                    : "text-muted-foreground bg-amber-500/5 border border-amber-500/20"
+                }`}
+              >
+                <Zap
+                  className={`w-3.5 h-3.5 mt-0.5 flex-shrink-0 ${appleIntelligenceAvailable ? "text-emerald-400" : "text-amber-400"}`}
+                />
                 <span>
                   {appleIntelligenceAvailable
                     ? "Apple Intelligence is active on this device. Generation runs entirely on-device — no network, no API key, no data leaves the device."
@@ -242,16 +270,19 @@ export const SettingsModal = ({
                 </span>
               </div>
             ) : (
-              <div className={`flex items-center gap-2 px-3 py-2 rounded-lg text-sm ${
-                isProviderConfigured
-                  ? "bg-emerald-500/10 text-emerald-400 border border-emerald-500/20"
-                  : "bg-amber-500/10 text-amber-400 border border-amber-500/20"
-              }`}>
+              <div
+                className={`flex items-center gap-2 px-3 py-2 rounded-lg text-sm ${
+                  isProviderConfigured
+                    ? "bg-emerald-500/10 text-emerald-400 border border-emerald-500/20"
+                    : "bg-amber-500/10 text-amber-400 border border-amber-500/20"
+                }`}
+              >
                 {isProviderConfigured ? (
                   <>
                     <Check className="w-4 h-4 flex-shrink-0" />
                     <span>
-                      {currentProviderConfig?.name ?? "Anthropic Claude"} is active (managed)
+                      {currentProviderConfig?.name ?? "Anthropic Claude"} is
+                      active (managed)
                     </span>
                   </>
                 ) : (
@@ -274,7 +305,7 @@ export const SettingsModal = ({
                   <div className="space-y-2">
                     <Slider
                       value={[creativity]}
-                      onValueChange={(val) => setCreativity(val[0])}
+                      onValueChange={val => setCreativity(val[0])}
                       min={0}
                       max={1}
                       step={0.1}
@@ -296,7 +327,7 @@ export const SettingsModal = ({
                   <div className="space-y-2">
                     <Slider
                       value={[bridgingIntensity]}
-                      onValueChange={(val) => setBridgingIntensity(val[0])}
+                      onValueChange={val => setBridgingIntensity(val[0])}
                       min={0}
                       max={1}
                       step={0.1}
@@ -308,7 +339,8 @@ export const SettingsModal = ({
                       <span>Bridge</span>
                     </div>
                     <p className="text-xs text-muted-foreground/60">
-                      How aggressively the AI connects ideas across distant clusters
+                      How aggressively the AI connects ideas across distant
+                      clusters
                     </p>
                   </div>
                 </div>
@@ -331,7 +363,8 @@ export const SettingsModal = ({
               </div>
             ) : (
               <p className="text-xs text-muted-foreground">
-                AI controls are hidden until an AI path is available on this device.
+                AI controls are hidden until an AI path is available on this
+                device.
               </p>
             )}
           </section>

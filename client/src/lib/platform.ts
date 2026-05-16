@@ -16,8 +16,7 @@ declare global {
 /** True when running inside a Capacitor native shell (Android/iOS). */
 export function isCapacitor(): boolean {
   return (
-    typeof window !== "undefined" &&
-    !!window.Capacitor?.isNativePlatform?.()
+    typeof window !== "undefined" && !!window.Capacitor?.isNativePlatform?.()
   );
 }
 
@@ -64,7 +63,9 @@ export function getPublicWebAppOrigin(): string {
   if (fromEnv) return trimTrailingSlashes(fromEnv);
 
   if (typeof window !== "undefined" && !isCapacitor()) {
-    return trimTrailingSlashes(`${window.location.protocol}//${window.location.host}`);
+    return trimTrailingSlashes(
+      `${window.location.protocol}//${window.location.host}`
+    );
   }
 
   return trimTrailingSlashes(APP_PUBLIC_WEB_ORIGIN);

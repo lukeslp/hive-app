@@ -8,7 +8,7 @@
  * @module types/hexmind
  */
 
-import type { ElementType } from 'react';
+import type { ElementType } from "react";
 
 // ============================================================================
 // Node Types
@@ -25,7 +25,14 @@ import type { ElementType } from 'react';
  * - `risk`: Risks and concerns (red)
  * - `default`: Fallback type (slate)
  */
-export type NodeType = 'root' | 'concept' | 'action' | 'technical' | 'question' | 'risk' | 'default';
+export type NodeType =
+  | "root"
+  | "concept"
+  | "action"
+  | "technical"
+  | "question"
+  | "risk"
+  | "default";
 
 /**
  * Core hexagonal node in the brainstorming grid
@@ -106,7 +113,7 @@ export interface HexNode {
    * What kind of user input is needed. Constrains the LLM's classification
    * to four categories instead of letting it invent justifications.
    */
-  userInputCategory?: 'preference' | 'constraint' | 'situation' | 'goal';
+  userInputCategory?: "preference" | "constraint" | "situation" | "goal";
 
   /**
    * 0–5 short suggested answers shown as tappable chips above the textbox.
@@ -126,7 +133,7 @@ export interface HexNode {
 
   /** Data visualization artifact (Sprint 3) */
   visualization?: {
-    type: 'chart' | 'map' | 'timeline' | 'diagram';
+    type: "chart" | "map" | "timeline" | "diagram";
     data: unknown;
     config?: unknown;
   };
@@ -141,7 +148,7 @@ export interface HexNode {
 /**
  * Partial node update for state modifications
  */
-export type PartialHexNode = Partial<HexNode> & Pick<HexNode, 'q' | 'r'>;
+export type PartialHexNode = Partial<HexNode> & Pick<HexNode, "q" | "r">;
 
 /**
  * Node collection keyed by "q,r" coordinate string
@@ -356,7 +363,7 @@ export interface BranchSuggestion {
   clarificationReasoning?: string | null;
 
   /** See HexNode.userInputCategory. */
-  userInputCategory?: 'preference' | 'constraint' | 'situation' | 'goal' | null;
+  userInputCategory?: "preference" | "constraint" | "situation" | "goal" | null;
 
   /** See HexNode.suggestedAnswers. 0–5 chip labels. */
   suggestedAnswers?: string[] | null;
@@ -446,7 +453,7 @@ export interface TemplateCategory {
  */
 export interface UserSettings {
   /** Theme mode */
-  theme: 'light' | 'dark';
+  theme: "light" | "dark";
 
   /** AI creativity level (0.0 - 1.0) */
   creativity: number;
@@ -481,18 +488,18 @@ export interface NodeInteractionEvent {
  * Keyboard shortcut action types
  */
 export type ShortcutAction =
-  | 'undo'
-  | 'redo'
-  | 'delete'
-  | 'save'
-  | 'export'
-  | 'settings'
-  | 'help'
-  | 'zoom-in'
-  | 'zoom-out'
-  | 'zoom-reset'
-  | 'pin-node'
-  | 'mark-key-theme';
+  | "undo"
+  | "redo"
+  | "delete"
+  | "save"
+  | "export"
+  | "settings"
+  | "help"
+  | "zoom-in"
+  | "zoom-out"
+  | "zoom-reset"
+  | "pin-node"
+  | "mark-key-theme";
 
 /**
  * Keyboard shortcut definition
@@ -501,7 +508,7 @@ export interface KeyboardShortcut {
   action: ShortcutAction;
   keys: string[];
   description: string;
-  category: 'navigation' | 'editing' | 'view' | 'help';
+  category: "navigation" | "editing" | "view" | "help";
 }
 
 // ============================================================================
@@ -512,17 +519,17 @@ export interface KeyboardShortcut {
  * Type guard: Check if object is a valid HexNode
  */
 export function isHexNode(obj: unknown): obj is HexNode {
-  if (typeof obj !== 'object' || obj === null) return false;
+  if (typeof obj !== "object" || obj === null) return false;
 
   const node = obj as Partial<HexNode>;
 
   return (
-    typeof node.q === 'number' &&
-    typeof node.r === 'number' &&
-    typeof node.text === 'string' &&
-    typeof node.type === 'string' &&
-    typeof node.depth === 'number' &&
-    typeof node.pinned === 'boolean'
+    typeof node.q === "number" &&
+    typeof node.r === "number" &&
+    typeof node.text === "string" &&
+    typeof node.type === "string" &&
+    typeof node.depth === "number" &&
+    typeof node.pinned === "boolean"
   );
 }
 
@@ -530,7 +537,7 @@ export function isHexNode(obj: unknown): obj is HexNode {
  * Type guard: Check if object is a valid NodeMap
  */
 export function isNodeMap(obj: unknown): obj is NodeMap {
-  if (typeof obj !== 'object' || obj === null) return false;
+  if (typeof obj !== "object" || obj === null) return false;
 
   return Object.values(obj).every(isHexNode);
 }
@@ -539,14 +546,14 @@ export function isNodeMap(obj: unknown): obj is NodeMap {
  * Type guard: Check if object is a valid ViewState
  */
 export function isViewState(obj: unknown): obj is ViewState {
-  if (typeof obj !== 'object' || obj === null) return false;
+  if (typeof obj !== "object" || obj === null) return false;
 
   const view = obj as Partial<ViewState>;
 
   return (
-    typeof view.x === 'number' &&
-    typeof view.y === 'number' &&
-    typeof view.zoom === 'number'
+    typeof view.x === "number" &&
+    typeof view.y === "number" &&
+    typeof view.zoom === "number"
   );
 }
 
@@ -554,14 +561,14 @@ export function isViewState(obj: unknown): obj is ViewState {
  * Type guard: Check if object is a valid SessionData
  */
 export function isSessionData(obj: unknown): obj is SessionData {
-  if (typeof obj !== 'object' || obj === null) return false;
+  if (typeof obj !== "object" || obj === null) return false;
 
   const session = obj as Partial<SessionData>;
 
   return (
     isNodeMap(session.nodes) &&
     isViewState(session.view) &&
-    typeof session.metadata === 'object' &&
+    typeof session.metadata === "object" &&
     session.metadata !== null
   );
 }
@@ -570,7 +577,15 @@ export function isSessionData(obj: unknown): obj is SessionData {
  * Type guard: Check if string is a valid NodeType
  */
 export function isNodeType(value: string): value is NodeType {
-  return ['root', 'concept', 'action', 'technical', 'question', 'risk', 'default'].includes(value);
+  return [
+    "root",
+    "concept",
+    "action",
+    "technical",
+    "question",
+    "risk",
+    "default",
+  ].includes(value);
 }
 
 // ============================================================================
@@ -593,7 +608,7 @@ export function getNodeKey(q: number, r: number): NodeKey {
  * Parse node key into coordinates
  */
 export function parseNodeKey(key: NodeKey): HexCoordinate | null {
-  const parts = key.split(',');
+  const parts = key.split(",");
   if (parts.length !== 2) return null;
 
   const q = parseInt(parts[0], 10);
@@ -612,12 +627,12 @@ export type ReadonlyHexNode = Readonly<HexNode>;
 /**
  * Node without coordinate information (for updates)
  */
-export type NodeContent = Omit<HexNode, 'q' | 'r'>;
+export type NodeContent = Omit<HexNode, "q" | "r">;
 
 /**
  * Minimal node creation data
  */
-export type CreateNodeData = Pick<HexNode, 'q' | 'r' | 'text' | 'type'> & {
+export type CreateNodeData = Pick<HexNode, "q" | "r" | "text" | "type"> & {
   description?: string;
   parentId?: string | null;
 };
@@ -666,7 +681,7 @@ export const DEFAULT_GENERATION_TRACKER: GenerationTracker = {
  * Storage keys for localStorage
  */
 export const STORAGE_KEYS = {
-  SESSIONS: 'hivemind_sessions',
-  AUTOSAVE: 'hivemind_autosave',
-  SETTINGS: 'hivemind_settings',
+  SESSIONS: "hivemind_sessions",
+  AUTOSAVE: "hivemind_autosave",
+  SETTINGS: "hivemind_settings",
 } as const;

@@ -1,7 +1,7 @@
 import { eq, and, desc } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/mysql2";
 import { InsertUser, users, sessions, InsertSession } from "../drizzle/schema";
-import { ENV } from './_core/env';
+import { ENV } from "./_core/env";
 
 let _db: ReturnType<typeof drizzle> | null = null;
 
@@ -56,8 +56,8 @@ export async function upsertUser(user: InsertUser): Promise<void> {
       values.role = user.role;
       updateSet.role = user.role;
     } else if (user.openId === ENV.ownerOpenId) {
-      values.role = 'admin';
-      updateSet.role = 'admin';
+      values.role = "admin";
+      updateSet.role = "admin";
     }
 
     if (!values.lastSignedIn) {
@@ -84,7 +84,11 @@ export async function getUserByOpenId(openId: string) {
     return undefined;
   }
 
-  const result = await db.select().from(users).where(eq(users.openId, openId)).limit(1);
+  const result = await db
+    .select()
+    .from(users)
+    .where(eq(users.openId, openId))
+    .limit(1);
 
   return result.length > 0 ? result[0] : undefined;
 }
@@ -119,7 +123,13 @@ export async function getSession(sessionId: number, userId: number) {
   return rows[0] ?? null;
 }
 
-export async function createSession(input: { userId: number; name: string; data: string; nodeCount: number; thumbnailUrl?: string }) {
+export async function createSession(input: {
+  userId: number;
+  name: string;
+  data: string;
+  nodeCount: number;
+  thumbnailUrl?: string;
+}) {
   const db = await getDb();
   if (!db) throw new Error("Database not available");
   const result = await db.insert(sessions).values({
@@ -132,20 +142,35 @@ export async function createSession(input: { userId: number; name: string; data:
   return { id: Number(result[0].insertId) };
 }
 
-export async function updateSession(sessionId: number, userId: number, input: { name?: string; data?: string; nodeCount?: number; thumbnailUrl?: string }) {
+export async function updateSession(
+  sessionId: number,
+  userId: number,
+  input: {
+    name?: string;
+    data?: string;
+    nodeCount?: number;
+    thumbnailUrl?: string;
+  }
+) {
   const db = await getDb();
   if (!db) throw new Error("Database not available");
   const updateSet: Record<string, unknown> = {};
   if (input.name !== undefined) updateSet.name = input.name;
   if (input.data !== undefined) updateSet.data = input.data;
   if (input.nodeCount !== undefined) updateSet.nodeCount = input.nodeCount;
-  if (input.thumbnailUrl !== undefined) updateSet.thumbnailUrl = input.thumbnailUrl;
+  if (input.thumbnailUrl !== undefined)
+    updateSet.thumbnailUrl = input.thumbnailUrl;
   if (Object.keys(updateSet).length === 0) return;
-  await db.update(sessions).set(updateSet).where(and(eq(sessions.id, sessionId), eq(sessions.userId, userId)));
+  await db
+    .update(sessions)
+    .set(updateSet)
+    .where(and(eq(sessions.id, sessionId), eq(sessions.userId, userId)));
 }
 
 export async function deleteSessionById(sessionId: number, userId: number) {
   const db = await getDb();
   if (!db) throw new Error("Database not available");
-  await db.delete(sessions).where(and(eq(sessions.id, sessionId), eq(sessions.userId, userId)));
+  await db
+    .delete(sessions)
+    .where(and(eq(sessions.id, sessionId), eq(sessions.userId, userId)));
 }

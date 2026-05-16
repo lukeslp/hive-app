@@ -12,8 +12,8 @@ const Toaster = ({ ...props }: ToasterProps) => {
       // cards. Was overlapping all three at the previous bottom-right
       // default. Top-center reads naturally in landscape AND portrait.
       position="top-center"
-      // Slightly inset from the toolbar — measured at 56px (toolbar
-      // height ~44 + 12 breathing room).
+      // Slightly inset from the top toolbar (upper-left hex pill) —
+      // measured at 56px (toolbar height ~44 + 12 breathing room).
       offset={{ top: 56 }}
       className="toaster group"
       style={

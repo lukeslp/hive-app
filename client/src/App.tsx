@@ -7,10 +7,7 @@ import HexmindApp from "./pages/HexmindApp";
 function App() {
   return (
     <ErrorBoundary>
-      <ThemeProvider
-        defaultTheme="dark"
-        switchable
-      >
+      <ThemeProvider defaultTheme="dark" switchable>
         <TooltipProvider>
           <Toaster />
           <HexmindApp />

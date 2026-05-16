@@ -3,8 +3,23 @@
  * Pre-built brainstorm templates for common use cases
  */
 
-import type { LucideIcon } from 'lucide-react';
-import { Rocket, BookOpen, Puzzle, Briefcase, Microscope, PenTool, Smartphone, PartyPopper, Code, Target, GraduationCap, Palette, Globe, LayoutGrid } from 'lucide-react';
+import type { LucideIcon } from "lucide-react";
+import {
+  Rocket,
+  BookOpen,
+  Puzzle,
+  Briefcase,
+  Microscope,
+  PenTool,
+  Smartphone,
+  PartyPopper,
+  Code,
+  Target,
+  GraduationCap,
+  Palette,
+  Globe,
+  LayoutGrid,
+} from "lucide-react";
 
 export interface TemplateNode {
   q: number;
@@ -20,7 +35,12 @@ export interface Template {
   id: string;
   name: string;
   description: string;
-  category: "product" | "creative" | "business" | "problem-solving" | "research";
+  category:
+    | "product"
+    | "creative"
+    | "business"
+    | "problem-solving"
+    | "research";
   icon: LucideIcon;
   nodes: TemplateNode[];
   centerText: string;
@@ -166,7 +186,8 @@ export const TEMPLATES: Template[] = [
   {
     id: "problem-solving",
     name: "Problem Solving Framework",
-    description: "Systematic approach to analyzing and solving complex problems",
+    description:
+      "Systematic approach to analyzing and solving complex problems",
     category: "problem-solving",
     icon: Puzzle,
     centerText: "Problem Statement",
@@ -573,13 +594,63 @@ export const TEMPLATES: Template[] = [
     icon: Code,
     centerText: "System Architecture",
     nodes: [
-      { q: 0, r: 0, text: "System Architecture", description: "Core system design and structure", type: "concept", isPinned: true, depth: 0 },
-      { q: 1, r: 0, text: "Core Components", description: "Primary system modules and services", type: "technical", depth: 1 },
-      { q: 1, r: -1, text: "Data Flow", description: "Information movement and state management", type: "technical", depth: 1 },
-      { q: 0, r: -1, text: "API Design", description: "Interface contracts and communication patterns", type: "technical", depth: 1 },
-      { q: -1, r: 0, text: "Scalability Strategy", description: "Growth planning and performance optimization", type: "action", depth: 1 },
-      { q: -1, r: 1, text: "Security Concerns", description: "Authentication, authorization, and data protection", type: "risk", depth: 1 },
-      { q: 0, r: 1, text: "Tech Stack Selection", description: "Frameworks, languages, and infrastructure choices", type: "question", depth: 1 },
+      {
+        q: 0,
+        r: 0,
+        text: "System Architecture",
+        description: "Core system design and structure",
+        type: "concept",
+        isPinned: true,
+        depth: 0,
+      },
+      {
+        q: 1,
+        r: 0,
+        text: "Core Components",
+        description: "Primary system modules and services",
+        type: "technical",
+        depth: 1,
+      },
+      {
+        q: 1,
+        r: -1,
+        text: "Data Flow",
+        description: "Information movement and state management",
+        type: "technical",
+        depth: 1,
+      },
+      {
+        q: 0,
+        r: -1,
+        text: "API Design",
+        description: "Interface contracts and communication patterns",
+        type: "technical",
+        depth: 1,
+      },
+      {
+        q: -1,
+        r: 0,
+        text: "Scalability Strategy",
+        description: "Growth planning and performance optimization",
+        type: "action",
+        depth: 1,
+      },
+      {
+        q: -1,
+        r: 1,
+        text: "Security Concerns",
+        description: "Authentication, authorization, and data protection",
+        type: "risk",
+        depth: 1,
+      },
+      {
+        q: 0,
+        r: 1,
+        text: "Tech Stack Selection",
+        description: "Frameworks, languages, and infrastructure choices",
+        type: "question",
+        depth: 1,
+      },
     ],
   },
   {
@@ -590,13 +661,63 @@ export const TEMPLATES: Template[] = [
     icon: Target,
     centerText: "Personal Goal",
     nodes: [
-      { q: 0, r: 0, text: "Personal Goal", description: "What do you want to achieve?", type: "concept", isPinned: true, depth: 0 },
-      { q: 1, r: 0, text: "Why This Matters", description: "Personal motivation and values alignment", type: "question", depth: 1 },
-      { q: 1, r: -1, text: "Action Steps", description: "Concrete tasks and milestones", type: "action", depth: 1 },
-      { q: 0, r: -1, text: "Resources Needed", description: "Time, money, skills, or support required", type: "technical", depth: 1 },
-      { q: -1, r: 0, text: "Potential Obstacles", description: "What might prevent success?", type: "risk", depth: 1 },
-      { q: -1, r: 1, text: "Success Metrics", description: "How will you know you've succeeded?", type: "question", depth: 1 },
-      { q: 0, r: 1, text: "Accountability Plan", description: "Tracking progress and staying motivated", type: "action", depth: 1 },
+      {
+        q: 0,
+        r: 0,
+        text: "Personal Goal",
+        description: "What do you want to achieve?",
+        type: "concept",
+        isPinned: true,
+        depth: 0,
+      },
+      {
+        q: 1,
+        r: 0,
+        text: "Why This Matters",
+        description: "Personal motivation and values alignment",
+        type: "question",
+        depth: 1,
+      },
+      {
+        q: 1,
+        r: -1,
+        text: "Action Steps",
+        description: "Concrete tasks and milestones",
+        type: "action",
+        depth: 1,
+      },
+      {
+        q: 0,
+        r: -1,
+        text: "Resources Needed",
+        description: "Time, money, skills, or support required",
+        type: "technical",
+        depth: 1,
+      },
+      {
+        q: -1,
+        r: 0,
+        text: "Potential Obstacles",
+        description: "What might prevent success?",
+        type: "risk",
+        depth: 1,
+      },
+      {
+        q: -1,
+        r: 1,
+        text: "Success Metrics",
+        description: "How will you know you've succeeded?",
+        type: "question",
+        depth: 1,
+      },
+      {
+        q: 0,
+        r: 1,
+        text: "Accountability Plan",
+        description: "Tracking progress and staying motivated",
+        type: "action",
+        depth: 1,
+      },
     ],
   },
   {
@@ -607,13 +728,63 @@ export const TEMPLATES: Template[] = [
     icon: GraduationCap,
     centerText: "Learning Goal",
     nodes: [
-      { q: 0, r: 0, text: "Learning Goal", description: "What skill or knowledge do you want to acquire?", type: "concept", isPinned: true, depth: 0 },
-      { q: 1, r: 0, text: "Current Knowledge", description: "What do you already know? Where are you starting?", type: "question", depth: 1 },
-      { q: 1, r: -1, text: "Learning Resources", description: "Books, courses, mentors, practice projects", type: "technical", depth: 1 },
-      { q: 0, r: -1, text: "Practice Activities", description: "Hands-on exercises and real-world application", type: "action", depth: 1 },
-      { q: -1, r: 0, text: "Learning Timeline", description: "Phases, checkpoints, and estimated duration", type: "action", depth: 1 },
-      { q: -1, r: 1, text: "Common Pitfalls", description: "What challenges do learners typically face?", type: "risk", depth: 1 },
-      { q: 0, r: 1, text: "Mastery Indicators", description: "How will you know you've truly learned it?", type: "question", depth: 1 },
+      {
+        q: 0,
+        r: 0,
+        text: "Learning Goal",
+        description: "What skill or knowledge do you want to acquire?",
+        type: "concept",
+        isPinned: true,
+        depth: 0,
+      },
+      {
+        q: 1,
+        r: 0,
+        text: "Current Knowledge",
+        description: "What do you already know? Where are you starting?",
+        type: "question",
+        depth: 1,
+      },
+      {
+        q: 1,
+        r: -1,
+        text: "Learning Resources",
+        description: "Books, courses, mentors, practice projects",
+        type: "technical",
+        depth: 1,
+      },
+      {
+        q: 0,
+        r: -1,
+        text: "Practice Activities",
+        description: "Hands-on exercises and real-world application",
+        type: "action",
+        depth: 1,
+      },
+      {
+        q: -1,
+        r: 0,
+        text: "Learning Timeline",
+        description: "Phases, checkpoints, and estimated duration",
+        type: "action",
+        depth: 1,
+      },
+      {
+        q: -1,
+        r: 1,
+        text: "Common Pitfalls",
+        description: "What challenges do learners typically face?",
+        type: "risk",
+        depth: 1,
+      },
+      {
+        q: 0,
+        r: 1,
+        text: "Mastery Indicators",
+        description: "How will you know you've truly learned it?",
+        type: "question",
+        depth: 1,
+      },
     ],
   },
   {
@@ -624,18 +795,72 @@ export const TEMPLATES: Template[] = [
     icon: Palette,
     centerText: "Creative Vision",
     nodes: [
-      { q: 0, r: 0, text: "Creative Vision", description: "What are you making and why?", type: "concept", isPinned: true, depth: 0 },
-      { q: 1, r: 0, text: "Inspiration & Influences", description: "Artists, works, or experiences that inspire this", type: "concept", depth: 1 },
-      { q: 1, r: -1, text: "Medium & Techniques", description: "Tools, materials, and methods you'll use", type: "technical", depth: 1 },
-      { q: 0, r: -1, text: "Aesthetic Direction", description: "Visual style, mood, and atmosphere", type: "concept", depth: 1 },
-      { q: -1, r: 0, text: "Creation Timeline", description: "Phases from concept to completion", type: "action", depth: 1 },
-      { q: -1, r: 1, text: "Experimentation", description: "What will you try that's new or risky?", type: "question", depth: 1 },
-      { q: 0, r: 1, text: "Sharing & Feedback", description: "How will you present and iterate on your work?", type: "action", depth: 1 },
+      {
+        q: 0,
+        r: 0,
+        text: "Creative Vision",
+        description: "What are you making and why?",
+        type: "concept",
+        isPinned: true,
+        depth: 0,
+      },
+      {
+        q: 1,
+        r: 0,
+        text: "Inspiration & Influences",
+        description: "Artists, works, or experiences that inspire this",
+        type: "concept",
+        depth: 1,
+      },
+      {
+        q: 1,
+        r: -1,
+        text: "Medium & Techniques",
+        description: "Tools, materials, and methods you'll use",
+        type: "technical",
+        depth: 1,
+      },
+      {
+        q: 0,
+        r: -1,
+        text: "Aesthetic Direction",
+        description: "Visual style, mood, and atmosphere",
+        type: "concept",
+        depth: 1,
+      },
+      {
+        q: -1,
+        r: 0,
+        text: "Creation Timeline",
+        description: "Phases from concept to completion",
+        type: "action",
+        depth: 1,
+      },
+      {
+        q: -1,
+        r: 1,
+        text: "Experimentation",
+        description: "What will you try that's new or risky?",
+        type: "question",
+        depth: 1,
+      },
+      {
+        q: 0,
+        r: 1,
+        text: "Sharing & Feedback",
+        description: "How will you present and iterate on your work?",
+        type: "action",
+        depth: 1,
+      },
     ],
   },
 ];
 
-export const TEMPLATE_CATEGORIES: Array<{ id: string; name: string; icon: LucideIcon }> = [
+export const TEMPLATE_CATEGORIES: Array<{
+  id: string;
+  name: string;
+  icon: LucideIcon;
+}> = [
   { id: "all", name: "All Templates", icon: Globe },
   { id: "product", name: "Product & Technical", icon: Rocket },
   { id: "creative", name: "Creative Projects", icon: Palette },

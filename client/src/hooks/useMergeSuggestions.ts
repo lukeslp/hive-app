@@ -28,33 +28,104 @@ export interface MergeSuggestion {
 // ── Helpers ──────────────────────────────────────────────────────────────
 
 /** Hex distance between two axial coords */
-function hexDistance(a: { q: number; r: number }, b: { q: number; r: number }): number {
-  return (Math.abs(a.q - b.q) + Math.abs(a.q + a.r - b.q - b.r) + Math.abs(a.r - b.r)) / 2;
+function hexDistance(
+  a: { q: number; r: number },
+  b: { q: number; r: number }
+): number {
+  return (
+    (Math.abs(a.q - b.q) +
+      Math.abs(a.q + a.r - b.q - b.r) +
+      Math.abs(a.r - b.r)) /
+    2
+  );
 }
 
 /** Extract significant words from text (3+ chars, lowercased, no stop words) */
 function extractWords(text: string): Set<string> {
   const stopWords = new Set([
-    "the", "and", "for", "are", "but", "not", "you", "all", "can", "had",
-    "her", "was", "one", "our", "out", "has", "his", "how", "its", "may",
-    "new", "now", "old", "see", "way", "who", "did", "get", "let", "say",
-    "she", "too", "use", "with", "this", "that", "from", "they", "been",
-    "have", "many", "some", "them", "than", "each", "make", "like", "into",
-    "just", "over", "such", "take", "also", "more", "what", "when", "will",
-    "about", "could", "other", "their", "which", "would", "these", "being",
-    "there", "where", "should",
+    "the",
+    "and",
+    "for",
+    "are",
+    "but",
+    "not",
+    "you",
+    "all",
+    "can",
+    "had",
+    "her",
+    "was",
+    "one",
+    "our",
+    "out",
+    "has",
+    "his",
+    "how",
+    "its",
+    "may",
+    "new",
+    "now",
+    "old",
+    "see",
+    "way",
+    "who",
+    "did",
+    "get",
+    "let",
+    "say",
+    "she",
+    "too",
+    "use",
+    "with",
+    "this",
+    "that",
+    "from",
+    "they",
+    "been",
+    "have",
+    "many",
+    "some",
+    "them",
+    "than",
+    "each",
+    "make",
+    "like",
+    "into",
+    "just",
+    "over",
+    "such",
+    "take",
+    "also",
+    "more",
+    "what",
+    "when",
+    "will",
+    "about",
+    "could",
+    "other",
+    "their",
+    "which",
+    "would",
+    "these",
+    "being",
+    "there",
+    "where",
+    "should",
   ]);
   return new Set(
     text
       .toLowerCase()
       .replace(/[^a-z0-9\s]/g, " ")
       .split(/\s+/)
-      .filter((w) => w.length >= 3 && !stopWords.has(w))
+      .filter(w => w.length >= 3 && !stopWords.has(w))
   );
 }
 
 /** Score thematic overlap between two nodes */
-function overlapScore(a: HexNode, b: HexNode): { score: number; reason: string } {
+function overlapScore(
+  a: HexNode,
+  b: HexNode
+): { score: number; reason: string } {
   const wordsA = extractWords(`${a.text} ${a.description || ""}`);
   const wordsB = extractWords(`${b.text} ${b.description || ""}`);
 
@@ -110,11 +181,7 @@ export function useMergeSuggestions(
   nodes: Record<string, HexNode>,
   options: UseMergeSuggestionsOptions = {}
 ) {
-  const {
-    proximityThreshold = 4,
-    minScore = 2,
-    maxSuggestions = 3,
-  } = options;
+  const { proximityThreshold = 4, minScore = 2, maxSuggestions = 3 } = options;
 
   const [suggestions, setSuggestions] = useState<MergeSuggestion[]>([]);
   const [dismissedPairs, setDismissedPairs] = useState<Set<string>>(new Set());
@@ -169,14 +236,23 @@ export function useMergeSuggestions(
         if (minDist > proximityThreshold || !closestA || !closestB) continue;
 
         // Now find the best thematic pair (not necessarily the closest physically)
-        let bestPair: { a: typeof closestA; b: typeof closestB; score: number; reason: string } | null = null;
+        let bestPair: {
+          a: typeof closestA;
+          b: typeof closestB;
+          score: number;
+          reason: string;
+        } | null = null;
 
         // Check top candidates from each cluster (limit to avoid O(n^2) explosion)
         const topA = nodesA
-          .filter((n) => n.node.isKeyTheme || n.node.isBridge || n.node.wasInteracted)
+          .filter(
+            n => n.node.isKeyTheme || n.node.isBridge || n.node.wasInteracted
+          )
           .slice(0, 5);
         const topB = nodesB
-          .filter((n) => n.node.isKeyTheme || n.node.isBridge || n.node.wasInteracted)
+          .filter(
+            n => n.node.isKeyTheme || n.node.isBridge || n.node.wasInteracted
+          )
           .slice(0, 5);
 
         // Fall back to closest nodes if no interesting ones
@@ -222,7 +298,13 @@ export function useMergeSuggestions(
     // Sort by score descending and limit
     candidates.sort((a, b) => b.score - a.score);
     setSuggestions(candidates.slice(0, maxSuggestions));
-  }, [clusterMap, proximityThreshold, minScore, maxSuggestions, dismissedPairs]);
+  }, [
+    clusterMap,
+    proximityThreshold,
+    minScore,
+    maxSuggestions,
+    dismissedPairs,
+  ]);
 
   // Debounce computation — recalculate 1s after nodes change
   useEffect(() => {
@@ -235,8 +317,8 @@ export function useMergeSuggestions(
 
   // ── Actions ─────────────────────────────────────────────────────────────
   const dismissSuggestion = useCallback((suggestionId: string) => {
-    setDismissedPairs((prev) => new Set([...Array.from(prev), suggestionId]));
-    setSuggestions((prev) => prev.filter((s) => s.id !== suggestionId));
+    setDismissedPairs(prev => new Set([...Array.from(prev), suggestionId]));
+    setSuggestions(prev => prev.filter(s => s.id !== suggestionId));
   }, []);
 
   const clearDismissed = useCallback(() => {

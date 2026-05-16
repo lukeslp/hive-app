@@ -71,8 +71,11 @@ export function useSessionManagement({
   const [copied, setCopied] = useState(false);
 
   /** The cloud session currently being worked on (for auto-save & overwrite) */
-  const [activeCloudSessionId, setActiveCloudSessionId] = useState<number | null>(null);
-  const [activeCloudSessionName, setActiveCloudSessionName] = useState<string>("");
+  const [activeCloudSessionId, setActiveCloudSessionId] = useState<
+    number | null
+  >(null);
+  const [activeCloudSessionName, setActiveCloudSessionName] =
+    useState<string>("");
 
   // Refs for cloud auto-save debounce
   const cloudAutoSaveTimer = useRef<NodeJS.Timeout | null>(null);
@@ -107,15 +110,13 @@ export function useSessionManagement({
           date: string;
           nodeCount: number;
         }>;
-        parsed.forEach((s) =>
-          localSessions.push({ ...s, isCloud: false })
-        );
+        parsed.forEach(s => localSessions.push({ ...s, isCloud: false }));
       }
     } catch {
       // ignore
     }
 
-    const cloudSessions: SavedSession[] = (dbSessions.data ?? []).map((s) => ({
+    const cloudSessions: SavedSession[] = (dbSessions.data ?? []).map(s => ({
       id: s.id,
       name: s.name,
       date: (s.updatedAt ?? s.createdAt).toISOString(),
@@ -158,13 +159,14 @@ export function useSessionManagement({
     cloudAutoSaveTimer.current = setTimeout(() => {
       const now = Date.now();
       // Don't save more often than the interval
-      if (now - lastCloudSaveRef.current < CLOUD_AUTOSAVE_INTERVAL * 0.8) return;
+      if (now - lastCloudSaveRef.current < CLOUD_AUTOSAVE_INTERVAL * 0.8)
+        return;
 
       const sessionData = {
         nodes,
         viewState,
         creativity,
-        keyThemes: Object.keys(nodes).filter((k) => nodes[k].isKeyTheme),
+        keyThemes: Object.keys(nodes).filter(k => nodes[k].isKeyTheme),
       };
 
       updateMutation.mutate(
@@ -177,7 +179,7 @@ export function useSessionManagement({
           onSuccess: () => {
             lastCloudSaveRef.current = Date.now();
           },
-          onError: (err) => {
+          onError: err => {
             console.warn("Cloud auto-save failed:", err);
           },
         }
@@ -189,7 +191,14 @@ export function useSessionManagement({
         clearTimeout(cloudAutoSaveTimer.current);
       }
     };
-  }, [nodes, viewState, creativity, isAuthenticated, enableAutoSave, activeCloudSessionId]);
+  }, [
+    nodes,
+    viewState,
+    creativity,
+    isAuthenticated,
+    enableAutoSave,
+    activeCloudSessionId,
+  ]);
 
   // ── Save (create new or overwrite existing) ───────────────────────────
   const saveSession = useCallback(
@@ -198,7 +207,7 @@ export function useSessionManagement({
         nodes,
         viewState,
         creativity,
-        keyThemes: Object.keys(nodes).filter((k) => nodes[k].isKeyTheme),
+        keyThemes: Object.keys(nodes).filter(k => nodes[k].isKeyTheme),
       };
       const nodeCount = Object.keys(nodes).length;
       const displayName = name || `Session ${savedSessions.length + 1}`;
@@ -264,15 +273,26 @@ export function useSessionManagement({
       };
       try {
         localStorage.setItem(sessionId, JSON.stringify(sessionData));
-        const newSessions = [...savedSessions.filter((s) => !s.isCloud), session];
+        const newSessions = [...savedSessions.filter(s => !s.isCloud), session];
         localStorage.setItem(STORAGE_KEY, JSON.stringify(newSessions));
-        setSavedSessions((prev) => [...prev.filter((s) => s.isCloud), ...newSessions]);
+        setSavedSessions(prev => [
+          ...prev.filter(s => s.isCloud),
+          ...newSessions,
+        ]);
         toast.success("Session saved locally!");
       } catch {
         toast.error("Failed to save session");
       }
     },
-    [nodes, viewState, creativity, savedSessions, isAuthenticated, createMutation, updateMutation]
+    [
+      nodes,
+      viewState,
+      creativity,
+      savedSessions,
+      isAuthenticated,
+      createMutation,
+      updateMutation,
+    ]
   );
 
   // ── Rename a cloud session ────────────────────────────────────────────
@@ -371,11 +391,11 @@ export function useSessionManagement({
 
         // localStorage
         localStorage.removeItem(String(sessionId));
-        const newSessions = savedSessions.filter((s) => s.id !== sessionId);
+        const newSessions = savedSessions.filter(s => s.id !== sessionId);
         setSavedSessions(newSessions);
         localStorage.setItem(
           STORAGE_KEY,
-          JSON.stringify(newSessions.filter((s) => !s.isCloud))
+          JSON.stringify(newSessions.filter(s => !s.isCloud))
         );
       } catch {
         toast.error("Failed to delete session");
@@ -409,7 +429,7 @@ export function useSessionManagement({
   const importSession = useCallback(
     (file: File) => {
       const reader = new FileReader();
-      reader.onload = (e) => {
+      reader.onload = e => {
         try {
           const data = JSON.parse(e.target?.result as string);
           if (data.nodes) {
@@ -439,7 +459,9 @@ export function useSessionManagement({
       if (!res.ok) throw new Error(`Failed to save (HTTP ${res.status})`);
       const contentType = res.headers.get("content-type") ?? "";
       if (!contentType.toLowerCase().includes("application/json")) {
-        throw new Error(`Unexpected response type: ${contentType || "unknown"}`);
+        throw new Error(
+          `Unexpected response type: ${contentType || "unknown"}`
+        );
       }
       const { id } = await res.json();
       const path = window.location.pathname || "/";
@@ -499,7 +521,8 @@ export function useSessionManagement({
         if (decoded.nodes && Object.keys(decoded.nodes).length > 0) {
           resetHistory(decoded.nodes);
           if (decoded.viewState) setViewState(decoded.viewState);
-          if (decoded.creativity !== undefined) setCreativity(decoded.creativity);
+          if (decoded.creativity !== undefined)
+            setCreativity(decoded.creativity);
           setShowWelcome(false);
         }
       } catch {
@@ -515,7 +538,8 @@ export function useSessionManagement({
         if (decoded.nodes && Object.keys(decoded.nodes).length > 0) {
           resetHistory(decoded.nodes);
           if (decoded.viewState) setViewState(decoded.viewState);
-          if (decoded.creativity !== undefined) setCreativity(decoded.creativity);
+          if (decoded.creativity !== undefined)
+            setCreativity(decoded.creativity);
           setShowWelcome(false);
         }
       } catch {

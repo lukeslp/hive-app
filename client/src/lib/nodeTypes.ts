@@ -7,7 +7,7 @@
  * For `default.bgSolid`, the HiveMindApp.tsx value (#64748b) is canonical.
  */
 
-import type { NodeTypeStyle } from '@/types/hexmind';
+import type { NodeTypeStyle } from "@/types/hexmind";
 import {
   Hexagon,
   Lightbulb,
@@ -16,7 +16,7 @@ import {
   HelpCircle,
   Target,
   Box,
-} from '@/lib/icons';
+} from "@/lib/icons";
 
 export const NODE_TYPES: Record<string, NodeTypeStyle> = {
   root: {

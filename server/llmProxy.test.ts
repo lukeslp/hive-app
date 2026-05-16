@@ -44,7 +44,11 @@ function geminiSuccessResponse() {
       candidates: [
         {
           content: {
-            parts: [{ text: '{"subtopics": [{"label": "Test Topic", "type": "concept"}]}' }],
+            parts: [
+              {
+                text: '{"subtopics": [{"label": "Test Topic", "type": "concept"}]}',
+              },
+            ],
           },
         },
       ],
@@ -90,8 +94,14 @@ describe("LLM Proxy Router", () => {
         headers: {},
         body: {
           contents: [{ parts: [{ text: "What are subtopics of AI?" }] }],
-          generationConfig: { temperature: 0.7, maxOutputTokens: 2048, responseMimeType: "application/json" },
-          systemInstruction: { parts: [{ text: "You are a brainstorming assistant." }] },
+          generationConfig: {
+            temperature: 0.7,
+            maxOutputTokens: 2048,
+            responseMimeType: "application/json",
+          },
+          systemInstruction: {
+            parts: [{ text: "You are a brainstorming assistant." }],
+          },
         },
       });
       const res = mockRes();
@@ -103,7 +113,9 @@ describe("LLM Proxy Router", () => {
       await layer!.route!.stack[0].handle(req, res, () => {});
 
       expect(res._status).toBe(200);
-      expect(res._json?.candidates?.[0]?.content?.parts?.[0]?.text).toBeTruthy();
+      expect(
+        res._json?.candidates?.[0]?.content?.parts?.[0]?.text
+      ).toBeTruthy();
       // Confirms it called the Gemini API.
       const calledUrl = mockFetch.mock.calls[0]?.[0];
       expect(String(calledUrl)).toContain("generativelanguage.googleapis.com");

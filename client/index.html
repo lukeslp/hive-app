@@ -1,27 +1,39 @@
 <!doctype html>
 <html lang="en" class="dark">
-
   <head>
     <meta charset="UTF-8" />
     <meta
       name="viewport"
-      content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover, interactive-widget=resizes-content" />
+      content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover, interactive-widget=resizes-content"
+    />
     <title>Idea Tiles</title>
 
     <!-- Open Graph / Social Share -->
     <meta property="og:type" content="website" />
     <meta property="og:title" content="Idea Tiles — Brainstorm with local AI" />
-    <meta property="og:description" content="Brainstorm on a hex tile canvas. On supported iPhones, expansions use on-device AI; on web, bring your own API keys." />
+    <meta
+      property="og:description"
+      content="Brainstorm on a hex tile canvas. On supported iPhones, expansions use on-device AI; on web, bring your own API keys."
+    />
     <meta property="og:image" id="og-image" content="" />
     <meta property="og:url" content="" />
 
     <!-- Twitter Card -->
     <meta name="twitter:card" content="summary_large_image" />
-    <meta name="twitter:title" content="Idea Tiles — Brainstorm with local AI" />
-    <meta name="twitter:description" content="Brainstorm on a hex tile canvas with optional on-device or bring-your-own AI." />
+    <meta
+      name="twitter:title"
+      content="Idea Tiles — Brainstorm with local AI"
+    />
+    <meta
+      name="twitter:description"
+      content="Brainstorm on a hex tile canvas with optional on-device or bring-your-own AI."
+    />
     <meta name="twitter:image" id="twitter-image" content="" />
 
-    <meta name="description" content="Brainstorm on a hex tile canvas. On supported iPhones, expansions use on-device AI; on web, bring your own API keys." />
+    <meta
+      name="description"
+      content="Brainstorm on a hex tile canvas. On supported iPhones, expansions use on-device AI; on web, bring your own API keys."
+    />
 
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
@@ -36,29 +48,38 @@
       rel="stylesheet"
       href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap"
       media="print"
-      onload="this.media='all'" />
+      onload="this.media='all'"
+    />
     <noscript>
-      <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" />
+      <link
+        rel="stylesheet"
+        href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap"
+      />
     </noscript>
   </head>
 
   <body>
-    <script>!function(){var t=localStorage.getItem('theme');document.documentElement.className=t||'dark'}()</script>
+    <script>
+      !(function () {
+        var t = localStorage.getItem("theme");
+        document.documentElement.className = t || "dark";
+      })();
+    </script>
     <script>
       // Track the iOS keyboard's visual height into a CSS variable so
       // fixed-position modals can pad-bottom by it and the input stays
       // visible above the keyboard. Pure web — no Capacitor plugin
       // required. visualViewport is supported on iOS 13+.
       (function () {
-        if (typeof window === 'undefined' || !window.visualViewport) return;
+        if (typeof window === "undefined" || !window.visualViewport) return;
         var root = document.documentElement;
         function sync() {
           var vv = window.visualViewport;
           var kb = Math.max(0, window.innerHeight - vv.height - vv.offsetTop);
-          root.style.setProperty('--kb-h', kb + 'px');
+          root.style.setProperty("--kb-h", kb + "px");
         }
-        window.visualViewport.addEventListener('resize', sync);
-        window.visualViewport.addEventListener('scroll', sync);
+        window.visualViewport.addEventListener("resize", sync);
+        window.visualViewport.addEventListener("scroll", sync);
         sync();
       })();
     </script>
@@ -67,71 +88,125 @@
          can't mount, the JS bundle can't load, or anything throws before
          the React Error Boundary can catch it. Updated by the inline
          handler below; React tears it down once mount succeeds. -->
-    <div id="boot-overlay" style="position:fixed;inset:0;z-index:99999;background:#0a0a0a;color:#fafafa;font:13px/1.5 ui-monospace,Menlo,monospace;padding:20px;overflow:auto;white-space:pre-wrap;display:none;">
-      <div id="boot-status" style="font-weight:600;margin-bottom:12px;color:#fbbf24;"></div>
-      <div id="boot-detail" style="color:#fca5a5;"></div>
+    <div
+      id="boot-overlay"
+      style="
+        position: fixed;
+        inset: 0;
+        z-index: 99999;
+        background: #0a0a0a;
+        color: #fafafa;
+        font:
+          13px/1.5 ui-monospace,
+          Menlo,
+          monospace;
+        padding: 20px;
+        overflow: auto;
+        white-space: pre-wrap;
+        display: none;
+      "
+    >
+      <div
+        id="boot-status"
+        style="font-weight: 600; margin-bottom: 12px; color: #fbbf24"
+      ></div>
+      <div id="boot-detail" style="color: #fca5a5"></div>
     </div>
     <script>
-      (function(){
-        var overlay = document.getElementById('boot-overlay');
-        var status = document.getElementById('boot-status');
-        var detail = document.getElementById('boot-detail');
+      (function () {
+        var overlay = document.getElementById("boot-overlay");
+        var status = document.getElementById("boot-status");
+        var detail = document.getElementById("boot-detail");
         var consoleBuffer = [];
         function show(label, msg) {
-          overlay.style.display = 'block';
+          overlay.style.display = "block";
           status.textContent = label;
           detail.textContent = msg;
         }
         function describe(e) {
-          if (!e) return 'no error object';
-          if (e instanceof Error || (e && typeof e.message === 'string')) {
-            return (e.name || 'Error') + ': ' + (e.message || '(no message)') +
-                   (e.stack ? '\n\n' + String(e.stack).split('\n').slice(0, 12).join('\n') : '');
+          if (!e) return "no error object";
+          if (e instanceof Error || (e && typeof e.message === "string")) {
+            return (
+              (e.name || "Error") +
+              ": " +
+              (e.message || "(no message)") +
+              (e.stack
+                ? "\n\n" + String(e.stack).split("\n").slice(0, 12).join("\n")
+                : "")
+            );
           }
-          try { return JSON.stringify(e, null, 2); } catch (_) { return String(e); }
+          try {
+            return JSON.stringify(e, null, 2);
+          } catch (_) {
+            return String(e);
+          }
         }
         // Checkpoint API for the bundle to call as it makes progress.
         // The 5s timeout uses __lastCheckpoint so we know where things died.
-        window.__lastCheckpoint = 'inline script ran';
-        window.__checkpoint = function(msg) {
+        window.__lastCheckpoint = "inline script ran";
+        window.__checkpoint = function (msg) {
           window.__lastCheckpoint = msg;
         };
         // Buffer console output so the timeout overlay can dump it. The
         // app is still calling the originals — we just shadow them.
-        ['log', 'warn', 'error', 'info'].forEach(function(level) {
+        ["log", "warn", "error", "info"].forEach(function (level) {
           var orig = console[level];
-          console[level] = function() {
+          console[level] = function () {
             try {
-              var args = Array.prototype.map.call(arguments, function(a) {
-                if (typeof a === 'string') return a;
-                try { return JSON.stringify(a); } catch (_) { return String(a); }
+              var args = Array.prototype.map.call(arguments, function (a) {
+                if (typeof a === "string") return a;
+                try {
+                  return JSON.stringify(a);
+                } catch (_) {
+                  return String(a);
+                }
               });
-              consoleBuffer.push('[' + level + '] ' + args.join(' '));
+              consoleBuffer.push("[" + level + "] " + args.join(" "));
               if (consoleBuffer.length > 80) consoleBuffer.shift();
             } catch (_) {}
             return orig.apply(console, arguments);
           };
         });
-        window.addEventListener('error', function(ev) {
-          show('Window error',
-               describe(ev.error) +
-               '\n\nat ' + (ev.filename || '?') + ':' + (ev.lineno || '?') + ':' + (ev.colno || '?') +
-               '\n\nlast checkpoint: ' + window.__lastCheckpoint);
+        window.addEventListener("error", function (ev) {
+          show(
+            "Window error",
+            describe(ev.error) +
+              "\n\nat " +
+              (ev.filename || "?") +
+              ":" +
+              (ev.lineno || "?") +
+              ":" +
+              (ev.colno || "?") +
+              "\n\nlast checkpoint: " +
+              window.__lastCheckpoint
+          );
         });
-        window.addEventListener('unhandledrejection', function(ev) {
-          show('Unhandled promise rejection',
-               describe(ev.reason) +
-               '\n\nlast checkpoint: ' + window.__lastCheckpoint);
+        window.addEventListener("unhandledrejection", function (ev) {
+          show(
+            "Unhandled promise rejection",
+            describe(ev.reason) +
+              "\n\nlast checkpoint: " +
+              window.__lastCheckpoint
+          );
         });
         // 5-second timeout: if React still hasn't replaced #root, show
         // the last checkpoint reached + the recent console buffer.
-        setTimeout(function() {
-          var root = document.getElementById('root');
-          if (root && root.children.length === 0 && overlay.style.display === 'none') {
-            show('React did not mount within 5s',
-                 'last checkpoint: ' + window.__lastCheckpoint +
-                 '\n\n--- recent console output ---\n' +
-                 (consoleBuffer.length ? consoleBuffer.slice(-30).join('\n') : '(empty — bundle may not be evaluating)'));
+        setTimeout(function () {
+          var root = document.getElementById("root");
+          if (
+            root &&
+            root.children.length === 0 &&
+            overlay.style.display === "none"
+          ) {
+            show(
+              "React did not mount within 5s",
+              "last checkpoint: " +
+                window.__lastCheckpoint +
+                "\n\n--- recent console output ---\n" +
+                (consoleBuffer.length
+                  ? consoleBuffer.slice(-30).join("\n")
+                  : "(empty — bundle may not be evaluating)")
+            );
           }
         }, 5000);
       })();
@@ -140,5 +215,4 @@
     <div id="root"></div>
     <script type="module" src="/src/main.tsx"></script>
   </body>
-
 </html>

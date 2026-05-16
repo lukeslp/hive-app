@@ -139,9 +139,7 @@ describe("Collab module", () => {
       type: "joined",
       roomId: "ABC123",
       userId: "user_1",
-      participants: [
-        { userId: "user_1", userName: "Alice", color: "#ef4444" },
-      ],
+      participants: [{ userId: "user_1", userName: "Alice", color: "#ef4444" }],
     };
     expect(joinedMsg.type).toBe("joined");
     expect(joinedMsg.participants).toHaveLength(1);

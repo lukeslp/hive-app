@@ -2,15 +2,27 @@ import { describe, expect, it, vi, beforeEach } from "vitest";
 
 // Mock the database functions
 vi.mock("./db", () => ({
-  listSessions: vi.fn().mockResolvedValue([
-    { id: 1, name: "Test Session", nodeCount: 5, createdAt: new Date(), updatedAt: new Date() },
-  ]),
+  listSessions: vi
+    .fn()
+    .mockResolvedValue([
+      {
+        id: 1,
+        name: "Test Session",
+        nodeCount: 5,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      },
+    ]),
   getSession: vi.fn().mockResolvedValue({
     id: 1,
     userId: 1,
     name: "Test Session",
     nodeCount: 5,
-    data: JSON.stringify({ nodes: { "0,0": { text: "Root" } }, viewState: { x: 0, y: 0, zoom: 1 }, creativity: 0.5 }),
+    data: JSON.stringify({
+      nodes: { "0,0": { text: "Root" } },
+      viewState: { x: 0, y: 0, zoom: 1 },
+      creativity: 0.5,
+    }),
     createdAt: new Date(),
     updatedAt: new Date(),
   }),
@@ -19,7 +31,13 @@ vi.mock("./db", () => ({
   deleteSessionById: vi.fn().mockResolvedValue(undefined),
 }));
 
-import { listSessions, getSession, createSession, updateSession, deleteSessionById } from "./db";
+import {
+  listSessions,
+  getSession,
+  createSession,
+  updateSession,
+  deleteSessionById,
+} from "./db";
 
 describe("Sessions DB helpers (mocked)", () => {
   beforeEach(() => {

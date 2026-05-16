@@ -15,7 +15,13 @@ import { nanoid } from "nanoid";
 
 // ─── Types ──────────────────────────────────────────────────────────────────
 
-type Provider = "gemini" | "anthropic" | "openai" | "grok" | "mistral" | "ollama";
+type Provider =
+  | "gemini"
+  | "anthropic"
+  | "openai"
+  | "grok"
+  | "mistral"
+  | "ollama";
 
 interface NormalizedRequest {
   system: string;
@@ -53,34 +59,52 @@ function wrapResponse(text: string): object {
   return { candidates: [{ content: { parts: [{ text }] } }] };
 }
 
-async function callGemini(req: NormalizedRequest, apiKey: string): Promise<string> {
-  if (!apiKey) throw new Error("No Gemini API key provided. Add your key in Settings.");
+async function callGemini(
+  req: NormalizedRequest,
+  apiKey: string
+): Promise<string> {
+  if (!apiKey)
+    throw new Error("No Gemini API key provided. Add your key in Settings.");
   const model = "gemini-2.0-flash";
 
   const body: any = {
     contents: [{ parts: [{ text: req.userText }] }],
-    generationConfig: { temperature: req.temperature, maxOutputTokens: req.maxTokens },
+    generationConfig: {
+      temperature: req.temperature,
+      maxOutputTokens: req.maxTokens,
+    },
   };
   if (req.system) body.systemInstruction = { parts: [{ text: req.system }] };
   if (req.jsonMode) body.generationConfig.responseMimeType = "application/json";
-  if (req.responseSchema) body.generationConfig.responseSchema = req.responseSchema;
+  if (req.responseSchema)
+    body.generationConfig.responseSchema = req.responseSchema;
 
   const res = await fetch(
     `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`,
-    { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) }
+    {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body),
+    }
   );
   if (!res.ok) {
     const errText = await res.text();
-    if (res.status === 403) throw new Error("Gemini API key is invalid or has been revoked.");
-    if (res.status === 429) throw new Error("Gemini rate limit reached. Please wait a moment.");
+    if (res.status === 403)
+      throw new Error("Gemini API key is invalid or has been revoked.");
+    if (res.status === 429)
+      throw new Error("Gemini rate limit reached. Please wait a moment.");
     throw new Error(`Gemini ${res.status}: ${errText}`);
   }
   const data: any = await res.json();
   return data.candidates?.[0]?.content?.parts?.[0]?.text ?? "";
 }
 
-async function callAnthropic(req: NormalizedRequest, apiKey: string): Promise<string> {
-  if (!apiKey) throw new Error("No Anthropic API key provided. Add your key in Settings.");
+async function callAnthropic(
+  req: NormalizedRequest,
+  apiKey: string
+): Promise<string> {
+  if (!apiKey)
+    throw new Error("No Anthropic API key provided. Add your key in Settings.");
   const model = "claude-haiku-4-5-20251001";
 
   const body: any = {
@@ -110,8 +134,12 @@ async function callAnthropic(req: NormalizedRequest, apiKey: string): Promise<st
   return data.content?.[0]?.text ?? "";
 }
 
-async function callMistral(req: NormalizedRequest, apiKey: string): Promise<string> {
-  if (!apiKey) throw new Error("No Mistral API key provided. Add your key in Settings.");
+async function callMistral(
+  req: NormalizedRequest,
+  apiKey: string
+): Promise<string> {
+  if (!apiKey)
+    throw new Error("No Mistral API key provided. Add your key in Settings.");
   const model = "mistral-small-latest";
 
   const messages: any[] = [];
@@ -120,8 +148,16 @@ async function callMistral(req: NormalizedRequest, apiKey: string): Promise<stri
 
   const res = await fetch("https://api.mistral.ai/v1/chat/completions", {
     method: "POST",
-    headers: { "Content-Type": "application/json", Authorization: `Bearer ${apiKey}` },
-    body: JSON.stringify({ model, messages, temperature: req.temperature, max_tokens: req.maxTokens }),
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${apiKey}`,
+    },
+    body: JSON.stringify({
+      model,
+      messages,
+      temperature: req.temperature,
+      max_tokens: req.maxTokens,
+    }),
   });
   if (!res.ok) {
     const errText = await res.text();
@@ -132,20 +168,32 @@ async function callMistral(req: NormalizedRequest, apiKey: string): Promise<stri
   return data.choices?.[0]?.message?.content ?? "";
 }
 
-async function callOpenAI(req: NormalizedRequest, apiKey: string): Promise<string> {
-  if (!apiKey) throw new Error("No OpenAI API key provided. Add your key in Settings.");
+async function callOpenAI(
+  req: NormalizedRequest,
+  apiKey: string
+): Promise<string> {
+  if (!apiKey)
+    throw new Error("No OpenAI API key provided. Add your key in Settings.");
   const model = "gpt-4o-mini";
 
   const messages: any[] = [];
   if (req.system) messages.push({ role: "system", content: req.system });
   messages.push({ role: "user", content: req.userText });
 
-  const body: any = { model, messages, temperature: req.temperature, max_tokens: req.maxTokens };
+  const body: any = {
+    model,
+    messages,
+    temperature: req.temperature,
+    max_tokens: req.maxTokens,
+  };
   if (req.jsonMode) body.response_format = { type: "json_object" };
 
   const res = await fetch("https://api.openai.com/v1/chat/completions", {
     method: "POST",
-    headers: { "Content-Type": "application/json", Authorization: `Bearer ${apiKey}` },
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${apiKey}`,
+    },
     body: JSON.stringify(body),
   });
   if (!res.ok) {
@@ -158,20 +206,32 @@ async function callOpenAI(req: NormalizedRequest, apiKey: string): Promise<strin
   return data.choices?.[0]?.message?.content ?? "";
 }
 
-async function callGrok(req: NormalizedRequest, apiKey: string): Promise<string> {
-  if (!apiKey) throw new Error("No Grok/xAI API key provided. Add your key in Settings.");
+async function callGrok(
+  req: NormalizedRequest,
+  apiKey: string
+): Promise<string> {
+  if (!apiKey)
+    throw new Error("No Grok/xAI API key provided. Add your key in Settings.");
   const model = "grok-3-mini-fast";
 
   const messages: any[] = [];
   if (req.system) messages.push({ role: "system", content: req.system });
   messages.push({ role: "user", content: req.userText });
 
-  const body: any = { model, messages, temperature: req.temperature, max_tokens: req.maxTokens };
+  const body: any = {
+    model,
+    messages,
+    temperature: req.temperature,
+    max_tokens: req.maxTokens,
+  };
   if (req.jsonMode) body.response_format = { type: "json_object" };
 
   const res = await fetch("https://api.x.ai/v1/chat/completions", {
     method: "POST",
-    headers: { "Content-Type": "application/json", Authorization: `Bearer ${apiKey}` },
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${apiKey}`,
+    },
     body: JSON.stringify(body),
   });
   if (!res.ok) {
@@ -190,13 +250,18 @@ async function callOllama(
 ): Promise<string> {
   const host = opts.host || "http://localhost:11434";
   const model = opts.model;
-  if (!model) throw new Error("No Ollama model specified. Set the model name in Settings.");
+  if (!model)
+    throw new Error(
+      "No Ollama model specified. Set the model name in Settings."
+    );
 
   const messages: any[] = [];
   if (req.system) messages.push({ role: "system", content: req.system });
   messages.push({ role: "user", content: req.userText });
 
-  const headers: Record<string, string> = { "Content-Type": "application/json" };
+  const headers: Record<string, string> = {
+    "Content-Type": "application/json",
+  };
   if (opts.apiKey) headers["Authorization"] = `Bearer ${opts.apiKey}`;
 
   const res = await fetch(`${host}/api/chat`, {
@@ -231,17 +296,31 @@ function resolveProvider(req: Request): {
 
   const getEnvKey = (p: Provider): string | undefined => {
     switch (p) {
-      case "gemini": return process.env.GEMINI_API_KEY;
-      case "anthropic": return process.env.ANTHROPIC_API_KEY;
-      case "openai": return process.env.OPENAI_API_KEY;
-      case "grok": return process.env.XAI_API_KEY;
-      case "mistral": return process.env.MISTRAL_API_KEY;
-      case "ollama": return process.env.OLLAMA_API_KEY;
-      default: return undefined;
+      case "gemini":
+        return process.env.GEMINI_API_KEY;
+      case "anthropic":
+        return process.env.ANTHROPIC_API_KEY;
+      case "openai":
+        return process.env.OPENAI_API_KEY;
+      case "grok":
+        return process.env.XAI_API_KEY;
+      case "mistral":
+        return process.env.MISTRAL_API_KEY;
+      case "ollama":
+        return process.env.OLLAMA_API_KEY;
+      default:
+        return undefined;
     }
   };
 
-  const validProviders: Provider[] = ["gemini", "anthropic", "openai", "grok", "mistral", "ollama"];
+  const validProviders: Provider[] = [
+    "gemini",
+    "anthropic",
+    "openai",
+    "grok",
+    "mistral",
+    "ollama",
+  ];
   let provider: Provider;
   let apiKey: string | undefined;
 
@@ -250,7 +329,7 @@ function resolveProvider(req: Request): {
     apiKey = clientApiKey || getEnvKey(provider);
   } else {
     // No valid provider chosen; fall back to whichever has a server env key configured.
-    const fallback = validProviders.find((p) => {
+    const fallback = validProviders.find(p => {
       if (p === "ollama") return !!(ollamaModel || process.env.OLLAMA_MODEL);
       return !!getEnvKey(p);
     });
@@ -278,16 +357,22 @@ async function callProviderWithContext(
 ): Promise<string> {
   const req = extractRequest(body);
   switch (resolved.provider) {
-    case "gemini":    return callGemini(req, resolved.apiKey || "");
-    case "anthropic": return callAnthropic(req, resolved.apiKey || "");
-    case "openai":    return callOpenAI(req, resolved.apiKey || "");
-    case "grok":      return callGrok(req, resolved.apiKey || "");
-    case "mistral":   return callMistral(req, resolved.apiKey || "");
-    case "ollama":    return callOllama(req, {
-      host: resolved.ollamaHost,
-      model: resolved.ollamaModel,
-      apiKey: resolved.ollamaApiKey,
-    });
+    case "gemini":
+      return callGemini(req, resolved.apiKey || "");
+    case "anthropic":
+      return callAnthropic(req, resolved.apiKey || "");
+    case "openai":
+      return callOpenAI(req, resolved.apiKey || "");
+    case "grok":
+      return callGrok(req, resolved.apiKey || "");
+    case "mistral":
+      return callMistral(req, resolved.apiKey || "");
+    case "ollama":
+      return callOllama(req, {
+        host: resolved.ollamaHost,
+        model: resolved.ollamaModel,
+        apiKey: resolved.ollamaApiKey,
+      });
     default:
       throw new Error(`Unknown provider "${resolved.provider}"`);
   }
@@ -302,7 +387,9 @@ export function createLlmProxyRouter(): Router {
   apiRouter.post("/generate", async (req: Request, res: Response) => {
     try {
       if (!req.body.contents) {
-        return res.status(400).json({ error: "Missing required field: contents" });
+        return res
+          .status(400)
+          .json({ error: "Missing required field: contents" });
       }
       const resolved = resolveProvider(req);
       // No fallback. If the chosen provider fails the error propagates and

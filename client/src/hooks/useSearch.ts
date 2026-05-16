@@ -1,5 +1,5 @@
-import { useState, useEffect, useRef } from 'react';
-import type { HexNode } from '@/types/hivemind';
+import { useState, useEffect, useRef } from "react";
+import type { HexNode } from "@/types/hivemind";
 
 interface UseSearchOptions {
   nodes: Record<string, HexNode>;
@@ -43,7 +43,7 @@ export function useSearch({ nodes }: UseSearchOptions): UseSearchReturn {
     }
 
     const results = Object.values(nodes).filter(
-      (node) =>
+      node =>
         node.text.toLowerCase().includes(searchQuery.toLowerCase()) ||
         node.description?.toLowerCase().includes(searchQuery.toLowerCase())
     );

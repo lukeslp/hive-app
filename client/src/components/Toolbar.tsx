@@ -1,11 +1,11 @@
 /**
- * Toolbar — single hex-anchored pill in the upper-right that expands
- * leftward into a topbar of all board controls. Replaces the prior
+ * Toolbar — single hex-anchored pill in the upper-left that expands
+ * rightward into a topbar of all board controls. Replaces the prior
  * dual-cluster (left logo / right controls) layout.
  *
  * Collapsed: just the hex icon (visual brand + entry point).
- * Expanded: horizontal pill with undo/redo, search, filter, files,
- * collab, new board, and settings.
+ * Expanded: horizontal pill growing to the right with undo/redo, search,
+ * filter, files, collab, new board, and settings.
  */
 
 import React, { useEffect, useRef, useState } from "react";
@@ -160,7 +160,7 @@ export const Toolbar = ({
 
   return (
     <header
-      className="absolute top-0 left-0 right-0 z-30 px-2 sm:px-4 pb-2 sm:pb-4 flex items-start justify-end pointer-events-none"
+      className="absolute top-0 left-0 right-0 z-30 px-2 sm:px-4 pb-2 sm:pb-4 flex items-start justify-start pointer-events-none"
       style={{
         // env(safe-area-inset-top) is 0 on browsers without notches; on
         // iPhone the toolbar drops below the Dynamic Island instead of
@@ -171,17 +171,57 @@ export const Toolbar = ({
       <div
         ref={barRef}
         aria-label="Board controls"
-        className={`pointer-events-auto interactive-ui flex items-center gap-1 bg-card/85 backdrop-blur-xl border border-border/70 shadow-2xl rounded-full transition-all duration-200 ${
-          expanded ? "px-1.5 sm:px-2" : "px-1"
+        className={`pointer-events-auto interactive-ui bg-card/85 backdrop-blur-xl border border-border/70 shadow-2xl rounded-full transition-all duration-200 box-border ${
+          expanded
+            ? "flex flex-row items-center gap-1 px-1.5 sm:px-2 py-0.5"
+            : /* Exact square: button + p-1 + 1px border each side (44+8+2=54, 48+8+2=58).
+               inline-flex avoids stretch; stadium oval came from width > height. */
+              "inline-flex items-center justify-center gap-0 p-1 size-[54px] sm:size-[58px]"
         }`}
       >
-        {/* Expanded controls slide in from the right (closer to hex). */}
+        {/* Hex anchor — always visible. Toggles the topbar. */}
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <button
+              type="button"
+              onClick={() => setExpanded(v => !v)}
+              aria-label={
+                expanded ? "Close board controls" : "Open board controls"
+              }
+              aria-expanded={expanded}
+              className={`h-11 w-11 sm:h-12 sm:w-12 shrink-0 flex items-center justify-center rounded-full transition-all duration-200 ${
+                expanded
+                  ? "bg-accent text-foreground"
+                  : "hover:bg-accent/60 text-foreground"
+              }`}
+            >
+              {expanded ? (
+                <X className="w-5 h-5" />
+              ) : (
+                <Hexagon
+                  className="w-5 h-5 sm:w-6 sm:h-6 text-yellow-400"
+                  strokeWidth={2.5}
+                />
+              )}
+            </button>
+          </TooltipTrigger>
+          <TooltipContent>
+            {expanded ? "Close" : "Board controls"}
+          </TooltipContent>
+        </Tooltip>
+
+        {/* Expanded controls slide in from the left (after hex). */}
         {expanded && (
           <div
-            className="flex items-center gap-0.5 sm:gap-1 animate-in fade-in slide-in-from-right-2 duration-200"
+            className="flex items-center gap-0.5 sm:gap-1 animate-in fade-in slide-in-from-left-2 duration-200"
             role="group"
             aria-label="Topbar actions"
           >
+            <span
+              className="w-px h-5 bg-border/70 mx-0.5"
+              aria-hidden="true"
+            />
+
             {/* Generation counter — purely informational, when used. */}
             {nodeCount > 0 && generationsThisSession > 0 && (
               <span
@@ -227,7 +267,10 @@ export const Toolbar = ({
                   </TooltipTrigger>
                   <TooltipContent>Redo</TooltipContent>
                 </Tooltip>
-                <span className="w-px h-5 bg-border/70 mx-0.5" aria-hidden="true" />
+                <span
+                  className="w-px h-5 bg-border/70 mx-0.5"
+                  aria-hidden="true"
+                />
               </>
             )}
 
@@ -257,7 +300,7 @@ export const Toolbar = ({
                     type="button"
                     onClick={() => {
                       setFilterMenuOpen(false);
-                      setFilesMenuOpen((v) => !v);
+                      setFilesMenuOpen(v => !v);
                     }}
                     aria-haspopup="true"
                     aria-expanded={filesMenuOpen}
@@ -274,8 +317,8 @@ export const Toolbar = ({
               {filesMenuOpen && (
                 <div
                   data-toolbar-popover
-                  className="absolute top-full right-0 mt-2 bg-card/95 backdrop-blur-xl border border-border/70 rounded-2xl shadow-2xl z-40 min-w-[220px] py-1 animate-in fade-in slide-in-from-top-2 duration-150"
-                  onKeyDown={(e) => {
+                  className="absolute top-full left-0 mt-2 bg-card/95 backdrop-blur-xl border border-border/70 rounded-2xl shadow-2xl z-40 min-w-[220px] py-1 animate-in fade-in slide-in-from-top-2 duration-150"
+                  onKeyDown={e => {
                     if (e.key === "Escape") setFilesMenuOpen(false);
                   }}
                 >
@@ -307,8 +350,9 @@ export const Toolbar = ({
                       type="file"
                       accept=".json"
                       className="hidden"
-                      onChange={(e) => {
-                        if (e.target.files?.[0]) onImportSession(e.target.files[0]);
+                      onChange={e => {
+                        if (e.target.files?.[0])
+                          onImportSession(e.target.files[0]);
                         setFilesMenuOpen(false);
                       }}
                     />
@@ -358,7 +402,7 @@ export const Toolbar = ({
                     type="button"
                     onClick={() => {
                       setFilesMenuOpen(false);
-                      setFilterMenuOpen((v) => !v);
+                      setFilterMenuOpen(v => !v);
                     }}
                     aria-haspopup="true"
                     aria-expanded={filterMenuOpen}
@@ -377,8 +421,8 @@ export const Toolbar = ({
               {filterMenuOpen && (
                 <div
                   data-toolbar-popover
-                  className="absolute top-full right-0 mt-2 bg-card/95 backdrop-blur-xl border border-border/70 rounded-2xl shadow-2xl z-40 min-w-[220px] py-1 animate-in fade-in slide-in-from-top-2 duration-150"
-                  onKeyDown={(e) => {
+                  className="absolute top-full left-0 mt-2 bg-card/95 backdrop-blur-xl border border-border/70 rounded-2xl shadow-2xl z-40 min-w-[220px] py-1 animate-in fade-in slide-in-from-top-2 duration-150"
+                  onKeyDown={e => {
                     if (e.key === "Escape") setFilterMenuOpen(false);
                   }}
                 >
@@ -418,8 +462,8 @@ export const Toolbar = ({
                     All types
                   </button>
                   {Object.values(NODE_TYPES)
-                    .filter((t) => t.id !== "default" && t.id !== "root")
-                    .map((type) => {
+                    .filter(t => t.id !== "default" && t.id !== "root")
+                    .map(type => {
                       const Icon = type.icon;
                       const isActive = filterType === type.id;
                       return (
@@ -461,12 +505,11 @@ export const Toolbar = ({
                     }`}
                   >
                     <Users className="w-4 h-4" />
-                    {isCollabConnected &&
-                      (collabParticipantCount ?? 0) > 1 && (
-                        <span className="absolute -top-0.5 -right-0.5 bg-emerald-500 text-white text-[9px] font-bold w-4 h-4 rounded-full flex items-center justify-center">
-                          {collabParticipantCount}
-                        </span>
-                      )}
+                    {isCollabConnected && (collabParticipantCount ?? 0) > 1 && (
+                      <span className="absolute -top-0.5 -right-0.5 bg-emerald-500 text-white text-[9px] font-bold w-4 h-4 rounded-full flex items-center justify-center">
+                        {collabParticipantCount}
+                      </span>
+                    )}
                   </button>
                 </TooltipTrigger>
                 <TooltipContent>
@@ -510,39 +553,8 @@ export const Toolbar = ({
               </TooltipTrigger>
               <TooltipContent>Settings</TooltipContent>
             </Tooltip>
-
-            <span className="w-px h-5 bg-border/70 mx-0.5" aria-hidden="true" />
           </div>
         )}
-
-        {/* Hex anchor — always visible. Toggles the topbar. */}
-        <Tooltip>
-          <TooltipTrigger asChild>
-            <button
-              type="button"
-              onClick={() => setExpanded((v) => !v)}
-              aria-label={expanded ? "Close board controls" : "Open board controls"}
-              aria-expanded={expanded}
-              className={`h-11 w-11 sm:h-12 sm:w-12 flex items-center justify-center rounded-full transition-all duration-200 ${
-                expanded
-                  ? "bg-accent text-foreground"
-                  : "hover:bg-accent/60 text-foreground"
-              }`}
-            >
-              {expanded ? (
-                <X className="w-5 h-5" />
-              ) : (
-                <Hexagon
-                  className="w-5 h-5 sm:w-6 sm:h-6 text-yellow-400"
-                  strokeWidth={2.5}
-                />
-              )}
-            </button>
-          </TooltipTrigger>
-          <TooltipContent>
-            {expanded ? "Close" : "Board controls"}
-          </TooltipContent>
-        </Tooltip>
       </div>
 
       {/* Search Bar (Floating) — appears under the topbar when search is open */}
@@ -552,8 +564,8 @@ export const Toolbar = ({
           <Input
             ref={searchInputRef}
             value={searchQuery}
-            onChange={(e) => onSearchChange(e.target.value)}
-            onKeyDown={(e) => e.key === "Enter" && onCycleSearch()}
+            onChange={e => onSearchChange(e.target.value)}
+            onKeyDown={e => e.key === "Enter" && onCycleSearch()}
             placeholder="Find idea..."
             className="bg-transparent border-none text-sm text-foreground placeholder:text-muted-foreground"
           />

@@ -1,9 +1,9 @@
 /**
  * ogRoute.ts - Server-side Open Graph meta tag endpoint
- * 
+ *
  * Social crawlers (Facebook, Twitter, Slack, etc.) don't execute JavaScript,
  * so we need a server-side route that returns proper OG meta tags.
- * 
+ *
  * When a shared session URL is accessed, this route checks if the request
  * is from a social crawler and returns an HTML page with OG tags pointing
  * to the session's thumbnail.
@@ -32,7 +32,7 @@ const SOCIAL_CRAWLERS = [
 
 function isCrawler(userAgent: string | undefined): boolean {
   if (!userAgent) return false;
-  return SOCIAL_CRAWLERS.some((bot) => userAgent.includes(bot));
+  return SOCIAL_CRAWLERS.some(bot => userAgent.includes(bot));
 }
 
 export function createOGRouter(): Router {

@@ -5,7 +5,7 @@
  */
 
 function vibrate(pattern: number | number[]): void {
-  if (typeof navigator !== 'undefined' && navigator.vibrate) {
+  if (typeof navigator !== "undefined" && navigator.vibrate) {
     try {
       navigator.vibrate(pattern);
     } catch {

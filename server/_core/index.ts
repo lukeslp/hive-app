@@ -54,7 +54,11 @@ async function startServer() {
             components: [
               { "/": "/", comment: "main entry — opens app" },
               { "/": "/?*", comment: "preserve query strings" },
-              { "/": "/privacy*", exclude: true, comment: "legal stays in browser" },
+              {
+                "/": "/privacy*",
+                exclude: true,
+                comment: "legal stays in browser",
+              },
               { "/": "/terms*", exclude: true },
             ],
           },
@@ -73,16 +77,14 @@ async function startServer() {
   // serve the React app (title "Idea Tiles"), which fails review.
   app.get(["/privacy", "/privacy.html"], (_req, res) => {
     res.sendFile("privacy.html", {
-      root: process.env.NODE_ENV === "production"
-        ? "dist/public"
-        : "client/public",
+      root:
+        process.env.NODE_ENV === "production" ? "dist/public" : "client/public",
     });
   });
   app.get(["/terms", "/terms.html"], (_req, res) => {
     res.sendFile("terms.html", {
-      root: process.env.NODE_ENV === "production"
-        ? "dist/public"
-        : "client/public",
+      root:
+        process.env.NODE_ENV === "production" ? "dist/public" : "client/public",
     });
   });
 
@@ -112,7 +114,7 @@ async function startServer() {
   server.on("upgrade", (request, socket, head) => {
     const url = request.url || "";
     if (url.startsWith("/ws/collab")) {
-      collabWss.handleUpgrade(request, socket, head, (ws) => {
+      collabWss.handleUpgrade(request, socket, head, ws => {
         collabWss.emit("connection", ws, request);
       });
     } else {
@@ -147,7 +149,7 @@ async function startServer() {
       server.on("upgrade", (request, socket, head) => {
         const url = request.url || "";
         if (url.startsWith("/ws/collab")) {
-          collabWss.handleUpgrade(request, socket, head, (ws) => {
+          collabWss.handleUpgrade(request, socket, head, ws => {
             collabWss.emit("connection", ws, request);
           });
         } else {

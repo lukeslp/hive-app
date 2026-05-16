@@ -9,6 +9,7 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import { toast } from "sonner";
 import type { HexNode } from "@/types/hivemind";
+import type { UseHistoryReturn } from "@/hooks/useHistory";
 
 // ── Types ────────────────────────────────────────────────────────────────
 
@@ -53,7 +54,7 @@ const CONNECTION_TIMEOUT = 8000;
 
 export function useCollaboration(
   nodes: Record<string, HexNode>,
-  commitNodes: (nodes: Record<string, HexNode>) => void,
+  commitNodes: UseHistoryReturn<Record<string, HexNode>>["push"]
 ) {
   const [state, setState] = useState<CollabState>({
     isConnected: false,
@@ -101,7 +102,7 @@ export function useCollaboration(
   const joinRoom = useCallback(
     (roomId: string, userName?: string) => {
       // Clear any previous error
-      setState((prev) => ({ ...prev, connectionError: null }));
+      setState(prev => ({ ...prev, connectionError: null }));
 
       if (wsRef.current?.readyState === WebSocket.OPEN) {
         // Already connected, just join the room
@@ -109,7 +110,11 @@ export function useCollaboration(
         return;
       }
 
-      setState((prev) => ({ ...prev, isConnecting: true, connectionError: null }));
+      setState(prev => ({
+        ...prev,
+        isConnecting: true,
+        connectionError: null,
+      }));
       pendingRoomIdRef.current = roomId;
 
       // Set connection timeout
@@ -120,10 +125,11 @@ export function useCollaboration(
           wsRef.current.close();
           wsRef.current = null;
         }
-        setState((prev) => ({
+        setState(prev => ({
           ...prev,
           isConnecting: false,
-          connectionError: "Connection timed out. The server may not support WebSocket connections in this environment.",
+          connectionError:
+            "Connection timed out. The server may not support WebSocket connections in this environment.",
         }));
         pendingRoomIdRef.current = null;
         toast.error("Could not connect to collaboration server");
@@ -134,10 +140,11 @@ export function useCollaboration(
         ws = new WebSocket(getWsUrl());
       } catch (err) {
         clearConnectionTimeout();
-        setState((prev) => ({
+        setState(prev => ({
           ...prev,
           isConnecting: false,
-          connectionError: "Failed to create WebSocket connection. Collaboration may not be available in this environment.",
+          connectionError:
+            "Failed to create WebSocket connection. Collaboration may not be available in this environment.",
         }));
         pendingRoomIdRef.current = null;
         toast.error("WebSocket not available");
@@ -150,7 +157,7 @@ export function useCollaboration(
         ws.send(JSON.stringify({ type: "join", roomId, userName }));
       };
 
-      ws.onmessage = (event) => {
+      ws.onmessage = event => {
         let msg: any;
         try {
           msg = JSON.parse(event.data);
@@ -162,7 +169,7 @@ export function useCollaboration(
           case "joined": {
             clearConnectionTimeout();
             isHostRef.current = msg.participants.length <= 1;
-            setState((prev) => ({
+            setState(prev => ({
               ...prev,
               isConnected: true,
               isConnecting: false,
@@ -186,7 +193,7 @@ export function useCollaboration(
           }
 
           case "participant-joined": {
-            setState((prev) => ({
+            setState(prev => ({
               ...prev,
               participants: [
                 ...prev.participants,
@@ -209,9 +216,9 @@ export function useCollaboration(
           }
 
           case "participant-left": {
-            setState((prev) => {
+            setState(prev => {
               const leaving = prev.participants.find(
-                (p) => p.userId === msg.userId
+                p => p.userId === msg.userId
               );
               if (leaving) {
                 toast.info(`${leaving.userName} left the board`);
@@ -219,10 +226,10 @@ export function useCollaboration(
               return {
                 ...prev,
                 participants: prev.participants.filter(
-                  (p) => p.userId !== msg.userId
+                  p => p.userId !== msg.userId
                 ),
                 remoteCursors: prev.remoteCursors.filter(
-                  (c) => c.userId !== msg.userId
+                  c => c.userId !== msg.userId
                 ),
               };
             });
@@ -241,9 +248,10 @@ export function useCollaboration(
 
           case "node-update": {
             suppressBroadcast.current = true;
-            const currentNodes = { ...nodesRef.current };
-            currentNodes[msg.key] = msg.node as HexNode;
-            commitNodes(currentNodes);
+            commitNodes(prev => ({
+              ...prev,
+              [msg.key]: msg.node as HexNode,
+            }));
             setTimeout(() => {
               suppressBroadcast.current = false;
             }, 100);
@@ -252,9 +260,12 @@ export function useCollaboration(
 
           case "node-delete": {
             suppressBroadcast.current = true;
-            const currentNodes2 = { ...nodesRef.current };
-            delete currentNodes2[msg.key];
-            commitNodes(currentNodes2);
+            commitNodes(prev => {
+              if (!(msg.key in prev)) return prev;
+              const next = { ...prev };
+              delete next[msg.key];
+              return next;
+            });
             setTimeout(() => {
               suppressBroadcast.current = false;
             }, 100);
@@ -271,9 +282,9 @@ export function useCollaboration(
           }
 
           case "cursor": {
-            setState((prev) => {
+            setState(prev => {
               const existing = prev.remoteCursors.findIndex(
-                (c) => c.userId === msg.userId
+                c => c.userId === msg.userId
               );
               const cursor: RemoteCursor = {
                 userId: msg.userId,
@@ -295,9 +306,9 @@ export function useCollaboration(
           }
 
           case "node-presence": {
-            setState((prev) => {
+            setState(prev => {
               const existing = prev.nodePresence.findIndex(
-                (p) => p.userId === msg.userId
+                p => p.userId === msg.userId
               );
               const presence: NodePresence = {
                 userId: msg.userId,
@@ -330,7 +341,7 @@ export function useCollaboration(
 
       ws.onclose = () => {
         clearConnectionTimeout();
-        setState((prev) => ({
+        setState(prev => ({
           ...prev,
           isConnected: false,
           isConnecting: false,
@@ -341,10 +352,11 @@ export function useCollaboration(
 
       ws.onerror = () => {
         clearConnectionTimeout();
-        setState((prev) => ({
+        setState(prev => ({
           ...prev,
           isConnecting: false,
-          connectionError: "Connection failed. WebSocket may not be available in this environment.",
+          connectionError:
+            "Connection failed. WebSocket may not be available in this environment.",
         }));
         pendingRoomIdRef.current = null;
         toast.error("Collaboration connection failed");
@@ -387,25 +399,19 @@ export function useCollaboration(
   );
 
   // ── Broadcast node changes ────────────────────────────────────────────
-  const broadcastNodeUpdate = useCallback(
-    (key: string, node: HexNode) => {
-      if (suppressBroadcast.current) return;
-      if (wsRef.current?.readyState === WebSocket.OPEN) {
-        wsRef.current.send(JSON.stringify({ type: "node-update", key, node }));
-      }
-    },
-    []
-  );
+  const broadcastNodeUpdate = useCallback((key: string, node: HexNode) => {
+    if (suppressBroadcast.current) return;
+    if (wsRef.current?.readyState === WebSocket.OPEN) {
+      wsRef.current.send(JSON.stringify({ type: "node-update", key, node }));
+    }
+  }, []);
 
-  const broadcastNodeDelete = useCallback(
-    (key: string) => {
-      if (suppressBroadcast.current) return;
-      if (wsRef.current?.readyState === WebSocket.OPEN) {
-        wsRef.current.send(JSON.stringify({ type: "node-delete", key }));
-      }
-    },
-    []
-  );
+  const broadcastNodeDelete = useCallback((key: string) => {
+    if (suppressBroadcast.current) return;
+    if (wsRef.current?.readyState === WebSocket.OPEN) {
+      wsRef.current.send(JSON.stringify({ type: "node-delete", key }));
+    }
+  }, []);
 
   const broadcastFullState = useCallback(
     (allNodes: Record<string, HexNode>) => {
@@ -443,7 +449,10 @@ export function useCollaboration(
 
     // Find changed/added nodes
     for (const key of Object.keys(curr)) {
-      if (!prev[key] || JSON.stringify(prev[key]) !== JSON.stringify(curr[key])) {
+      if (
+        !prev[key] ||
+        JSON.stringify(prev[key]) !== JSON.stringify(curr[key])
+      ) {
         changedKeys.push(key);
       }
     }
@@ -469,7 +478,13 @@ export function useCollaboration(
     }
 
     prevNodesRef.current = { ...curr };
-  }, [nodes, state.isConnected, broadcastNodeUpdate, broadcastNodeDelete, broadcastFullState]);
+  }, [
+    nodes,
+    state.isConnected,
+    broadcastNodeUpdate,
+    broadcastNodeDelete,
+    broadcastFullState,
+  ]);
 
   // ── Broadcast node presence (hover/select) ────────────────────────────
   const broadcastNodePresence = useCallback((nodeKey: string | null) => {
@@ -482,13 +497,13 @@ export function useCollaboration(
   useEffect(() => {
     const interval = setInterval(() => {
       const now = Date.now();
-      setState((prev) => ({
+      setState(prev => ({
         ...prev,
         remoteCursors: prev.remoteCursors.filter(
-          (c) => now - c.lastUpdate < 10_000
+          c => now - c.lastUpdate < 10_000
         ),
         nodePresence: prev.nodePresence.filter(
-          (p) => now - p.lastUpdate < 10_000
+          p => now - p.lastUpdate < 10_000
         ),
       }));
     }, 5000);

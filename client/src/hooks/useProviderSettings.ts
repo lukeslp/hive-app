@@ -43,7 +43,8 @@ export const PROVIDERS: ProviderConfig[] = [
   {
     id: "apple",
     name: "Apple Intelligence",
-    description: "On-device. No network, no API key. Requires iPhone 15 Pro / 16+ / iPad with M-series, iOS 26+, Apple Intelligence enabled.",
+    description:
+      "On-device. No network, no API key. Requires iPhone 15 Pro / 16+ / iPad with M-series, iOS 26+, Apple Intelligence enabled.",
     keyPlaceholder: "",
     keyPrefix: "",
     requiresKey: false,
@@ -97,7 +98,11 @@ export const PROVIDERS: ProviderConfig[] = [
     keyPrefix: "",
     requiresKey: false,
     extraFields: [
-      { key: "ollamaHost", label: "Ollama Host", placeholder: "http://localhost:11434" },
+      {
+        key: "ollamaHost",
+        label: "Ollama Host",
+        placeholder: "http://localhost:11434",
+      },
       { key: "ollamaModel", label: "Model Name", placeholder: "llama3.2" },
     ],
   },
@@ -137,7 +142,8 @@ export interface UseProviderSettingsReturn {
 const LOCKED_CLOUD_PROVIDER: Provider = "anthropic";
 
 export function useProviderSettings(): UseProviderSettingsReturn {
-  const [appleIntelligenceAvailable, setAppleIntelligenceAvailable] = useState(false);
+  const [appleIntelligenceAvailable, setAppleIntelligenceAvailable] =
+    useState(false);
 
   const [provider, setProviderState] = useState<Provider>(() => {
     // iOS is Apple-Intelligence-only: never read localStorage, never let
@@ -154,7 +160,8 @@ export function useProviderSettings(): UseProviderSettingsReturn {
     return {};
   });
 
-  const [serverProviders, setServerProviders] = useState<ServerProviderInfo | null>(null);
+  const [serverProviders, setServerProviders] =
+    useState<ServerProviderInfo | null>(null);
 
   // Probe Foundation Models availability once on mount. The result is
   // cached for the session in component state and used for both the
@@ -169,7 +176,9 @@ export function useProviderSettings(): UseProviderSettingsReturn {
       .catch(() => {
         if (!cancelled) setAppleIntelligenceAvailable(false);
       });
-    return () => { cancelled = true; };
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
   // Fetch server-side provider availability on mount.
@@ -177,7 +186,7 @@ export function useProviderSettings(): UseProviderSettingsReturn {
   useEffect(() => {
     if (isIos()) return;
     fetch(buildApiUrl("providers"))
-      .then((res) => res.json())
+      .then(res => res.json())
       .then((data: ServerProviderInfo) => {
         setServerProviders(data);
       })
@@ -225,7 +234,7 @@ export function useProviderSettings(): UseProviderSettingsReturn {
   }, []);
 
   const setApiKey = useCallback((key: keyof ApiKeys, value: string) => {
-    setApiKeys((prev) => ({ ...prev, [key]: value }));
+    setApiKeys(prev => ({ ...prev, [key]: value }));
   }, []);
 
   const clearKeys = useCallback(() => {
@@ -237,7 +246,7 @@ export function useProviderSettings(): UseProviderSettingsReturn {
 
   // Check if the current provider is configured
   const isConfigured = (() => {
-    const config = PROVIDERS.find((p) => p.id === provider);
+    const config = PROVIDERS.find(p => p.id === provider);
     if (!config) return false;
 
     // Apple Intelligence is configured iff Foundation Models reports available.
@@ -273,8 +282,23 @@ export function useProviderSettings(): UseProviderSettingsReturn {
 
     headers["X-Provider"] = provider;
 
+    // When the server advertises an env key for this provider, omit the
+    // browser-stored key so stale localStorage from older BYO builds cannot
+    // override production ANTHROPIC_API_KEY (which produced HTTP 500 + empty
+    // statusText in the UI).
+    const keyBacked: Provider[] = [
+      "gemini",
+      "anthropic",
+      "openai",
+      "grok",
+      "mistral",
+    ];
+    const serverHasKey =
+      keyBacked.includes(provider) &&
+      !!serverProviders?.available?.[provider];
+
     const key = apiKeys[provider as keyof ApiKeys] as string | undefined;
-    if (key && key.trim()) {
+    if (!serverHasKey && key && key.trim()) {
       headers["X-API-Key"] = key;
     }
 
@@ -282,11 +306,12 @@ export function useProviderSettings(): UseProviderSettingsReturn {
     if (provider === "ollama") {
       if (apiKeys.ollamaHost) headers["X-Ollama-Host"] = apiKeys.ollamaHost;
       if (apiKeys.ollamaModel) headers["X-Ollama-Model"] = apiKeys.ollamaModel;
-      if (apiKeys.ollamaApiKey) headers["X-Ollama-API-Key"] = apiKeys.ollamaApiKey;
+      if (apiKeys.ollamaApiKey)
+        headers["X-Ollama-API-Key"] = apiKeys.ollamaApiKey;
     }
 
     return headers;
-  }, [provider, apiKeys]);
+  }, [provider, apiKeys, serverProviders]);
 
   // Filter providers shown in the picker:
   // - On non-Capacitor / non-iOS: hide iosOnly entries (so web users
@@ -294,8 +319,8 @@ export function useProviderSettings(): UseProviderSettingsReturn {
   // - On iOS: keep "apple" in the list; let isConfigured + the Settings
   //   UI surface whether it's actually available.
   const visibleProviders = isIos()
-    ? PROVIDERS.filter((p) => p.id === "apple")
-    : PROVIDERS.filter((p) => p.id === LOCKED_CLOUD_PROVIDER);
+    ? PROVIDERS.filter(p => p.id === "apple")
+    : PROVIDERS.filter(p => p.id === LOCKED_CLOUD_PROVIDER);
 
   return {
     provider,

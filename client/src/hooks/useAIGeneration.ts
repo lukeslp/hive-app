@@ -8,24 +8,24 @@
  * - Weighted board context: starred/user-expanded nodes influence all generations
  */
 
-import { useState, useRef, useCallback } from 'react';
-import { toast } from 'sonner';
-import { buildApiUrl } from '@/lib/api';
-import { sanitizeJson } from '@/lib/sanitize';
-import { GEMINI_TEXT_MODEL, DIRECTIONS } from '@/lib/hexConstants';
-import type { HexNode } from '@/types/hivemind';
-import { haptics } from '@/lib/haptics';
-import { getNodeKey } from '@/types/hexmind';
-import type { NodeTypeStyle } from '@/types/hexmind';
-import { tryOnDeviceBranchesFirst } from '@/lib/foundationModelsPlugin';
-import { isIos } from '@/lib/platform';
-import { validateBranches } from '@/lib/clarificationValidator';
-import { BRANCH_SET_SCHEMA } from '@/lib/branchSchema';
+import { useState, useRef, useCallback } from "react";
+import { toast } from "sonner";
+import { buildApiUrl } from "@/lib/api";
+import { sanitizeJson } from "@/lib/sanitize";
+import { GEMINI_TEXT_MODEL, DIRECTIONS } from "@/lib/hexConstants";
+import type { HexNode } from "@/types/hivemind";
+import { haptics } from "@/lib/haptics";
+import { getNodeKey } from "@/types/hexmind";
+import type { NodeTypeStyle } from "@/types/hexmind";
+import { tryOnDeviceBranchesFirst } from "@/lib/foundationModelsPlugin";
+import { isIos } from "@/lib/platform";
+import { validateBranches } from "@/lib/clarificationValidator";
+import { BRANCH_SET_SCHEMA } from "@/lib/branchSchema";
 import {
   BRANCH_TYPE_DISTRIBUTION_RULE,
   CLARIFICATION_RULES,
   JSON_OUTPUT_EXAMPLE,
-} from '@/lib/branchPrompt';
+} from "@/lib/branchPrompt";
 
 // Constants
 const MAX_REQUEST_SIZE = 50000; // 50KB limit
@@ -60,20 +60,28 @@ export interface UseAIGenerationReturn {
 }
 
 // Helper: Calculate distance between two hex nodes
-const hexDistance = (a: { q: number; r: number }, b: { q: number; r: number }) => {
-  return (Math.abs(a.q - b.q) + Math.abs(a.q + a.r - b.q - b.r) + Math.abs(a.r - b.r)) / 2;
+const hexDistance = (
+  a: { q: number; r: number },
+  b: { q: number; r: number }
+) => {
+  return (
+    (Math.abs(a.q - b.q) +
+      Math.abs(a.q + a.r - b.q - b.r) +
+      Math.abs(a.r - b.r)) /
+    2
+  );
 };
 
 /**
  * Build weighted board context from the entire node graph.
- * 
+ *
  * Scoring weights:
  *   - isKeyTheme (starred):     +5
  *   - wasInteracted (expanded):  +3
  *   - isClusterRoot:             +2
  *   - has contextInfo:           +1
  *   - has relatedNodeKeys:       +1
- * 
+ *
  * Nodes are sorted by weight descending, then by distance to the center node.
  * The top N are included as "board-wide themes" in the prompt, giving the LLM
  * awareness of distant clusters so new tiles can bridge between them.
@@ -117,14 +125,17 @@ function buildBoardContext(
     .sort((a, b) => b.weight - a.weight || a.distance - b.distance)
     .slice(0, 10);
 
-  const nearbyContext = nearby.length > 0
-    ? nearby.map(({ node }) => {
-        const tags: string[] = [];
-        if (node.isKeyTheme) tags.push("★");
-        if (node.wasInteracted) tags.push("expanded");
-        return `- [${node.type.toUpperCase()}] ${node.text}${tags.length ? ` (${tags.join(", ")})` : ""}`;
-      }).join("\n")
-    : "No nearby nodes yet.";
+  const nearbyContext =
+    nearby.length > 0
+      ? nearby
+          .map(({ node }) => {
+            const tags: string[] = [];
+            if (node.isKeyTheme) tags.push("★");
+            if (node.wasInteracted) tags.push("expanded");
+            return `- [${node.type.toUpperCase()}] ${node.text}${tags.length ? ` (${tags.join(", ")})` : ""}`;
+          })
+          .join("\n")
+      : "No nearby nodes yet.";
 
   // --- Board-wide important themes (from OTHER clusters, high weight) ---
   const otherClusterThemes = weighted
@@ -137,18 +148,25 @@ function buildBoardContext(
     .sort((a, b) => b.weight - a.weight || a.distance - b.distance)
     .slice(0, maxItems);
 
-  const boardThemes = otherClusterThemes.length > 0
-    ? otherClusterThemes.map(({ node, distance }) => {
-        const tags: string[] = [];
-        if (node.isKeyTheme) tags.push("★ starred");
-        if (node.wasInteracted) tags.push("user-explored");
-        if (node.contextInfo) tags.push(`context: "${node.contextInfo.slice(0, 60)}"`);
-        return `- "${node.text}" [${node.type}] (dist: ${distance})${tags.length ? ` — ${tags.join(", ")}` : ""}`;
-      }).join("\n")
-    : "";
+  const boardThemes =
+    otherClusterThemes.length > 0
+      ? otherClusterThemes
+          .map(({ node, distance }) => {
+            const tags: string[] = [];
+            if (node.isKeyTheme) tags.push("★ starred");
+            if (node.wasInteracted) tags.push("user-explored");
+            if (node.contextInfo)
+              tags.push(`context: "${node.contextInfo.slice(0, 60)}"`);
+            return `- "${node.text}" [${node.type}] (dist: ${distance})${tags.length ? ` — ${tags.join(", ")}` : ""}`;
+          })
+          .join("\n")
+      : "";
 
   // --- Cluster summaries (one-line per distinct cluster) ---
-  const clusterMap = new Map<string, { roots: string[]; count: number; starredCount: number }>();
+  const clusterMap = new Map<
+    string,
+    { roots: string[]; count: number; starredCount: number }
+  >();
   for (const [, node] of Object.entries(allNodes)) {
     const cid = node.clusterId || "unclustered";
     if (cid === centerNode.clusterId) continue;
@@ -161,17 +179,21 @@ function buildBoardContext(
     if (node.isKeyTheme) entry.starredCount++;
   }
 
-  const clusterSummaries = clusterMap.size > 0
-    ? Array.from(clusterMap.entries())
-        .filter(([, v]) => v.count >= 2) // only meaningful clusters
-        .sort((a, b) => b[1].starredCount - a[1].starredCount || b[1].count - a[1].count)
-        .slice(0, 6)
-        .map(([, v]) => {
-          const root = v.roots[0] || "unnamed";
-          return `- Cluster "${root}" (${v.count} nodes, ${v.starredCount} starred)`;
-        })
-        .join("\n")
-    : "";
+  const clusterSummaries =
+    clusterMap.size > 0
+      ? Array.from(clusterMap.entries())
+          .filter(([, v]) => v.count >= 2) // only meaningful clusters
+          .sort(
+            (a, b) =>
+              b[1].starredCount - a[1].starredCount || b[1].count - a[1].count
+          )
+          .slice(0, 6)
+          .map(([, v]) => {
+            const root = v.roots[0] || "unnamed";
+            return `- Cluster "${root}" (${v.count} nodes, ${v.starredCount} starred)`;
+          })
+          .join("\n")
+      : "";
 
   return { nearbyContext, boardThemes, clusterSummaries };
 }
@@ -189,12 +211,15 @@ function parseBranches(rawText: string): Array<{
   shouldAskClarifyingQuestion?: boolean;
   clarifyingQuestion?: string;
   clarificationReasoning?: string;
-  userInputCategory?: 'preference' | 'constraint' | 'situation' | 'goal';
+  userInputCategory?: "preference" | "constraint" | "situation" | "goal";
   suggestedAnswers?: string[];
   relatedTo?: string[];
 }> {
   // Strip markdown code fences
-  const text = rawText.replace(/^```json\s*/, '').replace(/\s*```$/, '').trim();
+  const text = rawText
+    .replace(/^```json\s*/, "")
+    .replace(/\s*```$/, "")
+    .trim();
 
   const sanitizedText = sanitizeJson(text);
   let branches: Array<Record<string, unknown>> = [];
@@ -205,15 +230,21 @@ function parseBranches(rawText: string): Array<{
   } catch {
     // Regex fallback
     try {
-      const branchMatches = sanitizedText.match(/"title"\s*:\s*"([^"]+)"/g) || [];
-      const descMatches = sanitizedText.match(/"description"\s*:\s*"([^"]+)"/g) || [];
+      const branchMatches =
+        sanitizedText.match(/"title"\s*:\s*"([^"]+)"/g) || [];
+      const descMatches =
+        sanitizedText.match(/"description"\s*:\s*"([^"]+)"/g) || [];
       const typeMatches = sanitizedText.match(/"type"\s*:\s*"([^"]+)"/g) || [];
 
       for (let i = 0; i < Math.min(6, branchMatches.length); i++) {
         branches.push({
-          title: branchMatches[i]?.match(/"title"\s*:\s*"([^"]+)"/)?.[1] || `Idea ${i + 1}`,
-          description: descMatches[i]?.match(/"description"\s*:\s*"([^"]+)"/)?.[1] || "",
-          type: typeMatches[i]?.match(/"type"\s*:\s*"([^"]+)"/)?.[1] || "concept",
+          title:
+            branchMatches[i]?.match(/"title"\s*:\s*"([^"]+)"/)?.[1] ||
+            `Idea ${i + 1}`,
+          description:
+            descMatches[i]?.match(/"description"\s*:\s*"([^"]+)"/)?.[1] || "",
+          type:
+            typeMatches[i]?.match(/"type"\s*:\s*"([^"]+)"/)?.[1] || "concept",
         });
       }
     } catch {
@@ -230,7 +261,7 @@ function parseBranches(rawText: string): Array<{
     shouldAskClarifyingQuestion?: boolean;
     clarifyingQuestion?: string;
     clarificationReasoning?: string;
-    userInputCategory?: 'preference' | 'constraint' | 'situation' | 'goal';
+    userInputCategory?: "preference" | "constraint" | "situation" | "goal";
     suggestedAnswers?: string[];
     relatedTo?: string[];
   }>;
@@ -247,7 +278,7 @@ function parseBranches(rawText: string): Array<{
  * which downstream consumers (buildNeighborNodes) won't accept.
  */
 function parseAndValidateBranches(
-  rawText: string,
+  rawText: string
 ): ReturnType<typeof parseBranches> {
   return validateBranches(parseBranches(rawText));
 }
@@ -260,10 +291,17 @@ function buildNeighborNodes(
   centerNode: HexNode,
   allNodes: Record<string, HexNode>,
   NODE_TYPES: Record<string, NodeTypeStyle>,
-  forceRefresh: boolean,
+  forceRefresh: boolean
 ): Record<string, HexNode> {
   const key = getNodeKey(centerNode.q, centerNode.r);
-  const defaultTypes = ["concept", "action", "technical", "question", "risk", "concept"];
+  const defaultTypes = [
+    "concept",
+    "action",
+    "technical",
+    "question",
+    "risk",
+    "concept",
+  ];
 
   // Pad to 6
   while (branches.length < 6) {
@@ -282,22 +320,29 @@ function buildNeighborNodes(
     const neighborKey = getNodeKey(nQ, nR);
     const existing = allNodes[neighborKey];
     const shouldUpdate =
-      !existing || (forceRefresh && !existing.pinned && existing.parentId === key);
+      !existing ||
+      (forceRefresh && !existing.pinned && existing.parentId === key);
 
     if (shouldUpdate && branches[i]) {
       const nodeType = (branches[i].type ?? "concept").toLowerCase();
       const validType = NODE_TYPES[nodeType] ? nodeType : "concept";
       const newDepth = (centerNode.depth || 0) + 1;
 
-      const relatedNodeKeys = (branches[i].relatedTo || [])
-        .filter((relKey: string) =>
+      const relatedNodeKeys = (branches[i].relatedTo || []).filter(
+        (relKey: string) =>
           allNodes[relKey] && relKey !== key && relKey !== neighborKey
-        );
+      );
 
-      const isBridgeTile = relatedNodeKeys.length > 0 && relatedNodeKeys.some((rk: string) => {
-        const relNode = allNodes[rk];
-        return relNode && relNode.clusterId && relNode.clusterId !== centerNode.clusterId;
-      });
+      const isBridgeTile =
+        relatedNodeKeys.length > 0 &&
+        relatedNodeKeys.some((rk: string) => {
+          const relNode = allNodes[rk];
+          return (
+            relNode &&
+            relNode.clusterId &&
+            relNode.clusterId !== centerNode.clusterId
+          );
+        });
 
       const newNode: HexNode = {
         q: nQ,
@@ -310,16 +355,24 @@ function buildNeighborNodes(
         pinned: false,
         clusterId: centerNode.clusterId,
         clarifyingQuestion: branches[i].clarifyingQuestion || undefined,
-        shouldAskClarifyingQuestion: branches[i].shouldAskClarifyingQuestion || undefined,
+        shouldAskClarifyingQuestion:
+          branches[i].shouldAskClarifyingQuestion || undefined,
         clarificationReasoning: branches[i].clarificationReasoning || undefined,
         userInputCategory: branches[i].userInputCategory || undefined,
-        suggestedAnswers: branches[i].suggestedAnswers && branches[i].suggestedAnswers!.length > 0
-          ? branches[i].suggestedAnswers
-          : undefined,
-        relatedNodeKeys: relatedNodeKeys.length > 0 ? relatedNodeKeys : undefined,
+        suggestedAnswers:
+          branches[i].suggestedAnswers &&
+          branches[i].suggestedAnswers!.length > 0
+            ? branches[i].suggestedAnswers
+            : undefined,
+        relatedNodeKeys:
+          relatedNodeKeys.length > 0 ? relatedNodeKeys : undefined,
         isBridge: isBridgeTile || undefined,
         bridgeTargetCluster: isBridgeTile
-          ? allNodes[relatedNodeKeys.find((rk: string) => allNodes[rk]?.clusterId !== centerNode.clusterId) || '']?.clusterId
+          ? allNodes[
+              relatedNodeKeys.find(
+                (rk: string) => allNodes[rk]?.clusterId !== centerNode.clusterId
+              ) || ""
+            ]?.clusterId
           : undefined,
       };
 
@@ -350,38 +403,42 @@ export function useAIGeneration({
   /**
    * Generate 6 neighboring nodes for a center node using Gemini API
    */
-  const generateNeighbors = useCallback(async (
-    centerNode: HexNode,
-    forceRefresh = false,
-    additionalContext = ""
-  ): Promise<Record<string, HexNode> | null> => {
-    const key = getNodeKey(centerNode.q, centerNode.r);
+  const generateNeighbors = useCallback(
+    async (
+      centerNode: HexNode,
+      forceRefresh = false,
+      additionalContext = ""
+    ): Promise<Record<string, HexNode> | null> => {
+      const key = getNodeKey(centerNode.q, centerNode.r);
 
-    // Check generation limit
-    if (generationsThisSession >= maxGenerationsPerSession) {
-      setIsThrottled(true);
-      toast.error("Generation limit reached for this session. Start a new session to continue.");
-      return null;
-    }
+      // Check generation limit
+      if (generationsThisSession >= maxGenerationsPerSession) {
+        setIsThrottled(true);
+        toast.error(
+          "Generation limit reached for this session. Start a new session to continue."
+        );
+        return null;
+      }
 
-    // Increment generation counter
-    setGenerationsThisSession(prev => prev + 1);
-    setIsGenerating(true);
-    setError(null);
+      // Increment generation counter
+      setGenerationsThisSession(prev => prev + 1);
+      setIsGenerating(true);
+      setError(null);
 
-    const tempDesc =
-      creativity < 0.3
-        ? "Logical, concrete, and safe"
-        : creativity > 0.7
-          ? "Wild, abstract, and out-of-the-box"
-          : "Balanced and creative";
+      const tempDesc =
+        creativity < 0.3
+          ? "Logical, concrete, and safe"
+          : creativity > 0.7
+            ? "Wild, abstract, and out-of-the-box"
+            : "Balanced and creative";
 
-    // Build weighted board context — scale maxItems by bridging intensity
-    const bridgeMaxItems = Math.round(3 + bridgingIntensity * 17); // 3-20 items
-    const { nearbyContext, boardThemes, clusterSummaries } = buildBoardContext(centerNode, nodes, bridgeMaxItems);
+      // Build weighted board context — scale maxItems by bridging intensity
+      const bridgeMaxItems = Math.round(3 + bridgingIntensity * 17); // 3-20 items
+      const { nearbyContext, boardThemes, clusterSummaries } =
+        buildBoardContext(centerNode, nodes, bridgeMaxItems);
 
-    // Build system prompt with board awareness
-    const systemPrompt = `You are a spatial brainstorming engine for a hex mind map. Style: ${tempDesc}.
+      // Build system prompt with board awareness
+      const systemPrompt = `You are a spatial brainstorming engine for a hex mind map. Style: ${tempDesc}.
 
 Given a central idea, generate EXACTLY 6 distinct related concepts as hex neighbors.
 Each concept explores a different angle: operational, conceptual, risk, action, technical, or question.
@@ -393,21 +450,25 @@ RULES:
 - Complexity 1-5: how much this idea could branch further
 - autoExpand: true only for complexity 4-5 (max 2 per generation)
 - Return ONLY valid JSON. No commentary.
-${boardThemes ? `
+${
+  boardThemes
+    ? `
 BOARD AWARENESS:
 The user has starred or explored these themes elsewhere on the board:
 ${boardThemes}
 ${clusterSummaries ? `\nOther active clusters:\n${clusterSummaries}` : ""}
 
-IMPORTANT: Generate ${bridgingIntensity < 0.3 ? '0-1' : bridgingIntensity > 0.7 ? '2-3' : '1-2'} tiles that BRIDGE toward these distant themes.
-${bridgingIntensity > 0.7 ? 'Aggressively seek cross-pollination — find surprising connections between seemingly unrelated ideas.' : bridgingIntensity < 0.3 ? 'Only bridge if there is a very natural, obvious connection. Stay focused on the immediate topic.' : 'Create conceptual connections — find angles that link the current idea to those broader interests.'}
-This helps clusters grow toward each other organically.` : ""}
+IMPORTANT: Generate ${bridgingIntensity < 0.3 ? "0-1" : bridgingIntensity > 0.7 ? "2-3" : "1-2"} tiles that BRIDGE toward these distant themes.
+${bridgingIntensity > 0.7 ? "Aggressively seek cross-pollination — find surprising connections between seemingly unrelated ideas." : bridgingIntensity < 0.3 ? "Only bridge if there is a very natural, obvious connection. Stay focused on the immediate topic." : "Create conceptual connections — find angles that link the current idea to those broader interests."}
+This helps clusters grow toward each other organically.`
+    : ""
+}
 
 ${CLARIFICATION_RULES}
 
 ${JSON_OUTPUT_EXAMPLE}`;
 
-    const userQuery = `Central idea: "${centerNode.text}"
+      const userQuery = `Central idea: "${centerNode.text}"
 ${centerNode.contextInfo ? `Context: ${centerNode.contextInfo}` : ""}
 ${additionalContext ? `Additional: ${additionalContext}` : ""}
 
@@ -416,154 +477,210 @@ ${nearbyContext}
 
 Generate 6 neighbor nodes.`;
 
-    const temperature = 0.7 + (creativity * 0.6); // 0.7-1.3
+      const temperature = 0.7 + creativity * 0.6; // 0.7-1.3
 
-    // ── Cloud path for both web and native mobile shells ───────────────────
-    const requestPayload = {
-      model: GEMINI_TEXT_MODEL,
-      contents: [{ parts: [{ text: userQuery }] }],
-      systemInstruction: { parts: [{ text: systemPrompt }] },
-      generationConfig: {
-        responseMimeType: "application/json",
-        // Grammar-constrained decoding — see branchSchema.ts. Mirrors the
-        // @Generable Branch struct in FoundationModelsPlugin.swift.
-        responseSchema: BRANCH_SET_SCHEMA,
-        temperature,
-        maxOutputTokens: 2048,
-      },
-    };
+      // ── Cloud path for both web and native mobile shells ───────────────────
+      const requestPayload = {
+        model: GEMINI_TEXT_MODEL,
+        contents: [{ parts: [{ text: userQuery }] }],
+        systemInstruction: { parts: [{ text: systemPrompt }] },
+        generationConfig: {
+          responseMimeType: "application/json",
+          // Grammar-constrained decoding — see branchSchema.ts. Mirrors the
+          // @Generable Branch struct in FoundationModelsPlugin.swift.
+          responseSchema: BRANCH_SET_SCHEMA,
+          temperature,
+          maxOutputTokens: 2048,
+        },
+      };
 
-    // Validate request size
-    const requestSize = JSON.stringify(requestPayload).length;
-    if (requestSize > MAX_REQUEST_SIZE) {
-      const errorMsg = "Context too large - try marking fewer key themes";
-      setError(errorMsg);
-      toast.error(errorMsg);
-      setIsGenerating(false);
-      return null;
-    }
-
-    // ── Try Apple on-device inference first (iOS 26+ with Apple Intelligence) ──
-    // On iOS this is the ONLY path — no cloud fallback. Web/Android still
-    // fall through to /api/generate when FM isn't available.
-    const fm = await tryOnDeviceBranchesFirst({
-      prompt: userQuery,
-      systemPrompt,
-      temperature,
-      maxTokens: 2048,
-    });
-    if (fm) {
-      const branches = parseAndValidateBranches(fm.text);
-      if (branches.length > 0) {
-        const newNodes = buildNeighborNodes(branches, centerNode, nodes, NODE_TYPES, forceRefresh);
-        setIsGenerating(false);
-        haptics.expand();
-        // Per-action "Generated on-device" toast removed: the new tiles
-        // appearing on the canvas are themselves the success signal.
-        // Callers drive the fresh-tile flash via markFreshlyGenerated;
-        // failures still toast (errorMsg path below).
-        return newNodes;
-      }
-    }
-
-    // iOS is Apple-Intelligence-only: no cloud fallback (privacy.html
-    // explicitly promises this — sending iOS prompts to the server would
-    // violate the contract the existing TestFlight cohort already
-    // accepted). When FM didn't produce usable text we return null so
-    // the caller falls through to its own UI affordance, rather than
-    // fabricating fake "Idea 1…Idea 6" placeholder neighbors that the
-    // user would reasonably mistake for real AI output.
-    if (isIos()) {
-      const errorMsg = fm
-        ? "On-device returned unparseable output"
-        : "Apple Intelligence isn't available on this device";
-      setError(errorMsg);
-      toast.error(errorMsg);
-      setIsGenerating(false);
-      return null;
-    }
-
-    if (fm) {
-      // Web/Android: FM produced text but parseBranches found nothing
-      // usable. Distinguish this from "FM didn't run" before falling through.
-      toast.warning("On-device returned unparseable output — using cloud", { duration: 2500 });
-    }
-
-    // Create abort controller with timeout
-    const controller = new AbortController();
-    abortControllerRef.current = controller;
-    const timeoutId = setTimeout(() => controller.abort(), REQUEST_TIMEOUT);
-
-    const fetchUrl = buildApiUrl("generate");
-    if (import.meta.env.DEV) console.log("[AI] cloud fetch starting:", fetchUrl, "payload bytes:", requestSize);
-
-    try {
-      const response = await fetch(fetchUrl, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(requestPayload),
-        signal: controller.signal,
-      });
-
-      clearTimeout(timeoutId);
-      if (import.meta.env.DEV) console.log("[AI] cloud fetch response:", response.status, response.statusText);
-
-      const result = await response.json();
-
-      if (!response.ok) {
-        console.error("[AI] HTTP Error:", JSON.stringify({ status: response.status, statusText: response.statusText, body: result }));
-        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
-      }
-
-      if (result.error) {
-        console.error("[AI] API Error:", JSON.stringify(result.error));
-        throw new Error(result.error.message || "API request failed");
-      }
-
-      const text = result.candidates?.[0]?.content?.parts?.[0]?.text;
-
-      if (!text) {
-        console.error("[AI] No text in API response. Top-level keys:", JSON.stringify(Object.keys(result ?? {})));
-        throw new Error("API returned no content");
-      }
-
-      if (import.meta.env.DEV) console.log("[AI] cloud text length:", text.length);
-      const branches = parseAndValidateBranches(text);
-      if (import.meta.env.DEV) console.log("[AI] parsed+validated branches:", branches.length);
-      const newNodes = buildNeighborNodes(branches, centerNode, nodes, NODE_TYPES, forceRefresh);
-
-      setIsGenerating(false);
-      haptics.expand();
-      return newNodes;
-
-    } catch (err) {
-      if (err instanceof Error && err.name === 'AbortError') {
-        const errorMsg = "Request timeout - try again";
+      // Validate request size
+      const requestSize = JSON.stringify(requestPayload).length;
+      if (requestSize > MAX_REQUEST_SIZE) {
+        const errorMsg = "Context too large - try marking fewer key themes";
         setError(errorMsg);
         toast.error(errorMsg);
         setIsGenerating(false);
         return null;
       }
 
-      console.error("[AI] generate failed:", JSON.stringify({
-        name: err instanceof Error ? err.name : 'unknown',
-        message: err instanceof Error ? err.message : String(err),
-        stack: err instanceof Error ? err.stack?.split('\n').slice(0, 5).join('\n') : undefined,
-      }));
-      const errorMsg = err instanceof Error ? err.message : "Failed to generate ideas";
-      setError(errorMsg);
-      toast.error(errorMsg);
-      setIsGenerating(false);
+      // ── Try Apple on-device inference first (iOS 26+ with Apple Intelligence) ──
+      // On iOS this is the ONLY path — no cloud fallback. Web/Android still
+      // fall through to /api/generate when FM isn't available.
+      const fm = await tryOnDeviceBranchesFirst({
+        prompt: userQuery,
+        systemPrompt,
+        temperature,
+        maxTokens: 2048,
+      });
+      if (fm) {
+        const branches = parseAndValidateBranches(fm.text);
+        if (branches.length > 0) {
+          const newNodes = buildNeighborNodes(
+            branches,
+            centerNode,
+            nodes,
+            NODE_TYPES,
+            forceRefresh
+          );
+          setIsGenerating(false);
+          haptics.expand();
+          // Per-action "Generated on-device" toast removed: the new tiles
+          // appearing on the canvas are themselves the success signal.
+          // Callers drive the fresh-tile flash via markFreshlyGenerated;
+          // failures still toast (errorMsg path below).
+          return newNodes;
+        }
+      }
 
-      // Return null on cloud failure rather than fabricating "Idea 1…6"
-      // placeholder neighbors. The placeholder path indistinguishably
-      // looked like real AI output to users and was the dominant
-      // misleading-UX surface for testers on the unhappy path.
-      return null;
-    } finally {
-      abortControllerRef.current = null;
-    }
-  }, [creativity, nodes, NODE_TYPES, generationsThisSession, maxGenerationsPerSession, enableSmartExpansion]);
+      // iOS is Apple-Intelligence-only: no cloud fallback (privacy.html
+      // explicitly promises this — sending iOS prompts to the server would
+      // violate the contract the existing TestFlight cohort already
+      // accepted). When FM didn't produce usable text we return null so
+      // the caller falls through to its own UI affordance, rather than
+      // fabricating fake "Idea 1…Idea 6" placeholder neighbors that the
+      // user would reasonably mistake for real AI output.
+      if (isIos()) {
+        const errorMsg = fm
+          ? "On-device returned unparseable output"
+          : "Apple Intelligence isn't available on this device";
+        setError(errorMsg);
+        toast.error(errorMsg);
+        setIsGenerating(false);
+        return null;
+      }
+
+      if (fm) {
+        // Web/Android: FM produced text but parseBranches found nothing
+        // usable. Distinguish this from "FM didn't run" before falling through.
+        toast.warning("On-device returned unparseable output — using cloud", {
+          duration: 2500,
+        });
+      }
+
+      // Create abort controller with timeout
+      const controller = new AbortController();
+      abortControllerRef.current = controller;
+      const timeoutId = setTimeout(() => controller.abort(), REQUEST_TIMEOUT);
+
+      const fetchUrl = buildApiUrl("generate");
+      if (import.meta.env.DEV)
+        console.log(
+          "[AI] cloud fetch starting:",
+          fetchUrl,
+          "payload bytes:",
+          requestSize
+        );
+
+      try {
+        const response = await fetch(fetchUrl, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(requestPayload),
+          signal: controller.signal,
+        });
+
+        clearTimeout(timeoutId);
+        if (import.meta.env.DEV)
+          console.log(
+            "[AI] cloud fetch response:",
+            response.status,
+            response.statusText
+          );
+
+        const result = await response.json();
+
+        const apiErr =
+          typeof result?.error?.message === "string"
+            ? result.error.message
+            : "";
+        if (!response.ok || result.error) {
+          console.error(
+            "[AI] HTTP/API Error:",
+            JSON.stringify({
+              status: response.status,
+              statusText: response.statusText,
+              body: result,
+            })
+          );
+          throw new Error(
+            apiErr ||
+              (response.statusText
+                ? `HTTP ${response.status}: ${response.statusText}`
+                : `HTTP ${response.status}`)
+          );
+        }
+
+        const text = result.candidates?.[0]?.content?.parts?.[0]?.text;
+
+        if (!text) {
+          console.error(
+            "[AI] No text in API response. Top-level keys:",
+            JSON.stringify(Object.keys(result ?? {}))
+          );
+          throw new Error("API returned no content");
+        }
+
+        if (import.meta.env.DEV)
+          console.log("[AI] cloud text length:", text.length);
+        const branches = parseAndValidateBranches(text);
+        if (import.meta.env.DEV)
+          console.log("[AI] parsed+validated branches:", branches.length);
+        const newNodes = buildNeighborNodes(
+          branches,
+          centerNode,
+          nodes,
+          NODE_TYPES,
+          forceRefresh
+        );
+
+        setIsGenerating(false);
+        haptics.expand();
+        return newNodes;
+      } catch (err) {
+        if (err instanceof Error && err.name === "AbortError") {
+          const errorMsg = "Request timeout - try again";
+          setError(errorMsg);
+          toast.error(errorMsg);
+          setIsGenerating(false);
+          return null;
+        }
+
+        console.error(
+          "[AI] generate failed:",
+          JSON.stringify({
+            name: err instanceof Error ? err.name : "unknown",
+            message: err instanceof Error ? err.message : String(err),
+            stack:
+              err instanceof Error
+                ? err.stack?.split("\n").slice(0, 5).join("\n")
+                : undefined,
+          })
+        );
+        const errorMsg =
+          err instanceof Error ? err.message : "Failed to generate ideas";
+        setError(errorMsg);
+        toast.error(errorMsg);
+        setIsGenerating(false);
+
+        // Return null on cloud failure rather than fabricating "Idea 1…6"
+        // placeholder neighbors. The placeholder path indistinguishably
+        // looked like real AI output to users and was the dominant
+        // misleading-UX surface for testers on the unhappy path.
+        return null;
+      } finally {
+        abortControllerRef.current = null;
+      }
+    },
+    [
+      creativity,
+      nodes,
+      NODE_TYPES,
+      generationsThisSession,
+      maxGenerationsPerSession,
+      enableSmartExpansion,
+    ]
+  );
 
   /**
    * Reset generation counter (e.g., on new session)

@@ -10,9 +10,10 @@ import { GEMINI_TEXT_MODEL } from "@/lib/hexConstants";
 import { getNodeKey } from "@/types/hexmind";
 import type { HexNode, ViewState } from "@/types/hivemind";
 import type { Template } from "@/lib/templates";
+import type { UseHistoryReturn } from "@/hooks/useHistory";
 
 interface UseTemplatesProps {
-  commitNodes: (nodes: Record<string, HexNode>) => void;
+  commitNodes: UseHistoryReturn<Record<string, HexNode>>["push"];
   setViewState: (state: ViewState | ((prev: ViewState) => ViewState)) => void;
   setSelectedNodeId: (id: string | null) => void;
   setInspectedNodeId: (id: string | null) => void;
@@ -45,14 +46,15 @@ export function useTemplates({
   const loadTemplate = useCallback(
     (template: Template) => {
       const newNodes: Record<string, HexNode> = {};
-      template.nodes.forEach((tNode) => {
+      template.nodes.forEach(tNode => {
         const key = getNodeKey(tNode.q, tNode.r);
         newNodes[key] = {
           q: tNode.q,
           r: tNode.r,
           text: tNode.text,
           description: tNode.description,
-          type: tNode.type === "concept" && tNode.depth === 0 ? "root" : tNode.type,
+          type:
+            tNode.type === "concept" && tNode.depth === 0 ? "root" : tNode.type,
           depth: tNode.depth,
           pinned: tNode.isPinned || false,
         };
@@ -65,7 +67,13 @@ export function useTemplates({
       setShowWelcome(false);
       announceTemplateLoaded(template.name);
     },
-    [commitNodes, setViewState, setSelectedNodeId, setShowWelcome, announceTemplateLoaded]
+    [
+      commitNodes,
+      setViewState,
+      setSelectedNodeId,
+      setShowWelcome,
+      announceTemplateLoaded,
+    ]
   );
 
   const generateContextualTemplate = useCallback(async () => {
@@ -80,7 +88,7 @@ Based on this template structure, generate customized content:
 - Surrounding nodes: Specific subtopics relevant to their context
 
 Template structure:
-${pendingTemplate.nodes.map((n) => `- ${n.text}: ${n.description} (type: ${n.type})`).join("\n")}
+${pendingTemplate.nodes.map(n => `- ${n.text}: ${n.description} (type: ${n.type})`).join("\n")}
 
 Respond with a JSON array of nodes, each with: text, description, type (concept/action/technical/question/risk), q, r coordinates (matching template positions).
 Keep descriptions concise (1-2 sentences). Make content specific to "${templateContext}", not generic.
@@ -91,7 +99,9 @@ Example format:
     try {
       const response = await fetch(buildApiUrl("generate"), {
         method: "POST",
-        headers: getRequestHeaders ? getRequestHeaders() : { "Content-Type": "application/json" },
+        headers: getRequestHeaders
+          ? getRequestHeaders()
+          : { "Content-Type": "application/json" },
         body: JSON.stringify({
           model: GEMINI_TEXT_MODEL,
           contents: [{ parts: [{ text: prompt }] }],
@@ -108,7 +118,13 @@ Example format:
 
         generatedNodes.forEach(
           (
-            gNode: { q: number; r: number; text: string; description: string; type: string },
+            gNode: {
+              q: number;
+              r: number;
+              text: string;
+              description: string;
+              type: string;
+            },
             index: number
           ) => {
             const key = getNodeKey(gNode.q, gNode.r);
@@ -117,7 +133,10 @@ Example format:
               r: gNode.r,
               text: gNode.text,
               description: gNode.description,
-              type: index === 0 ? "root" : (gNode.type as HexNode["type"]) || "concept",
+              type:
+                index === 0
+                  ? "root"
+                  : (gNode.type as HexNode["type"]) || "concept",
               depth: gNode.q === 0 && gNode.r === 0 ? 0 : 1,
               pinned: gNode.q === 0 && gNode.r === 0,
             };

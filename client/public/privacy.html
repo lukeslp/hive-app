@@ -23,13 +23,19 @@
           --link: #c4b5fd;
         }
       }
-      html, body {
+      html,
+      body {
         margin: 0;
         padding: 0;
         background: var(--bg);
         color: var(--fg);
-        font: 16px/1.6 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto,
-          "Helvetica Neue", sans-serif;
+        font:
+          16px/1.6 -apple-system,
+          BlinkMacSystemFont,
+          "Segoe UI",
+          Roboto,
+          "Helvetica Neue",
+          sans-serif;
       }
       main {
         max-width: 720px;
@@ -51,7 +57,8 @@
         font-size: 0.875rem;
         margin: 0 0 32px;
       }
-      p, li {
+      p,
+      li {
         margin: 0 0 12px;
       }
       ul {
@@ -74,7 +81,9 @@
         border-radius: 3px;
       }
       @media (prefers-color-scheme: dark) {
-        code { background: rgba(255, 255, 255, 0.06); }
+        code {
+          background: rgba(255, 255, 255, 0.06);
+        }
       }
     </style>
   </head>
@@ -84,38 +93,37 @@
       <p class="meta">Last updated 10 May 2026</p>
 
       <p>
-        Idea Tiles is a hexagonal mind-mapping tool from Bridge City Lab LLC.
-        It is designed to work locally on your device. This policy explains
-        what data the app touches, where it goes, and what we do with it —
-        in plain language, then in the detailed sections below.
+        Idea Tiles is a hexagonal mind-mapping tool from Bridge City Lab LLC. It
+        is designed to work locally on your device. This policy explains what
+        data the app touches, where it goes, and what we do with it — in plain
+        language, then in the detailed sections below.
       </p>
 
       <h2>Summary</h2>
       <ul>
         <li>
           <strong>We do not collect personal data.</strong> No accounts are
-          required to use Idea Tiles. No analytics SDKs, no advertising IDs,
-          no crash-reporting third parties.
+          required to use Idea Tiles. No analytics SDKs, no advertising IDs, no
+          crash-reporting third parties.
         </li>
         <li>
-          <strong>Your boards stay on your device.</strong> They are saved
-          to your device's local storage by default.
+          <strong>Your boards stay on your device.</strong> They are saved to
+          your device's local storage by default.
         </li>
         <li>
           <strong>iOS uses Apple Intelligence on-device.</strong> Idea
-          generation runs entirely on your iPhone or iPad. No prompts leave
-          your device.
+          generation runs entirely on your iPhone or iPad. No prompts leave your
+          device.
         </li>
         <li>
           <strong>Web and Android can optionally use a cloud LLM</strong>
-          if you supply your own API key (Gemini, Anthropic, OpenAI, etc.).
-          When you do, your prompt is sent only to that provider. We do not
-          relay or store it.
+          if you supply your own API key (Gemini, Anthropic, OpenAI, etc.). When
+          you do, your prompt is sent only to that provider. We do not relay or
+          store it.
         </li>
         <li>
-          <strong>Optional collaboration sessions</strong> route board
-          changes through our server. We do not retain them after the
-          session ends.
+          <strong>Optional collaboration sessions</strong> route board changes
+          through our server. We do not retain them after the session ends.
         </li>
       </ul>
 
@@ -124,77 +132,72 @@
       <h2>What the iOS app does</h2>
       <p>
         On iOS, Idea Tiles uses Apple's on-device Foundation Models framework
-        (iOS 26.0 or later, on Apple-Intelligence-eligible devices) to
-        generate idea expansions. Prompts and responses never leave your
-        device. No content is sent to our servers, to Apple, or to any
-        third party.
+        (iOS 26.0 or later, on Apple-Intelligence-eligible devices) to generate
+        idea expansions. Prompts and responses never leave your device. No
+        content is sent to our servers, to Apple, or to any third party.
       </p>
       <p>
-        The app stores your boards, settings, and accessibility preferences
-        in your device's local storage (the same sandbox used by every
-        iOS app). Uninstalling the app removes them.
+        The app stores your boards, settings, and accessibility preferences in
+        your device's local storage (the same sandbox used by every iOS app).
+        Uninstalling the app removes them.
       </p>
       <p>
         Files you export (PNG, SVG, JSON) are saved to your app's Documents
-        directory, visible in Files.app under "On My iPhone → Idea Tiles."
-        We don't read or transmit them.
+        directory, visible in Files.app under "On My iPhone → Idea Tiles." We
+        don't read or transmit them.
       </p>
 
       <h2>What the web and Android versions do</h2>
       <p>
-        If you choose to use a cloud language-model provider, the app sends
-        your prompt directly to the provider you selected, authenticated
-        with the API key you supplied. We don't proxy these calls through
-        our infrastructure unless you've explicitly entered our shared
-        provider key. We don't log, store, or analyse the prompts or
-        responses.
+        If you choose to use a cloud language-model provider, the app sends your
+        prompt directly to the provider you selected, authenticated with the API
+        key you supplied. We don't proxy these calls through our infrastructure
+        unless you've explicitly entered our shared provider key. We don't log,
+        store, or analyse the prompts or responses.
       </p>
       <p>
-        Boards are saved to your browser's local storage by default. If
-        you sign in with OAuth on the web, boards you choose to save
-        to the cloud are persisted to our database so you can load them
-        on another device.
+        Boards are saved to your browser's local storage by default. If you sign
+        in with OAuth on the web, boards you choose to save to the cloud are
+        persisted to our database so you can load them on another device.
       </p>
 
       <h2>Collaboration sessions</h2>
       <p>
-        You can invite others to a shared board via a temporary
-        collaboration link. While the session is open, board changes and
-        presence cursors are relayed through our WebSocket server so all
-        participants stay in sync. Session state is held in memory only
-        and is discarded when the last participant disconnects. We do
-        not record or persist session content.
+        You can invite others to a shared board via a temporary collaboration
+        link. While the session is open, board changes and presence cursors are
+        relayed through our WebSocket server so all participants stay in sync.
+        Session state is held in memory only and is discarded when the last
+        participant disconnects. We do not record or persist session content.
       </p>
 
       <h2>Permissions on iOS</h2>
       <ul>
         <li>
-          <strong>Photos library (Save Image):</strong> requested only
-          when you tap "Save Image" from the share sheet after exporting
-          a PNG. Idea Tiles does not read your existing photos.
+          <strong>Photos library (Save Image):</strong> requested only when you
+          tap "Save Image" from the share sheet after exporting a PNG. Idea
+          Tiles does not read your existing photos.
         </li>
         <li>
-          <strong>Universal Links:</strong> Idea Tiles responds to taps on
-          links to <code>ideatiles.app</code>, <code>hivemind.cx</code>,
-          <code>hive-mind.pro</code>,
-          <code>hexmind.app</code>, <code>hexmind.io</code>,
-          <code>hexpand.app</code>, and <code>hexpander.app</code> by
-          opening the app instead of Safari.
+          <strong>Universal Links:</strong> Idea Tiles responds to taps on links
+          to <code>ideatiles.app</code>, <code>hivemind.cx</code>,
+          <code>hive-mind.pro</code>, <code>hexmind.app</code>,
+          <code>hexmind.io</code>, <code>hexpand.app</code>, and
+          <code>hexpander.app</code> by opening the app instead of Safari.
         </li>
       </ul>
 
       <h2>Children</h2>
       <p>
-        Idea Tiles is rated 4+. It does not collect personal information
-        from anyone, including children under 13. We don't include
-        third-party advertising or tracking.
+        Idea Tiles is rated 4+. It does not collect personal information from
+        anyone, including children under 13. We don't include third-party
+        advertising or tracking.
       </p>
 
       <h2>Changes to this policy</h2>
       <p>
-        If we materially change what data the app handles, we'll update
-        this page and note the change in the in-app release notes. You
-        can always view the current version at
+        If we materially change what data the app handles, we'll update this
+        page and note the change in the in-app release notes. You can always
+        view the current version at
         <a href="https://ideatiles.app/privacy">ideatiles.app/privacy</a>
         (same document is served on legacy brand domains such as
         <a href="https://hexmind.app/privacy">hexmind.app/privacy</a>).

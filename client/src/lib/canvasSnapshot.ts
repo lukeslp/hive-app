@@ -23,16 +23,19 @@ const STROKE_TO_HEX: Record<string, string> = {
   "stroke-violet-400": "#a78bfa",
 };
 
-function getClusterHexColor(node: HexNode, allNodes: Record<string, HexNode>): string {
+function getClusterHexColor(
+  node: HexNode,
+  allNodes: Record<string, HexNode>
+): string {
   // Find cluster index by matching clusterId to the cluster root order
   const clusterRoots = Object.values(allNodes)
-    .filter((n) => n.isClusterRoot)
+    .filter(n => n.isClusterRoot)
     .sort((a, b) => `${a.q},${a.r}`.localeCompare(`${b.q},${b.r}`));
 
   let idx = 0;
   if (node.clusterId) {
     const rootIdx = clusterRoots.findIndex(
-      (r) => `${r.q},${r.r}` === node.clusterId || r.clusterId === node.clusterId
+      r => `${r.q},${r.r}` === node.clusterId || r.clusterId === node.clusterId
     );
     if (rootIdx >= 0) idx = rootIdx;
   }
@@ -48,7 +51,7 @@ export function generateThumbnail(
   nodes: Record<string, HexNode>,
   _viewState: ViewState
 ): Promise<string | null> {
-  return new Promise((resolve) => {
+  return new Promise(resolve => {
     try {
       const nodeList = Object.values(nodes);
       if (nodeList.length === 0) {
@@ -71,7 +74,7 @@ export function generateThumbnail(
         minY = Infinity,
         maxY = -Infinity;
 
-      const positions = nodeList.map((node) => {
+      const positions = nodeList.map(node => {
         const { x, y } = hexToPixel(node.q, node.r);
         if (x < minX) minX = x;
         if (x > maxX) maxX = x;
@@ -178,7 +181,7 @@ export function generateOGImage(
   _viewState: ViewState,
   title?: string
 ): Promise<string | null> {
-  return new Promise((resolve) => {
+  return new Promise(resolve => {
     try {
       const nodeList = Object.values(nodes);
       if (nodeList.length === 0) {
@@ -211,7 +214,7 @@ export function generateOGImage(
         minY = Infinity,
         maxY = -Infinity;
 
-      const positions = nodeList.map((node) => {
+      const positions = nodeList.map(node => {
         const { x, y } = hexToPixel(node.q, node.r);
         if (x < minX) minX = x;
         if (x > maxX) maxX = x;

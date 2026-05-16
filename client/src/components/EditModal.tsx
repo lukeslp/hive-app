@@ -50,7 +50,12 @@ export const EditModal = ({
     if (isOpen) setRegenerateNeighbors(false);
   }, [isOpen, nodeId]);
   return (
-    <Modal isOpen={isOpen} onClose={onClose} title="Edit Node" maxWidth="max-w-md">
+    <Modal
+      isOpen={isOpen}
+      onClose={onClose}
+      title="Edit Node"
+      maxWidth="max-w-md"
+    >
       <div className="flex flex-col gap-4">
         <div>
           <label className="text-xs font-bold text-muted-foreground uppercase tracking-wider mb-2 block">
@@ -58,7 +63,7 @@ export const EditModal = ({
           </label>
           <Input
             value={editTitle}
-            onChange={(e) => setEditTitle(e.target.value)}
+            onChange={e => setEditTitle(e.target.value)}
             className="bg-secondary border-border text-foreground"
             autoFocus
           />
@@ -69,7 +74,7 @@ export const EditModal = ({
           </label>
           <textarea
             value={editDesc}
-            onChange={(e) => setEditDesc(e.target.value)}
+            onChange={e => setEditDesc(e.target.value)}
             className="w-full bg-secondary border border-border rounded-md p-3 text-sm text-neutral-300 h-24 resize-none outline-none focus:border-indigo-500"
           />
         </div>
@@ -82,8 +87,8 @@ export const EditModal = ({
             </label>
             <div className="grid grid-cols-3 gap-2">
               {Object.values(NODE_TYPES)
-                .filter((t) => t.id !== "default")
-                .map((type) => (
+                .filter(t => t.id !== "default")
+                .map(type => (
                   <button
                     key={type.id}
                     onClick={() => onChangeType(type.id)}
@@ -108,7 +113,7 @@ export const EditModal = ({
           <input
             type="checkbox"
             checked={regenerateNeighbors}
-            onChange={(e) => setRegenerateNeighbors(e.target.checked)}
+            onChange={e => setRegenerateNeighbors(e.target.checked)}
             className="mt-0.5 h-4 w-4 rounded border-border bg-secondary text-indigo-500 focus:ring-1 focus:ring-indigo-500 focus:ring-offset-0 cursor-pointer"
           />
           <span className="flex-1">
@@ -127,7 +132,10 @@ export const EditModal = ({
           <Button variant="ghost" onClick={onClose}>
             Cancel
           </Button>
-          <Button onClick={() => onSave(regenerateNeighbors)} className="bg-indigo-600 hover:bg-indigo-500">
+          <Button
+            onClick={() => onSave(regenerateNeighbors)}
+            className="bg-indigo-600 hover:bg-indigo-500"
+          >
             {regenerateNeighbors ? "Save & Regenerate" : "Save"}
           </Button>
         </div>
