@@ -1,12 +1,17 @@
-import { useTheme } from "next-themes";
 import { Toaster as Sonner, type ToasterProps } from "sonner";
+import { useTheme } from "@/contexts/ThemeContext";
 
 const Toaster = ({ ...props }: ToasterProps) => {
-  const { theme = "system" } = useTheme();
+  // Use the app's own ThemeContext rather than next-themes, which is
+  // never mounted in this app — the previous import silently fell back
+  // to "system" and toasts inherited whatever the OS preferred, ignoring
+  // an in-app theme toggle. ThemeContext's `theme` is already
+  // "light" | "dark", which Sonner accepts directly.
+  const { theme } = useTheme();
 
   return (
     <Sonner
-      theme={theme as ToasterProps["theme"]}
+      theme={theme}
       // Top-center keeps the toast clear of the bottom InspectPanel,
       // bottom-right Minimap, and the bottom-anchored OnboardingTour
       // cards. Was overlapping all three at the previous bottom-right

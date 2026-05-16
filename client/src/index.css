@@ -525,33 +525,45 @@
       drop-shadow(0 12px 15px rgba(0, 0, 0, 0.25));
   }
 
-  /* Visual Hierarchy Effects - Isomorphic Height Illusion */
+  /* Hierarchy elevation override for high-contrast: bump the glow
+     strength so the same five levels read cleanly at AAA contrast. */
   [data-hierarchy="1"] {
-    /* Key Theme - Highest Prominence */
-    filter: drop-shadow(0 8px 16px oklch(0.85 0.15 85 / 0.4))
-      drop-shadow(0 0 24px oklch(0.85 0.15 85 / 0.3));
+    filter: drop-shadow(0 10px 20px oklch(0.85 0.15 85 / 0.55))
+      drop-shadow(0 0 28px oklch(0.85 0.15 85 / 0.45));
   }
+}
 
-  [data-hierarchy="2"] {
-    /* Has Deep Dive - Second Level */
-    filter: drop-shadow(0 6px 12px oklch(0.5 0.01 0 / 0.3));
-  }
+/* ── Visual Hierarchy Effects (Isomorphic Height Illusion) ──────────
+ * Applied to every <g data-hierarchy="…"> in HexCanvas regardless of
+ * the user's contrast preference. Previously lived inside the
+ * `@media (prefers-contrast: more)` block, which silently disabled
+ * the elevation cue for ~99% of users while still paying the cost of
+ * emitting the attribute on every node. */
+[data-hierarchy="1"] {
+  /* Key Theme — Highest Prominence */
+  filter: drop-shadow(0 8px 16px oklch(0.85 0.15 85 / 0.4))
+    drop-shadow(0 0 24px oklch(0.85 0.15 85 / 0.3));
+}
 
-  [data-hierarchy="3"] {
-    /* Interacted - Third Level */
-    filter: drop-shadow(0 4px 8px oklch(0.5 0.01 0 / 0.2));
-  }
+[data-hierarchy="2"] {
+  /* Has Deep Dive — Second Level */
+  filter: drop-shadow(0 6px 12px oklch(0.5 0.01 0 / 0.3));
+}
 
-  [data-hierarchy="4"] {
-    /* Hovered - Fourth Level */
-    filter: drop-shadow(0 2px 4px oklch(0.5 0.01 0 / 0.15));
-  }
+[data-hierarchy="3"] {
+  /* Interacted — Third Level */
+  filter: drop-shadow(0 4px 8px oklch(0.5 0.01 0 / 0.2));
+}
 
-  [data-hierarchy="5"] {
-    /* Untouched - Lowest Prominence */
-    opacity: 0.7;
-    filter: drop-shadow(0 1px 2px oklch(0.5 0.01 0 / 0.1));
-  }
+[data-hierarchy="4"] {
+  /* Hovered — Fourth Level */
+  filter: drop-shadow(0 2px 4px oklch(0.5 0.01 0 / 0.15));
+}
+
+[data-hierarchy="5"] {
+  /* Untouched — Lowest Prominence */
+  opacity: 0.7;
+  filter: drop-shadow(0 1px 2px oklch(0.5 0.01 0 / 0.1));
 }
 
 /* ── Merge Animation ────────────────────────────────────────────── */

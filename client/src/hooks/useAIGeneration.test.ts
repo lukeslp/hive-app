@@ -6,22 +6,10 @@
  */
 import { describe, it, expect } from "vitest";
 import type { HexNode } from "@/types/hivemind";
+import { hexDistance } from "@/lib/hexGrid";
 
 // We need to extract buildBoardContext for testing.
 // Since it's not exported, we test the weighting logic directly.
-
-// Helper: Calculate distance between two hex nodes (same as in the hook)
-const hexDistance = (
-  a: { q: number; r: number },
-  b: { q: number; r: number }
-) => {
-  return (
-    (Math.abs(a.q - b.q) +
-      Math.abs(a.q + a.r - b.q - b.r) +
-      Math.abs(a.r - b.r)) /
-    2
-  );
-};
 
 // Replicate the scoring logic for testing
 function scoreNode(node: HexNode): number {

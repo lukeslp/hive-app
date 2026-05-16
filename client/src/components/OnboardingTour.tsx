@@ -12,6 +12,7 @@
  */
 
 import React, { useState, useEffect, useCallback, useMemo } from "react";
+import { TOUR_COMPLETED_KEY } from "@/lib/hexConstants";
 
 interface OnboardingTourProps {
   showTutorial: boolean;
@@ -28,8 +29,6 @@ interface OnboardingTourProps {
   isGenerating: boolean;
 }
 
-const STORAGE_KEY = "hexpand_tour_completed";
-
 /** Detect touch-primary device */
 function isTouchDevice(): boolean {
   if (typeof window === "undefined") return false;
@@ -40,22 +39,22 @@ export function useOnboardingTour() {
   const [tutorialCompleted, setTutorialCompleted] = useState(() => {
     const params = new URLSearchParams(window.location.search);
     if (params.get("tour") === "1") {
-      localStorage.removeItem(STORAGE_KEY);
+      localStorage.removeItem(TOUR_COMPLETED_KEY);
       const url = new URL(window.location.href);
       url.searchParams.delete("tour");
       window.history.replaceState({}, "", url.toString());
       return false;
     }
-    return !!localStorage.getItem(STORAGE_KEY);
+    return !!localStorage.getItem(TOUR_COMPLETED_KEY);
   });
 
   const completeTutorial = useCallback(() => {
-    localStorage.setItem(STORAGE_KEY, "true");
+    localStorage.setItem(TOUR_COMPLETED_KEY, "true");
     setTutorialCompleted(true);
   }, []);
 
   const resetTutorial = useCallback(() => {
-    localStorage.removeItem(STORAGE_KEY);
+    localStorage.removeItem(TOUR_COMPLETED_KEY);
     setTutorialCompleted(false);
   }, []);
 

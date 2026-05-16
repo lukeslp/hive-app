@@ -62,10 +62,10 @@
 
 ## 3. Environment / build-time config
 
-| Variable                      | Purpose                                                                                                 |
-| ----------------------------- | ------------------------------------------------------------------------------------------------------- |
-| `VITE_CAPACITOR_API_BASE_URL` | Hosted API root for native HTTP (e.g. `https://dr.eamer.dev/hexpand/api`)                               |
-| `VITE_PUBLIC_WEB_APP_URL`     | Origin for share links on native (default `https://ideatiles.app` via `APP_PUBLIC_WEB_ORIGIN` if unset) |
+| Variable                      | Purpose                                                                                                                                                                                  |
+| ----------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `VITE_CAPACITOR_API_BASE_URL` | Hosted API root for native HTTP. Defaults to `${APP_PUBLIC_WEB_ORIGIN}/api` (currently `https://ideatiles.app/api`); set explicitly only when shipping a build that points off-canonical. |
+| `VITE_PUBLIC_WEB_APP_URL`     | Origin for share links on native (default `https://ideatiles.app` via `APP_PUBLIC_WEB_ORIGIN` if unset).                                                                                  |
 
 Document chosen values in internal release notes (not committed secrets).
 

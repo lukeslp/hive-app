@@ -12,6 +12,7 @@ import React, { useRef, useState } from "react";
 import { Map as MapIcon, X } from "@/lib/icons";
 import { HEX_SIZE, HEX_WIDTH, HEX_HEIGHT } from "@/lib/hexConstants";
 import { NODE_TYPES } from "@/lib/nodeTypes";
+import { useIsMobile } from "@/hooks/useMobile";
 import type { HexNode, ViewState } from "@/types/hivemind";
 
 interface MinimapProps {
@@ -31,8 +32,10 @@ export const Minimap = ({
 }: MinimapProps) => {
   const minimapRef = useRef<HTMLDivElement>(null);
   const [isCollapsed, setIsCollapsed] = useState(false);
-  // Responsive size: smaller on mobile
-  const isMobile = typeof window !== "undefined" && window.innerWidth < 640;
+  // Responsive size: smaller below the `sm:` (640px) breakpoint. The
+  // previous one-shot `window.innerWidth` check captured layout at
+  // mount and never updated on rotation or split-view resize.
+  const isMobile = useIsMobile(640);
   const MINIMAP_SIZE = isMobile ? 100 : 160;
   const MINIMAP_PADDING = isMobile ? 6 : 10;
 

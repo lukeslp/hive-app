@@ -3,6 +3,7 @@
  * Tests the core logic: extractWords, overlapScore, hexDistance
  */
 import { describe, it, expect } from "vitest";
+import { hexDistance } from "@/lib/hexGrid";
 
 // We test the exported helper logic by importing the module
 // Since the helpers are internal, we test via the hook's behavior indirectly
@@ -171,18 +172,6 @@ function extractWords(text: string): Set<string> {
       .replace(/[^a-z0-9\s]/g, " ")
       .split(/\s+/)
       .filter(w => w.length >= 3 && !stopWords.has(w))
-  );
-}
-
-function hexDistance(
-  a: { q: number; r: number },
-  b: { q: number; r: number }
-): number {
-  return (
-    (Math.abs(a.q - b.q) +
-      Math.abs(a.q + a.r - b.q - b.r) +
-      Math.abs(a.r - b.r)) /
-    2
   );
 }
 

@@ -23,7 +23,7 @@
 - Hosted/web provider behavior is locked to Anthropic in-app (no provider picker exposed), matching ideatiles.app's managed default path.
 - Settings visual treatment now uses a softer glass/card style and removes dense provider-management controls for a cleaner, on-brand surface.
 - iOS behavior is intentionally privacy-first: tile generation on iOS is on-device only (no cloud fallback).
-- Neighbor-generation failures no longer synthesize placeholder tiles (`Explore 1...6` / `Idea N`); empty slots remain empty so downstream context only reflects model-produced nodes.
+- On iOS, neighbor-generation failures no longer synthesize placeholder tiles or fall through to cloud — empty slots stay empty and the user gets an explicit availability/parse error toast. On web/Android the cloud path may still pad to six branches when the model returns fewer; see `client/src/hooks/useAIGeneration.ts` (`buildNeighborNodes`).
 - Universal Links/AASA and server operations remain in [`NEXT_STEPS.md`](NEXT_STEPS.md).
 
 ## Quick Start
@@ -92,10 +92,14 @@ See `client/src/hooks/useAIGeneration.ts` and `client/src/lib/foundationModelsPl
 - [`docs/RELEASE_SPEC.md`](docs/RELEASE_SPEC.md): submission workflow, TestFlight copy, **sharing MVP policy**, post-launch.
 - [`docs/RELEASE_REVIEW.md`](docs/RELEASE_REVIEW.md): prioritized ship risks (Critical / High / Medium).
 - [`docs/APP_STORE_PACK.md`](docs/APP_STORE_PACK.md): App Store metadata + screenshot checklist.
+- [`docs/APP_STORE_CONNECT_CANONICAL.md`](docs/APP_STORE_CONNECT_CANONICAL.md): one-page ASC URL/field checklist (canonical `ideatiles.app`).
+- [`docs/DEVICE_RELEASE_GATES.md`](docs/DEVICE_RELEASE_GATES.md): real-hardware gates before each TestFlight/App Store push.
 - [`docs/SHARING_MVP_POLICY.md`](docs/SHARING_MVP_POLICY.md): short pointer to sharing rules.
+- [`docs/infra/IDEATILES_DOMAIN.md`](docs/infra/IDEATILES_DOMAIN.md): Porkbun DNS + Caddy + Node deploy for the canonical domain.
 - `PROJECT_PLAN.md`: strategy and workstreams.
-- `NEXT_STEPS.md`: deploy/AASA/hardware checklist.
-- `RENAME_PLAN.md`, `MIGRATION_PLAN.md`, `todo.md`: historical / focused migrations.
+- `NEXT_STEPS.md`: deploy/AASA/hardware checklist (active pickup point).
+- `MIGRATION_PLAN.md`: UIScene lifecycle adoption (partially landed — see status snapshot at the top of that file).
+- `RENAME_PLAN.md`, `todo.md`: historical brand-rename and migration logs.
 
 ## `/team` Workflow (Cleaned Up)
 

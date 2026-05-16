@@ -1,6 +1,6 @@
 # PROJECT_PLAN
 
-Last updated: 2026-05-15
+Last updated: 2026-05-16
 
 ## Objectives
 
@@ -32,8 +32,8 @@ Last updated: 2026-05-15
 
 ### 2) iOS Lifecycle and Stability
 
-- Complete UIScene lifecycle migration (`MIGRATION_PLAN.md`).
-- Verify splash behavior, deep-link handling, and plugin registration remain stable.
+- Finish the partially landed UIScene lifecycle migration (see status snapshot at the top of `MIGRATION_PLAN.md`): remove `UIMainStoryboardFile` once duplicate-ownership risk is mitigated, trim `AppDelegate`, implement `scene(_:willConnectTo:options:)` with deferred cold-start URL forwarding.
+- Verify splash behavior, deep-link handling, and plugin registration remain stable after the UIScene cleanup.
 - Keep iOS AI behavior aligned with privacy commitments (on-device only).
 
 ### 3) AI UX Reliability

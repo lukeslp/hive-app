@@ -72,20 +72,17 @@ import {
   DIRECTIONS,
   STORAGE_KEY,
   AUTOSAVE_KEY,
+  AUTOSAVE_ENABLED_KEY,
+  FONT_SIZE_KEY,
+  ACCESSIBILITY_FONT_KEY,
+  HIGH_CONTRAST_KEY,
+  ANIMATIONS_KEY,
+  KEY_THEMES_KEY,
 } from "@/lib/hexConstants";
-import { hexToPixel, pixelToHex } from "@/lib/hexGrid";
+import { hexToPixel, pixelToHex, hexDistance } from "@/lib/hexGrid";
 import { NODE_TYPES } from "@/lib/nodeTypes";
 
 // --- Pure helpers (no React state) ---
-
-const hexDistance = (
-  a: { q: number; r: number },
-  b: { q: number; r: number }
-) =>
-  (Math.abs(a.q - b.q) +
-    Math.abs(a.q + a.r - b.q - b.r) +
-    Math.abs(a.r - b.r)) /
-  2;
 
 const getNearestNodes = (
   centerNode: HexNode,
@@ -147,7 +144,7 @@ export default function HexmindApp() {
   // in-progress board. The blob still lives at `hexpand_autosave`; the
   // boolean now lives at `hexpand_autosave_enabled`.
   const [enableAutoSave, setEnableAutoSave] = useState(() => {
-    const saved = localStorage.getItem("hexpand_autosave_enabled");
+    const saved = localStorage.getItem(AUTOSAVE_ENABLED_KEY);
     return saved !== "false";
   });
   const [enableSmartExpansion, setEnableSmartExpansion] = useState(true);
@@ -155,17 +152,17 @@ export default function HexmindApp() {
     new Set()
   );
   const [fontSizeMultiplier, setFontSizeMultiplier] = useState(() => {
-    const saved = localStorage.getItem("hexpand_font_size");
+    const saved = localStorage.getItem(FONT_SIZE_KEY);
     return saved ? parseFloat(saved) : 1.0;
   });
   const [fontFamily, setFontFamily] = useState(() => {
-    return localStorage.getItem("hexpand_accessibility_font") || "system";
+    return localStorage.getItem(ACCESSIBILITY_FONT_KEY) || "system";
   });
   const [enableHighContrast, setEnableHighContrast] = useState(() => {
-    return localStorage.getItem("hexpand_high_contrast") === "true";
+    return localStorage.getItem(HIGH_CONTRAST_KEY) === "true";
   });
   const [enableAnimations, setEnableAnimations] = useState(() => {
-    const saved = localStorage.getItem("hexpand_animations");
+    const saved = localStorage.getItem(ANIMATIONS_KEY);
     if (saved) return saved === "true";
     return !window.matchMedia("(prefers-reduced-motion: reduce)").matches;
   });
@@ -505,7 +502,7 @@ export default function HexmindApp() {
   // Load key themes from localStorage on mount
   useEffect(() => {
     try {
-      const keyThemesJson = localStorage.getItem("hexpand_key_themes");
+      const keyThemesJson = localStorage.getItem(KEY_THEMES_KEY);
       if (keyThemesJson) {
         const keyThemeKeys: string[] = JSON.parse(keyThemesJson);
         const updated = { ...nodes };
@@ -529,22 +526,19 @@ export default function HexmindApp() {
 
   // Persist settings
   useEffect(() => {
-    localStorage.setItem("hexpand_font_size", fontSizeMultiplier.toString());
+    localStorage.setItem(FONT_SIZE_KEY, fontSizeMultiplier.toString());
   }, [fontSizeMultiplier]);
   useEffect(() => {
-    localStorage.setItem("hexpand_animations", enableAnimations.toString());
+    localStorage.setItem(ANIMATIONS_KEY, enableAnimations.toString());
   }, [enableAnimations]);
   useEffect(() => {
-    localStorage.setItem("hexpand_accessibility_font", fontFamily);
+    localStorage.setItem(ACCESSIBILITY_FONT_KEY, fontFamily);
   }, [fontFamily]);
   useEffect(() => {
-    localStorage.setItem(
-      "hexpand_high_contrast",
-      enableHighContrast.toString()
-    );
+    localStorage.setItem(HIGH_CONTRAST_KEY, enableHighContrast.toString());
   }, [enableHighContrast]);
   useEffect(() => {
-    localStorage.setItem("hexpand_autosave_enabled", enableAutoSave.toString());
+    localStorage.setItem(AUTOSAVE_ENABLED_KEY, enableAutoSave.toString());
   }, [enableAutoSave]);
   useEffect(() => {
     document.documentElement.style.setProperty(
@@ -2005,7 +1999,7 @@ Generate 6 diverse related ideas. Connect to key themes when relevant.`;
                     k => next[k].isKeyTheme
                   );
                   localStorage.setItem(
-                    "hexpand_key_themes",
+                    KEY_THEMES_KEY,
                     JSON.stringify(keyThemes)
                   );
                   return next;

@@ -5,6 +5,15 @@
 > ships first because it's blocking-eventually-required, the UX cleanup is
 > a polish pass that can land in the same session.
 
+## Status snapshot (2026-05-15)
+
+| Strand                              | State            | What still needs to land                                                                                                                                                                                                                                                          |
+| ----------------------------------- | ---------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **A — UIScene lifecycle adoption**  | Partially landed | `ios/App/SceneDelegate.swift` exists and is wired into `project.pbxproj`; `UIApplicationSceneManifest` is in `Info.plist`. **Still open:** remove `UIMainStoryboardFile` from `Info.plist`, trim `AppDelegate.swift` (drop `var window` + the 5 empty boilerplate methods), and implement `scene(_:willConnectTo:options:)` with the deferred cold-launch URL/userActivities forward described in the original plan. |
+| **B — Toolbar duplicate Downloads** | Superseded       | The "two adjacent Download icons" issue described below no longer exists. `client/src/components/Toolbar.tsx` was reorganized into a single Files menu (PNG / SVG / Share). No further action.                                                                                    |
+
+Treat the rest of this document as the original engineering brief — useful context for Strand A's remaining work, historical for Strand B.
+
 ## Strand A — UIScene lifecycle adoption
 
 ### Why now

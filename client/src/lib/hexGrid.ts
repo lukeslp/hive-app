@@ -28,3 +28,22 @@ export function pixelToHex(x: number, y: number): { q: number; r: number } {
   const r = Math.round(((2 / 3) * y) / HEX_SIZE);
   return { q, r };
 }
+
+/**
+ * Hex distance (number of single steps) between two axial coords.
+ * Equivalent to `(|Δq| + |Δq+Δr| + |Δr|) / 2` for pointy-top axial
+ * hexes. Was previously duplicated verbatim across `useAIGeneration`,
+ * `useMergeSuggestions`, and `HexmindApp` — kept here so any drift in
+ * the math stays localized.
+ */
+export function hexDistance(
+  a: { q: number; r: number },
+  b: { q: number; r: number }
+): number {
+  return (
+    (Math.abs(a.q - b.q) +
+      Math.abs(a.q + a.r - b.q - b.r) +
+      Math.abs(a.r - b.r)) /
+    2
+  );
+}

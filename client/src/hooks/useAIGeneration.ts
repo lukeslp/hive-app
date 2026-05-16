@@ -13,6 +13,7 @@ import { toast } from "sonner";
 import { buildApiUrl } from "@/lib/api";
 import { sanitizeJson } from "@/lib/sanitize";
 import { GEMINI_TEXT_MODEL, DIRECTIONS } from "@/lib/hexConstants";
+import { hexDistance } from "@/lib/hexGrid";
 import type { HexNode } from "@/types/hivemind";
 import { haptics } from "@/lib/haptics";
 import { getNodeKey } from "@/types/hexmind";
@@ -58,19 +59,6 @@ export interface UseAIGenerationReturn {
   resetGenerationCount: () => void;
   clearError: () => void;
 }
-
-// Helper: Calculate distance between two hex nodes
-const hexDistance = (
-  a: { q: number; r: number },
-  b: { q: number; r: number }
-) => {
-  return (
-    (Math.abs(a.q - b.q) +
-      Math.abs(a.q + a.r - b.q - b.r) +
-      Math.abs(a.r - b.r)) /
-    2
-  );
-};
 
 /**
  * Build weighted board context from the entire node graph.

@@ -79,3 +79,24 @@ export const STORAGE_KEY = "hexpand_sessions";
 export const AUTOSAVE_KEY = "hexpand_autosave";
 export const API_KEYS_STORAGE_KEY = "hexpand_api_keys";
 export const PROVIDER_STORAGE_KEY = "hexpand_provider";
+
+// Boolean preference for whether autosave is enabled. Distinct from
+// `AUTOSAVE_KEY` (the serialized board blob) — see the comment in
+// `pages/HexmindApp.tsx` for why these are intentionally split.
+export const AUTOSAVE_ENABLED_KEY = "hexpand_autosave_enabled";
+
+// First-launch tutorial completion flag (consumed by
+// `components/OnboardingTour.tsx`'s `useOnboardingTour`).
+export const TOUR_COMPLETED_KEY = "hexpand_tour_completed";
+
+// User-facing accessibility preferences. Persisted across launches so
+// the UI matches the user's last choice without re-applying defaults.
+export const FONT_SIZE_KEY = "hexpand_font_size"; // number, default 1.0
+export const ACCESSIBILITY_FONT_KEY = "hexpand_accessibility_font"; // string family id
+export const HIGH_CONTRAST_KEY = "hexpand_high_contrast"; // boolean
+export const ANIMATIONS_KEY = "hexpand_animations"; // boolean
+
+// Snapshot of which node keys were marked as Key Themes — restored on
+// mount so the highlight survives reloads even if the full board isn't
+// loaded from a saved session.
+export const KEY_THEMES_KEY = "hexpand_key_themes"; // JSON string[]

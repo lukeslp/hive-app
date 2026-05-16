@@ -8,7 +8,7 @@
 
 import { useState, useEffect, useRef, useCallback, useMemo } from "react";
 import type { HexNode } from "@/types/hivemind";
-import { hexToPixel } from "@/lib/hexGrid";
+import { hexToPixel, hexDistance } from "@/lib/hexGrid";
 
 // ── Types ────────────────────────────────────────────────────────────────
 
@@ -26,19 +26,6 @@ export interface MergeSuggestion {
 }
 
 // ── Helpers ──────────────────────────────────────────────────────────────
-
-/** Hex distance between two axial coords */
-function hexDistance(
-  a: { q: number; r: number },
-  b: { q: number; r: number }
-): number {
-  return (
-    (Math.abs(a.q - b.q) +
-      Math.abs(a.q + a.r - b.q - b.r) +
-      Math.abs(a.r - b.r)) /
-    2
-  );
-}
 
 /** Extract significant words from text (3+ chars, lowercased, no stop words) */
 function extractWords(text: string): Set<string> {
