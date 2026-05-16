@@ -42,7 +42,7 @@ Expect **7/7** AASA passes and privacy/terms checks green on `ideatiles.app` and
 
 ## 5. Deploy the Node app (production: `hexmind.service`)
 
-**systemd** unit **`hexmind.service`** on `dr.eamer.dev` (see **NEXT_STEPS.md** → *production Node*) runs **`node ~/projects/hivemind/dist/index.js`** with `PORT=5057` and `WorkingDirectory=/home/coolhand/projects/hivemind` (`.env` lives there). **Source code** is built from GitHub **`lukeslp/hive-app`** into a clone at `~/projects/hive-app`, then **`dist/`** is rsynced into **`~/projects/hivemind/dist/`** (atomically replacing the bundle). Restart with **`sm restart hexmind`** (wraps `systemctl restart hexmind`).
+**systemd** unit **`hexmind.service`** on `dr.eamer.dev` (see **NEXT_STEPS.md** → _production Node_) runs **`node ~/projects/hivemind/dist/index.js`** with `PORT=5057` and `WorkingDirectory=/home/coolhand/projects/hivemind` (`.env` lives there). **Source code** is built from GitHub **`lukeslp/hive-app`** into a clone at `~/projects/hive-app`, then **`dist/`** is rsynced into **`~/projects/hivemind/dist/`** (atomically replacing the bundle). Restart with **`sm restart hexmind`** (wraps `systemctl restart hexmind`).
 
 See the exact one-liner block in [`NEXT_STEPS.md`](../../NEXT_STEPS.md) under **Right now — production Node**.
 

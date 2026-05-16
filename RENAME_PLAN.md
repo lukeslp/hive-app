@@ -1,6 +1,6 @@
 # Hexpand → Hexmind rename plan
 
-> **2026-05-13:** The **user-facing** product name is now **Idea Tiles** (*Brainstorm with local AI*). The prior **Thought Tiles** working title (2026-05-12) was retired in favor of the clearer, less metaphor-loaded "Idea Tiles" after a `/team` review. **Canonical marketing domain:** `ideatiles.app` (registered Porkbun). Bundle id `app.hexmind.ios`, Universal Link domains (`hexmind.app`, `ideatiles.app`, etc.), and `hexpand_*` storage keys stay as-is for continuity. The body below records the earlier **Hexmind** working-title rename from Hexpand and is kept for history.
+> **2026-05-13:** The **user-facing** product name is now **Idea Tiles** (_Brainstorm with local AI_). The prior **Thought Tiles** working title (2026-05-12) was retired in favor of the clearer, less metaphor-loaded "Idea Tiles" after a `/team` review. **Canonical marketing domain:** `ideatiles.app` (registered Porkbun). Bundle id `app.hexmind.ios`, Universal Link domains (`hexmind.app`, `ideatiles.app`, etc.), and `hexpand_*` storage keys stay as-is for continuity. The body below records the earlier **Hexmind** working-title rename from Hexpand and is kept for history.
 
 Decided 2026-05-08 after a council pass with corrected facts. This plan
 supersedes the prior NEXT_STEPS sequencing — block all App Store Connect
@@ -32,10 +32,10 @@ Verified by direct curl/dig/WHOIS this session:
 
 Two defensible options, pick one before any Apple Developer portal work:
 
-| Bundle id | Pros | Cons |
-|---|---|---|
-| `app.hexmind.ios` | Reads like the brand. Matches owned `hexmind.app` domain (you own it; legal mis-flagged this earlier). Brand-on-name. | If Hexmind Games ever buys hexmind.app from you / contests, the bundle id reads awkwardly. Tied to specific domain. |
-| `pro.bridgecitylab.hexmind` | Tied to the LLC namespace you provably own forever via the Apple team id. Survives any brand pivot. | Less brand-on-name. Verbose. |
+| Bundle id                   | Pros                                                                                                                  | Cons                                                                                                                |
+| --------------------------- | --------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------- |
+| `app.hexmind.ios`           | Reads like the brand. Matches owned `hexmind.app` domain (you own it; legal mis-flagged this earlier). Brand-on-name. | If Hexmind Games ever buys hexmind.app from you / contests, the bundle id reads awkwardly. Tied to specific domain. |
+| `pro.bridgecitylab.hexmind` | Tied to the LLC namespace you provably own forever via the Apple team id. Survives any brand pivot.                   | Less brand-on-name. Verbose.                                                                                        |
 
 **Recommendation: `app.hexmind.ios`** — you own hexmind.app since 2015, the domain risk is minimal, and the brand-on-name reads cleaner to App Review. If you'd rather have the more defensive `pro.bridgecitylab.hexmind`, swap before any of the Apple Developer portal work below.
 
@@ -53,7 +53,7 @@ Order matters; later steps depend on earlier.
 - [ ] **`ios/App/App/Info.plist`**: `CFBundleDisplayName` → `Hexmind`, `CFBundleName` → `Hexmind`
 - [ ] **`pnpm cap sync ios`** — regenerates `ios/App/App/capacitor.config.json`
 - [ ] **AASA file**: `server/_core/index.ts` lines 52 + 63 — change `596T7J7FB6.dev.dreamer.hexpand` → `596T7J7FB6.<new bundle id>`
-- [ ] **Deploy server** — single Node process serves all brand domains via Caddy. **Current recipe:** [`NEXT_STEPS.md`](NEXT_STEPS.md) → *Right now — production Node* (`lukeslp/hive-app` clone → `pnpm build` → `rsync dist/` → `~/projects/hivemind/dist/` → `sm restart hexmind`). **Not** `~/servers/hexpand` (obsolete path).
+- [ ] **Deploy server** — single Node process serves all brand domains via Caddy. **Current recipe:** [`NEXT_STEPS.md`](NEXT_STEPS.md) → _Right now — production Node_ (`lukeslp/hive-app` clone → `pnpm build` → `rsync dist/` → `~/projects/hivemind/dist/` → `sm restart hexmind`). **Not** `~/servers/hexpand` (obsolete path).
 - [ ] **Page rename**: `client/src/pages/HexpandApp.tsx` → `HexmindApp.tsx`. Update imports across the project. Internal class/component name `HexpandApp` → `HexmindApp`. (Repository file rename is a real grep-and-replace; ~12 import sites.)
 - [ ] **User-visible UI strings** (35 grep hits found by manager seat across these files):
   - `client/src/components/Toolbar.tsx:127` — header brand chip
@@ -143,19 +143,19 @@ Recommended: (a) for fastest path to portfolio post. Switch to (b) at App Store 
 
 ## Total time estimate
 
-| Phase | Time | Cost |
-|---|---|---|
-| 1. Code changes | 4.25h active | $0 |
-| 2. Apple portal | 0.4h | $0 |
-| 3. Asset rework | 2.4h | $0 (Luke time) |
-| 4. ASC record | 0.4h | $0 |
-| 5. TestFlight rebuild | 0.4h + processing | $0 |
-| 6. Trademark | 1.0h + counsel | $250 + ~$300-500 counsel |
-| 7. License cleanup | 0.5h | $0 |
-| 8. Courtesy email | 0.2h | $0 |
-| 9. Portfolio post | 8.5h | $0 (existing infra) |
-| 10. GitHub org | 0.5h | $0 |
-| **Total** | **~18.5h Luke** | **$550-750** |
+| Phase                 | Time              | Cost                     |
+| --------------------- | ----------------- | ------------------------ |
+| 1. Code changes       | 4.25h active      | $0                       |
+| 2. Apple portal       | 0.4h              | $0                       |
+| 3. Asset rework       | 2.4h              | $0 (Luke time)           |
+| 4. ASC record         | 0.4h              | $0                       |
+| 5. TestFlight rebuild | 0.4h + processing | $0                       |
+| 6. Trademark          | 1.0h + counsel    | $250 + ~$300-500 counsel |
+| 7. License cleanup    | 0.5h              | $0                       |
+| 8. Courtesy email     | 0.2h              | $0                       |
+| 9. Portfolio post     | 8.5h              | $0 (existing infra)      |
+| 10. GitHub org        | 0.5h              | $0                       |
+| **Total**             | **~18.5h Luke**   | **$550-750**             |
 
 Roughly 2-3 working days for the full sequence. Phases 1-5 are the
 critical path that unblocks App Store launch (~8h, fits in one focused
@@ -203,7 +203,7 @@ If Hexmind Games sends a cease-and-desist post-launch (low probability given dif
 
 ## References
 
-- Council outputs from 2026-05-08 second-pass (this session): /Users/luke/.swarm/* — see `next-steps/`, `recommendations/`, `reports/`
+- Council outputs from 2026-05-08 second-pass (this session): /Users/luke/.swarm/\* — see `next-steps/`, `recommendations/`, `reports/`
 - Snippet on dual-layer timeout pattern (the portfolio post's primary technical content): `~/.swarm/snippets/2026-05-08-foundationmodels-bridge-bisect.md`
 - TestFlight upload silent-failure traps: `~/.swarm/snippets/2026-05-08-xcode-testflight-upload-gotchas.md`
 - Verified files this rename touches: `capacitor.config.ts`, `ios/App/App.xcodeproj/project.pbxproj` (lines 347, 370), `ios/App/App/Info.plist`, `ios/App/App/App.entitlements` (no change — domains stay), `ios/App/App/Base.lproj/LaunchScreen.storyboard` (no change — wordmark-free), `ios/App/App/Assets.xcassets/{AppIcon,Splash}.{appiconset,imageset}`, `server/_core/index.ts` (AASA), `server/ogRoute.ts`, `client/index.html`, `client/src/pages/HexpandApp.tsx` → `HexmindApp.tsx`, `client/src/components/{Toolbar,CollabModal,KeyboardShortcutsModal,SettingsModal,OnboardingTour}.tsx`, `client/src/hooks/useOGImage.ts`, `client/src/lib/canvasSnapshot.ts`, `package.json`, `README.md`, `CLAUDE.md`, `NEXT_STEPS.md`, `todo.md`

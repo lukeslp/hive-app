@@ -50,8 +50,8 @@ Public TestFlight is already live — treat remaining items as **App Store submi
   public HTTPS still fails, fix **Caddy** so `/.well-known/*` reaches that
   upstream (see **Right now — production Node** below).
 - **`a79b5fc` ux:** one-shot onboarding modal (`dismissedOnboardingRef`)
-  + passive "Tap anywhere to start a brainstorm" hint, `prefers-reduced-motion`
-  shortens the 600ms timer to 100ms
+  - passive "Tap anywhere to start a brainstorm" hint, `prefers-reduced-motion`
+    shortens the 600ms timer to 100ms
 - **`6e0cce3` fix:** PNG/SVG/JSON exports now go through `saveBlob()`
   helper — `@capacitor/filesystem` + `@capacitor/share` on iOS,
   `<a download>` on web. Plus Info.plist keys for Files.app visibility
@@ -61,7 +61,7 @@ Public TestFlight is already live — treat remaining items as **App Store submi
   Image / Sessions / Share labeled sections
 - **`573775d` legal:** static `privacy.html` + `terms.html` in
   `client/public/`, served by Express `/privacy` and `/terms` routes
-  *before* the SPA catchall. Required for App Store Connect's
+  _before_ the SPA catchall. Required for App Store Connect's
   Privacy Policy URL field
 
 ## What's still on you (in order)
@@ -105,12 +105,14 @@ Public TestFlight is already live — treat remaining items as **App Store submi
      public link.
 10. **Beta App Description** in TestFlight tab — required for
     external testing. Suggested copy:
+
     > Idea Tiles is a hexagonal mind-mapping tool with on-device AI
     > brainstorming via Apple Intelligence. Tap any hex to generate
     > six related ideas; long-press and drag to merge two into one.
     > Boards save locally — no account required.
 
 11. **What to Test** field — what testers should exercise:
+
     > • Tap a tile to expand (first tap may take 1–2s)
     > • Long-press + drag to merge two tiles
     > • Export PNG/SVG → check Files.app or share to another device
@@ -186,6 +188,7 @@ Verify after edge fix + DNS:
 ```
 
 Verify after deploy:
+
 ```sh
 curl -s https://ideatiles.app/.well-known/apple-app-site-association | \
   python3 -c "import json,sys; d=json.load(sys.stdin); \
@@ -246,17 +249,17 @@ simulator does not guarantee the same path executes on a Pro device.
 After TestFlight install:
 
 - [ ] On an Apple-Intelligence-eligible iPhone (15 Pro / 16+ / iPad
-  with M-series), with Apple Intelligence enabled in Settings, tap a
-  tile with empty neighbors
+      with M-series), with Apple Intelligence enabled in Settings, tap a
+      tile with empty neighbors
 - [ ] Watch for the "✦ Apple Intelligence — Generated on-device" toast
 - [ ] If you see "On-device threw: …" or fall through silently to
-  cloud, the in-app diagnostic toasts surface the exact failure mode
-  (added in commit `858607b`, kept after `f945be6` switched logging
-  to production)
+      cloud, the in-app diagnostic toasts surface the exact failure mode
+      (added in commit `858607b`, kept after `f945be6` switched logging
+      to production)
 - [ ] 10 consecutive tile expansions on real device should fire the
-  success toast with no cloud fallback (cloud fallback is still desired
-  on parse failure / timeout; should not fire on a healthy Pro device
-  with a healthy prompt)
+      success toast with no cloud fallback (cloud fallback is still desired
+      on parse failure / timeout; should not fire on a healthy Pro device
+      with a healthy prompt)
 
 ## Then — Class 9 trademark filing this week (~1h, $250)
 
@@ -270,29 +273,29 @@ Filing Class 9 priority FAST locks productivity-software namespace
 before they expand.
 
 - [ ] **(Optional, recommended)** $300-500 counsel knockout search on
-  USPTO TESS for "Hexmind" Class 9 — surfaces unpublished ITUs not
-  visible in public TESS search
+      USPTO TESS for "Hexmind" Class 9 — surfaces unpublished ITUs not
+      visible in public TESS search
 - [ ] **TEAS Plus filing, Class 9** ($250) for "downloadable
-  mind-mapping software" at uspto.gov. Specimen: TestFlight screenshot
-  once the build processes. Applicant: Bridge City Lab LLC.
+      mind-mapping software" at uspto.gov. Specimen: TestFlight screenshot
+      once the build processes. Applicant: Bridge City Lab LLC.
 - [ ] Skip Class 41 — invites Office Action arguing overlap with
-  Hexmind Games. One-class filing is cleaner.
+      Hexmind Games. One-class filing is cleaner.
 
 ## Pre-TestFlight cleanup (single commit, recommended but not blocking)
 
 Flagged in Xcode console traces; cosmetic but ships clean:
 
 - [ ] **`UIScene` lifecycle adoption** — Apple deprecation, "will
-  assert in a future release." Add `UIApplicationSceneManifest` to
-  `ios/App/App/Info.plist`, adopt `SceneDelegate`. Capacitor 8 should
-  have a template; check their docs.
+      assert in a future release." Add `UIApplicationSceneManifest` to
+      `ios/App/App/Info.plist`, adopt `SceneDelegate`. Capacitor 8 should
+      have a template; check their docs.
 - [ ] **NSLayoutConstraint width=0 conflicts on `_UIModernBarButton`**
-  — three nav/toolbar buttons with no intrinsic content. 3× per launch
-  in console. Fix: give the offending `UIBarButtonItem`s an SF Symbol
-  image at init.
+      — three nav/toolbar buttons with no intrinsic content. 3× per launch
+      in console. Fix: give the offending `UIBarButtonItem`s an SF Symbol
+      image at init.
 - [ ] **WKWebView pull-to-refresh / overscroll bounce** — gemini
-  flagged during the random UX consensus. One-line fix in
-  `AppViewController.swift`:
+      flagged during the random UX consensus. One-line fix in
+      `AppViewController.swift`:
   ```swift
   webView?.scrollView.bounces = false
   ```
@@ -306,27 +309,27 @@ The basic generate path is verified; these are quality-of-life
 upgrades:
 
 - [ ] **Streaming via `streamResponse(to:)`** — instead of waiting
-  1-3s for the full FM response, stream partial branches as they
-  generate. Big perceived-latency win. Apple's API:
-  `session.streamResponse(to:)` returns an `AsyncSequence` of
-  partials. Need a new `streamGenerate` method on the Swift plugin +
-  `notifyListeners` plumbing back to JS. See
-  `~/.swarm/snippets/2026-05-08-foundationmodels-bridge-bisect.md`
-  for the API surface.
+      1-3s for the full FM response, stream partial branches as they
+      generate. Big perceived-latency win. Apple's API:
+      `session.streamResponse(to:)` returns an `AsyncSequence` of
+      partials. Need a new `streamGenerate` method on the Swift plugin +
+      `notifyListeners` plumbing back to JS. See
+      `~/.swarm/snippets/2026-05-08-foundationmodels-bridge-bisect.md`
+      for the API surface.
 - [ ] **`@Generable` Swift struct for branches** — replaces JSON-text
-  round-trip + `parseBranches` regex fallback with structured output.
-  Eliminates a class of failure modes ("FM ran but output didn't
-  parse"). Requires defining the schema in Swift; minor refactor.
+      round-trip + `parseBranches` regex fallback with structured output.
+      Eliminates a class of failure modes ("FM ran but output didn't
+      parse"). Requires defining the schema in Swift; minor refactor.
 - [ ] **`prewarm(promptPrefix:)` on app boot** — pre-loads the model
-  so the first generation is instant instead of cold-start latent.
-  Apple's framework has `LanguageModelSession.prewarm`; call it in
-  `AppViewController.capacitorDidLoad`.
+      so the first generation is instant instead of cold-start latent.
+      Apple's framework has `LanguageModelSession.prewarm`; call it in
+      `AppViewController.capacitorDidLoad`.
 - [ ] **Provider-aware dispatcher** —
-  `client/src/hooks/useProviderSettings.ts` exposes a
-  user-selectable provider; the dispatcher in
-  `client/src/hooks/useAIGeneration.ts` doesn't consult it (always
-  tries FM first). If user explicitly picks a cloud provider, should
-  skip FM. One-day refactor.
+      `client/src/hooks/useProviderSettings.ts` exposes a
+      user-selectable provider; the dispatcher in
+      `client/src/hooks/useAIGeneration.ts` doesn't consult it (always
+      tries FM first). If user explicitly picks a cloud provider, should
+      skip FM. One-day refactor.
 
 ## Portfolio post (separate work, after TestFlight verified on hardware)
 
@@ -367,7 +370,7 @@ portfolio-friendly home:
 - [ ] Create `bridgecitylab` GitHub org
 - [ ] Push current `lukeslp/hive-app` repo to `bridgecitylab/hexmind`
 - [ ] Optionally archive `lukeslp/hive-app` with a README pointing to
-  the new home
+      the new home
 
 Not blocking; can chain in any time.
 
@@ -404,18 +407,19 @@ Adjust to match current state once verified on hardware.
 Three of the five plan-level open decisions are not yet locked:
 
 - [ ] Counsel knockout search on USPTO TESS before filing — yes vs.
-  self-search (recommended: yes, $300-500)
+      self-search (recommended: yes, $300-500)
 - [ ] Send the courtesy email to Hexmind Games — yes vs. skip
-  (recommended: yes)
+      (recommended: yes)
 - [ ] Asset rework timing — wordmark-swap mockups in same window as
-  rename vs. defer to v1.1 (recommend: defer; current AppIcon works
-  for v1)
+      rename vs. defer to v1.1 (recommend: defer; current AppIcon works
+      for v1)
 
 Other two are now locked:
+
 - ✅ Bundle id: `app.hexmind.ios`
 - ✅ License: MIT (LICENSE file added in `85d2e9d`)
 
 ## Reference
 
-- `RENAME_PLAN.md` — historical Hexpand → Hexmind rename plan; current deploy recipe is in this file (*Right now — production Node*).
+- `RENAME_PLAN.md` — historical Hexpand → Hexmind rename plan; current deploy recipe is in this file (_Right now — production Node_).
 - `PROJECT_PLAN.md` — priorities and workstreams snapshot.

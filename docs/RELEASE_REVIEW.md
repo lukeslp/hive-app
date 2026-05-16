@@ -7,12 +7,12 @@
 
 ## Summary
 
-| Priority | Count | Notes |
-|----------|-------|--------|
-| Critical | 0 | None identified that block TestFlight if snapshot sharing uses public URLs |
-| High | 2 | Share link origin on Capacitor; in-memory share store |
-| Medium | 4 | UIScene deprecation, Share modal copy accuracy, cloud session disabled on native, share TTL |
-| Low | 3 | Analytics web-only, OG/session polish, Android package name legacy |
+| Priority | Count | Notes                                                                                       |
+| -------- | ----- | ------------------------------------------------------------------------------------------- |
+| Critical | 0     | None identified that block TestFlight if snapshot sharing uses public URLs                  |
+| High     | 2     | Share link origin on Capacitor; in-memory share store                                       |
+| Medium   | 4     | UIScene deprecation, Share modal copy accuracy, cloud session disabled on native, share TTL |
+| Low      | 3     | Analytics web-only, OG/session polish, Android package name legacy                          |
 
 ---
 

@@ -1,6 +1,6 @@
 # Idea Tiles
 
-**Idea Tiles** (*Brainstorm with local AI*) is a hexagonal tile brainstorming app built as a React SPA with an Express backend, plus Capacitor shells for iOS and Android. **Canonical marketing origin:** `https://ideatiles.app`. Bundle id and some legacy domains may still reference **hexmind**; user-facing copy uses Idea Tiles.
+**Idea Tiles** (_Brainstorm with local AI_) is a hexagonal tile brainstorming app built as a React SPA with an Express backend, plus Capacitor shells for iOS and Android. **Canonical marketing origin:** `https://ideatiles.app`. Bundle id and some legacy domains may still reference **hexmind**; user-facing copy uses Idea Tiles.
 
 ## What This Project Does
 
@@ -54,12 +54,13 @@ pnpm cap:sync:android
 
 ## Native build env (iOS)
 
-| Variable | Purpose |
-|----------|---------|
-| `VITE_CAPACITOR_API_BASE_URL` | Hosted `/api` root (required for device API calls). If unset, native fallback is `${APP_PUBLIC_WEB_ORIGIN}/api` (currently `https://ideatiles.app/api`). |
-| `VITE_PUBLIC_WEB_APP_URL` | Optional. Origin for **Share link** URLs on native; defaults to `https://ideatiles.app` (`APP_PUBLIC_WEB_ORIGIN` in `shared/appBrand.ts`) when unset so links open in Safari. |
+| Variable                      | Purpose                                                                                                                                                                       |
+| ----------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `VITE_CAPACITOR_API_BASE_URL` | Hosted `/api` root (required for device API calls). If unset, native fallback is `${APP_PUBLIC_WEB_ORIGIN}/api` (currently `https://ideatiles.app/api`).                      |
+| `VITE_PUBLIC_WEB_APP_URL`     | Optional. Origin for **Share link** URLs on native; defaults to `https://ideatiles.app` (`APP_PUBLIC_WEB_ORIGIN` in `shared/appBrand.ts`) when unset so links open in Safari. |
 
 **Canonical domain rollout:** [`docs/infra/IDEATILES_DOMAIN.md`](docs/infra/IDEATILES_DOMAIN.md) (DNS + Caddy). After deploy, run `pnpm verify:canonical` (AASA + `/privacy` / `/terms` on all brand hosts).
+
 ## Architecture At A Glance
 
 - `client/`: React 19 SPA, canvas UX, hooks, UI components.

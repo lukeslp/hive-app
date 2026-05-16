@@ -36,10 +36,10 @@
 
 **Locked for this proof-of-concept release:**
 
-| Capability | Web | iOS (Capacitor) |
-|------------|-----|-----------------|
-| **Snapshot share** (`?s=` via `POST /api/share`) | Yes | **Yes** — link must use public web origin (`getPublicWebAppOrigin()` / `VITE_PUBLIC_WEB_APP_URL`) |
-| **Live collaboration** (WebSocket `/ws/collab`, `?collab=`) | Yes | **No** — UI entry hidden; not MVP for native |
+| Capability                                                  | Web | iOS (Capacitor)                                                                                   |
+| ----------------------------------------------------------- | --- | ------------------------------------------------------------------------------------------------- |
+| **Snapshot share** (`?s=` via `POST /api/share`)            | Yes | **Yes** — link must use public web origin (`getPublicWebAppOrigin()` / `VITE_PUBLIC_WEB_APP_URL`) |
+| **Live collaboration** (WebSocket `/ws/collab`, `?collab=`) | Yes | **No** — UI entry hidden; not MVP for native                                                      |
 
 **Rationale:** Live collab requires a production-safe WebSocket URL strategy and full UX parity; partial implementation would confuse testers and reviewers.
 
@@ -62,10 +62,10 @@
 
 ## 3. Environment / build-time config
 
-| Variable | Purpose |
-|----------|---------|
-| `VITE_CAPACITOR_API_BASE_URL` | Hosted API root for native HTTP (e.g. `https://dr.eamer.dev/hexpand/api`) |
-| `VITE_PUBLIC_WEB_APP_URL` | Origin for share links on native (default `https://ideatiles.app` via `APP_PUBLIC_WEB_ORIGIN` if unset) |
+| Variable                      | Purpose                                                                                                 |
+| ----------------------------- | ------------------------------------------------------------------------------------------------------- |
+| `VITE_CAPACITOR_API_BASE_URL` | Hosted API root for native HTTP (e.g. `https://dr.eamer.dev/hexpand/api`)                               |
+| `VITE_PUBLIC_WEB_APP_URL`     | Origin for share links on native (default `https://ideatiles.app` via `APP_PUBLIC_WEB_ORIGIN` if unset) |
 
 Document chosen values in internal release notes (not committed secrets).
 
@@ -100,12 +100,12 @@ Document chosen values in internal release notes (not committed secrets).
 
 ## 6. Common rejection / confusion mitigations
 
-| Risk | Mitigation |
-|------|------------|
-| Apple Intelligence unavailable | Review notes + in-app error string; do not crash |
-| Metadata claims “real-time collab” on iOS | Remove; ASC copy matches §1 |
-| Privacy label vs `/api/share` | Disclose content upload if questionnaire asks |
-| Broken legal URLs | Ensure Express routes precede SPA catchall |
+| Risk                                      | Mitigation                                       |
+| ----------------------------------------- | ------------------------------------------------ |
+| Apple Intelligence unavailable            | Review notes + in-app error string; do not crash |
+| Metadata claims “real-time collab” on iOS | Remove; ASC copy matches §1                      |
+| Privacy label vs `/api/share`             | Disclose content upload if questionnaire asks    |
+| Broken legal URLs                         | Ensure Express routes precede SPA catchall       |
 
 ---
 
@@ -119,17 +119,17 @@ Document chosen values in internal release notes (not committed secrets).
 
 ## 8. Document map
 
-| File | Role |
-|------|------|
-| [`RELEASE_REVIEW.md`](./RELEASE_REVIEW.md) | Prioritized risks and mitigations |
-| [`APP_STORE_PACK.md`](./APP_STORE_PACK.md) | ASC copy + asset checklist |
-| [`NEXT_STEPS.md`](../NEXT_STEPS.md) | Operational deploy / AASA / hardware steps |
-| [`PROJECT_PLAN.md`](../PROJECT_PLAN.md) | Strategy and workstreams |
+| File                                       | Role                                       |
+| ------------------------------------------ | ------------------------------------------ |
+| [`RELEASE_REVIEW.md`](./RELEASE_REVIEW.md) | Prioritized risks and mitigations          |
+| [`APP_STORE_PACK.md`](./APP_STORE_PACK.md) | ASC copy + asset checklist                 |
+| [`NEXT_STEPS.md`](../NEXT_STEPS.md)        | Operational deploy / AASA / hardware steps |
+| [`PROJECT_PLAN.md`](../PROJECT_PLAN.md)    | Strategy and workstreams                   |
 
 ---
 
 ## Document history
 
-| Version | Date | Notes |
-|---------|------|--------|
-| 1.0 | 2026-05-12 | Initial MVP release spec + sharing policy |
+| Version | Date       | Notes                                     |
+| ------- | ---------- | ----------------------------------------- |
+| 1.0     | 2026-05-12 | Initial MVP release spec + sharing policy |

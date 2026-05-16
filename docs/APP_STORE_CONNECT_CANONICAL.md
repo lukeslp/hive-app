@@ -2,11 +2,11 @@
 
 Paste URLs exactly as below after production passes [`scripts/verify-canonical-endpoints.sh`](../scripts/verify-canonical-endpoints.sh).
 
-| Field | Value |
-|-------|-------|
-| **Privacy Policy URL** | `https://ideatiles.app/privacy` |
-| **Support URL** | `https://ideatiles.app/` |
-| **Marketing URL** (optional) | `https://ideatiles.app/` |
+| Field                        | Value                           |
+| ---------------------------- | ------------------------------- |
+| **Privacy Policy URL**       | `https://ideatiles.app/privacy` |
+| **Support URL**              | `https://ideatiles.app/`        |
+| **Marketing URL** (optional) | `https://ideatiles.app/`        |
 
 ## App Information (copy from pack)
 

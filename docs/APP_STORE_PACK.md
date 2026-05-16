@@ -19,31 +19,31 @@ Copy-paste oriented metadata + asset checklist for App Store Connect. Aligned to
 
 ### Voices consulted
 
-| Voice | Transport | Status (initial → retry) |
-|-------|-----------|--------------------------|
-| Mistral Large | API | ✅ Full response (re-confirmed on retry; same audience/risks) |
+| Voice                               | Transport  | Status (initial → retry)                                                                                                                                         |
+| ----------------------------------- | ---------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Mistral Large                       | API        | ✅ Full response (re-confirmed on retry; same audience/risks)                                                                                                    |
 | Ollama Cloud (`minimax-m2.5:cloud`) | CLI + REST | ❌ Needs interactive `ollama signin`; direct API tried with `OLLAMA_KEY_ID/SECRET` as Bearer/Basic/X-API-Key → all 401 (cloud auth uses ed25519 request signing) |
-| xAI Grok (grok-4-fast → grok-3) | API | ❌ HTTP 403 `"API key is currently blocked"` on retry — key needs regeneration at console.x.ai |
-| OpenAI (gpt-4o-mini → gpt-4.1) | API | ❌ Quota (429) on retry — refill not yet visible |
-| Perplexity (sonar / sonar-pro) | API | ❌ Quota (401) re-confirmed |
-| Gemini CLI (`gemini-2.5-pro`) | CLI | ❌ Capacity exhausted |
-| Codex CLI | CLI | ❌ Hung on stdin |
-| cursor-agent | CLI | ❌ Unauthenticated |
-| Claude (this synthesis) | in-session | ✅ /team executive |
+| xAI Grok (grok-4-fast → grok-3)     | API        | ❌ HTTP 403 `"API key is currently blocked"` on retry — key needs regeneration at console.x.ai                                                                   |
+| OpenAI (gpt-4o-mini → gpt-4.1)      | API        | ❌ Quota (429) on retry — refill not yet visible                                                                                                                 |
+| Perplexity (sonar / sonar-pro)      | API        | ❌ Quota (401) re-confirmed                                                                                                                                      |
+| Gemini CLI (`gemini-2.5-pro`)       | CLI        | ❌ Capacity exhausted                                                                                                                                            |
+| Codex CLI                           | CLI        | ❌ Hung on stdin                                                                                                                                                 |
+| cursor-agent                        | CLI        | ❌ Unauthenticated                                                                                                                                               |
+| Claude (this synthesis)             | in-session | ✅ /team executive                                                                                                                                               |
 
 The retry produced one repeat external voice rather than three fresh ones. Mistral's second pass agreed with the original on audience ranking and risk register, which raises confidence in the consensus block without changing it. The post-consensus rename (`Thought Tiles` → `Idea Tiles`, 2026-05-13) was a separate `/team` decision: cleaner search intent, less metaphor decoding, and a better fit for the new icon/splash artwork. To get a stronger panel for ASO, run `ollama signin` (interactive browser flow), regenerate the xAI key, and refill OpenAI, then re-run the consensus prompt with the new name spliced in.
 
 ### Audience verdict
 
-| Rank | Persona | Why |
-|------|---------|-----|
+| Rank  | Persona                                                                                       | Why                                                                                                                                  |
+| ----- | --------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------ |
 | **1** | **Solo creative pros under deadline** (writers, designers, indie devs, freelance researchers) | Largest commercially-active audience that already pays for note tools and notices when AI saves them 20 minutes on a discovery loop. |
-| 2 | Product managers / UX leads doing discovery & opportunity mapping | Pay-willing, but the hex canvas is unfamiliar; needs case-study positioning in v1.1. |
-| 3 | Students & researchers | High DAU/MAU, low ARPU; great for word-of-mouth and ASO velocity. |
-| 4 | Privacy-first power users | The natural "Show HN / Hacker News" crowd; small but evangelical. |
-| 5 | Coaches / therapists / educators with clients | Live collab is web-only this release — defer until phase 2. |
+| 2     | Product managers / UX leads doing discovery & opportunity mapping                             | Pay-willing, but the hex canvas is unfamiliar; needs case-study positioning in v1.1.                                                 |
+| 3     | Students & researchers                                                                        | High DAU/MAU, low ARPU; great for word-of-mouth and ASO velocity.                                                                    |
+| 4     | Privacy-first power users                                                                     | The natural "Show HN / Hacker News" crowd; small but evangelical.                                                                    |
+| 5     | Coaches / therapists / educators with clients                                                 | Live collab is web-only this release — defer until phase 2.                                                                          |
 
-**Dissent (cynic seat):** Mistral and the safety seat both argued for E (privacy-first) as primary, on the grounds that on-device AI is the *only* genuinely defensible moat in a crowded mind-map market. The executive overruled to A because (a) ASC search volume for "mindmap" + "brainstorm" dwarfs "private" / "on-device" by ~10×, and (b) "local AI" is already baked into the subtitle, so privacy users will still find the app via secondary keywords. Revisit at 90-day cohort review.
+**Dissent (cynic seat):** Mistral and the safety seat both argued for E (privacy-first) as primary, on the grounds that on-device AI is the _only_ genuinely defensible moat in a crowded mind-map market. The executive overruled to A because (a) ASC search volume for "mindmap" + "brainstorm" dwarfs "private" / "on-device" by ~10×, and (b) "local AI" is already baked into the subtitle, so privacy users will still find the app via secondary keywords. Revisit at 90-day cohort review.
 
 ### Top 3 ASO / launch risks
 
@@ -63,24 +63,24 @@ ASC submission only touches **metadata + the existing iOS binary**. No code chan
 
 ## 1. Basic information
 
-| Field | Value | Limit |
-|-------|-------|-------|
-| **Name** | `Idea Tiles` (10) — fallback `Idea Tiles: Brainstorm` (22) if Apple flags the bare name | 30 chars |
-| **Subtitle** | `Brainstorm with local AI` (24) — alts: `Hex maps with local AI` (22), `On-device AI brainstorming` (26, privacy-led, from Mistral retry) | 30 chars |
-| **Primary category** | Productivity | — |
-| **Secondary category** | Graphics & Design | — |
-| **Content rights** | No third-party content requiring rights | confirm |
-| **Age rating** | 4+ (no user-generated content surfaced to others; collab is web-only) | — |
+| Field                  | Value                                                                                                                                     | Limit    |
+| ---------------------- | ----------------------------------------------------------------------------------------------------------------------------------------- | -------- |
+| **Name**               | `Idea Tiles` (10) — fallback `Idea Tiles: Brainstorm` (22) if Apple flags the bare name                                                   | 30 chars |
+| **Subtitle**           | `Brainstorm with local AI` (24) — alts: `Hex maps with local AI` (22), `On-device AI brainstorming` (26, privacy-led, from Mistral retry) | 30 chars |
+| **Primary category**   | Productivity                                                                                                                              | —        |
+| **Secondary category** | Graphics & Design                                                                                                                         | —        |
+| **Content rights**     | No third-party content requiring rights                                                                                                   | confirm  |
+| **Age rating**         | 4+ (no user-generated content surfaced to others; collab is web-only)                                                                     | —        |
 
 ---
 
 ## 2. URLs (must be live)
 
-| Field | URL |
-|-------|-----|
-| **Privacy Policy** | `https://ideatiles.app/privacy` |
-| **Support** | `https://ideatiles.app/` (or `mailto:luke@lukesteuber.com`) |
-| **Marketing** | `https://ideatiles.app/` (optional; same domain) |
+| Field              | URL                                                         |
+| ------------------ | ----------------------------------------------------------- |
+| **Privacy Policy** | `https://ideatiles.app/privacy`                             |
+| **Support**        | `https://ideatiles.app/` (or `mailto:luke@lukesteuber.com`) |
+| **Marketing**      | `https://ideatiles.app/` (optional; same domain)            |
 
 See also [`APP_STORE_CONNECT_CANONICAL.md`](./APP_STORE_CONNECT_CANONICAL.md) for a one-page ASC checklist.
 
@@ -91,9 +91,11 @@ See also [`APP_STORE_CONNECT_CANONICAL.md`](./APP_STORE_CONNECT_CANONICAL.md) fo
 Pick one before paste; all three fit. Prefer **A** for launch, **B** for any v1.x update push, and **C** if the privacy angle starts pulling more conversions in Apple Search Ads cohorts.
 
 - **A — verb-first (164 chars)** ✅ recommended
+
   > Tap a tile to brainstorm six new directions, drag two together to merge, then star, filter, and export. On supported iPhones the AI runs on-device.
 
 - **B — moat-first (167 chars)**
+
   > A hex tile canvas for fast, private brainstorming. Expand any tile into six new ideas, merge two into one, then export — no account, no cloud trip on iOS.
 
 - **C — privacy-led (152 chars, from Mistral retry)**
@@ -165,7 +167,7 @@ license. We'd love your feedback at luke@lukesteuber.com.
 
 ## 5. Keywords (100 chars, comma-separated, no spaces)
 
-ASC indexes Name + Subtitle automatically, so this list deliberately avoids: *idea, tiles, brainstorm, local, ai*. Productivity is implicit via primary category.
+ASC indexes Name + Subtitle automatically, so this list deliberately avoids: _idea, tiles, brainstorm, local, ai_. Productivity is implicit via primary category.
 
 ```
 mindmap,hexagon,offline,private,ondevice,ideation,notes,canvas,diagram,focus,outline,whiteboard,plan
@@ -191,13 +193,13 @@ luke@lukesteuber.com.
 
 ## 7. App icon
 
-| Spec | Value |
-|------|-------|
-| Size | 1024 × 1024 px |
-| Format | PNG, no transparency |
-| Color | sRGB or Display P3 |
-| Source | `ios/App/App/Assets.xcassets/AppIcon.appiconset/AppIcon-{light,dark}-1024.png` |
-| Variants | Light + dark appearance both committed |
+| Spec     | Value                                                                          |
+| -------- | ------------------------------------------------------------------------------ |
+| Size     | 1024 × 1024 px                                                                 |
+| Format   | PNG, no transparency                                                           |
+| Color    | sRGB or Display P3                                                             |
+| Source   | `ios/App/App/Assets.xcassets/AppIcon.appiconset/AppIcon-{light,dark}-1024.png` |
+| Variants | Light + dark appearance both committed                                         |
 
 ---
 
@@ -205,14 +207,14 @@ luke@lukesteuber.com.
 
 Prepare **5–10** per required device class. Real boards, large legible type, captions baked into a frame strip if you use one.
 
-| # | Screen | Caption (≤45 chars) |
-|---|--------|---------------------|
-| 1 | Hero — canvas with a small populated board | Six directions. One tile at a time. |
-| 2 | Expansion in progress / freshly generated tiles | Tap to brainstorm six new directions. |
-| 3 | Drag-to-merge in motion | Merge two tiles into one. |
-| 4 | Star + filter view | Star themes. Filter the canvas. |
-| 5 | Export sheet / share link | Export PNG, SVG, or a link. |
-| 6 | Settings showing on-device path / privacy stance | Private by design on iPhone. |
+| #   | Screen                                           | Caption (≤45 chars)                   |
+| --- | ------------------------------------------------ | ------------------------------------- |
+| 1   | Hero — canvas with a small populated board       | Six directions. One tile at a time.   |
+| 2   | Expansion in progress / freshly generated tiles  | Tap to brainstorm six new directions. |
+| 3   | Drag-to-merge in motion                          | Merge two tiles into one.             |
+| 4   | Star + filter view                               | Star themes. Filter the canvas.       |
+| 5   | Export sheet / share link                        | Export PNG, SVG, or a link.           |
+| 6   | Settings showing on-device path / privacy stance | Private by design on iPhone.          |
 
 **Required sizes (verify in your ASC version):**
 
@@ -225,6 +227,7 @@ Prepare **5–10** per required device class. Real boards, large legible type, c
 ## 9. App Preview video (optional, 15–30 s, portrait)
 
 Shot list (in order):
+
 1. Tap canvas → first tile appears (1 s).
 2. Tap tile → six neighbors fan out (3 s).
 3. Drag two neighbors together → merged tile (3 s).
@@ -243,8 +246,8 @@ Match the questionnaire to actual network calls and storage:
 - **Tracking:** none. No SDKs that fingerprint or share with brokers.
 - **Linked to you / Used to track you:** none.
 - **Not linked to you:**
-  - *User Content* — board JSON, only when the user taps Share → `POST /api/share`. Snapshot is short-lived and not associated with a user account.
-  - *Identifiers* — none unless OAuth sign-in is used on the web (out of scope for iOS submission).
+  - _User Content_ — board JSON, only when the user taps Share → `POST /api/share`. Snapshot is short-lived and not associated with a user account.
+  - _Identifiers_ — none unless OAuth sign-in is used on the web (out of scope for iOS submission).
 - **Data not collected:** everything else — no analytics SDK, no advertising ID, no crash-reporting third party in the Capacitor binary.
 
 Web injects Umami only on `!isCapacitor()` paths (see `client/src/main.tsx`); the iOS binary still ships "no analytics collected."

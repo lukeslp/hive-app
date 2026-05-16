@@ -24,6 +24,7 @@ Both models converge on the same architecture. Capacitor 8 is bridge-
 lifecycle agnostic — the migration is pure Apple-side plumbing.
 
 **Agreed:**
+
 - Keep `Main.storyboard` and keep `AppViewController` as the
   `customClass="AppViewController"`. The bridge VC's `capacitorDidLoad()`
   fires the same way under either lifecycle, so `FoundationModelsPlugin`
@@ -39,21 +40,22 @@ lifecycle agnostic — the migration is pure Apple-side plumbing.
   split ownership and could fire `capacitorDidLoad()` twice.
 
 **Codex-only nuance worth keeping:**
+
 - In `scene(_:willConnectTo:options:)` for cold launches, forward both
   `connectionOptions.urlContexts` AND `connectionOptions.userActivities`
   (gemini missed urlContexts).
 - Defer the cold-launch forward one main-queue turn (`DispatchQueue.main
-  .async {}`) so the bridge VC is alive before the link dispatches.
+.async {}`) so the bridge VC is alive before the link dispatches.
   Without this, the very first deep link silently drops.
 
 ### Files in scope (4 modified, 1 new)
 
-| File | Change |
-|---|---|
-| `ios/App/App/AppDelegate.swift` | Remove `var window`, remove the 5 empty boilerplate lifecycle methods. Keep `application(_:open:options:)` and `application(_:continue:restorationHandler:)` as fallbacks for code paths Apple still routes through AppDelegate. Add `application(_:configurationForConnecting:options:)` returning a `UISceneConfiguration` keyed by name "Default Configuration". Add `application(_:didDiscardSceneSessions:)` no-op. |
-| `ios/App/App/Info.plist` | Add `UIApplicationSceneManifest` dict: `UIApplicationSupportsMultipleScenes=false`, one `UISceneConfiguration` under role `UIWindowSceneSessionRoleApplication` with name "Default Configuration", `UISceneDelegateClassName=$(PRODUCT_MODULE_NAME).SceneDelegate`, `UISceneStoryboardFile=Main`. **Remove `UIMainStoryboardFile`.** |
-| `ios/App/App/SceneDelegate.swift` | NEW. `UIResponder, UIWindowSceneDelegate`. Implement `scene(_:willConnectTo:options:)` (handle cold-start urlContexts + userActivities, deferred), `scene(_:openURLContexts:)`, `scene(_:continue:)`. Each forwards into `ApplicationDelegateProxy.shared.application(...)`. Do NOT touch the window — let the storyboard own it. Do NOT register plugins here — keep that in `AppViewController.capacitorDidLoad()`. |
-| `ios/App/App.xcodeproj/project.pbxproj` | Add `SceneDelegate.swift` PBXBuildFile + PBXFileReference. Add to App target's compile sources. |
+| File                                    | Change                                                                                                                                                                                                                                                                                                                                                                                                                   |
+| --------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `ios/App/App/AppDelegate.swift`         | Remove `var window`, remove the 5 empty boilerplate lifecycle methods. Keep `application(_:open:options:)` and `application(_:continue:restorationHandler:)` as fallbacks for code paths Apple still routes through AppDelegate. Add `application(_:configurationForConnecting:options:)` returning a `UISceneConfiguration` keyed by name "Default Configuration". Add `application(_:didDiscardSceneSessions:)` no-op. |
+| `ios/App/App/Info.plist`                | Add `UIApplicationSceneManifest` dict: `UIApplicationSupportsMultipleScenes=false`, one `UISceneConfiguration` under role `UIWindowSceneSessionRoleApplication` with name "Default Configuration", `UISceneDelegateClassName=$(PRODUCT_MODULE_NAME).SceneDelegate`, `UISceneStoryboardFile=Main`. **Remove `UIMainStoryboardFile`.**                                                                                     |
+| `ios/App/App/SceneDelegate.swift`       | NEW. `UIResponder, UIWindowSceneDelegate`. Implement `scene(_:willConnectTo:options:)` (handle cold-start urlContexts + userActivities, deferred), `scene(_:openURLContexts:)`, `scene(_:continue:)`. Each forwards into `ApplicationDelegateProxy.shared.application(...)`. Do NOT touch the window — let the storyboard own it. Do NOT register plugins here — keep that in `AppViewController.capacitorDidLoad()`.    |
+| `ios/App/App.xcodeproj/project.pbxproj` | Add `SceneDelegate.swift` PBXBuildFile + PBXFileReference. Add to App target's compile sources.                                                                                                                                                                                                                                                                                                                          |
 
 ### Reference: stash@{0}
 
@@ -100,7 +102,7 @@ write anyway and can be used as a sanity check after the fact.
 7. Verify a custom-scheme deep link opens the app + routes to the right
    screen. The console warning should be gone.
 8. Single commit: `feat(ios): adopt UIScene lifecycle, defer cold-start
-   link forward`.
+link forward`.
 
 ---
 
@@ -113,10 +115,10 @@ User reported "two download buttons on tablet." Confirmed:
 On tablet (`sm:` ≥ 640px, includes all iPads), the desktop toolbar shows
 **two adjacent Download icon buttons** with no labels:
 
-| File:Line | What | Trigger |
-|---|---|---|
+| File:Line                                   | What                                                      | Trigger                      |
+| ------------------------------------------- | --------------------------------------------------------- | ---------------------------- |
 | `client/src/components/Toolbar.tsx:188-198` | Hover dropdown — Download icon, opens menu with PNG + SVG | `onExportPNG`, `onExportSVG` |
-| `client/src/components/Toolbar.tsx:252-258` | Standalone Download icon button | `onExportSession` (JSON) |
+| `client/src/components/Toolbar.tsx:252-258` | Standalone Download icon button                           | `onExportSession` (JSON)     |
 
 A user staring at the tablet toolbar can't tell which is which without
 hovering — both are just a download arrow icon. This is the actual UX
@@ -163,7 +165,7 @@ button instead of two adjacent identical-looking buttons."
 3. `pnpm test` — verify no test references the deleted button.
 4. `pnpm build && npx cap sync ios` for the iOS bundle.
 5. Single commit: `ui(toolbar): consolidate three Export buttons into one
-   dropdown — fixes duplicate Download icons on tablet`.
+dropdown — fixes duplicate Download icons on tablet`.
 
 ---
 
