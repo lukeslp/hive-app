@@ -2,11 +2,13 @@ import { Toaster as Sonner, type ToasterProps } from "sonner";
 import { useTheme } from "@/contexts/ThemeContext";
 
 const Toaster = ({ ...props }: ToasterProps) => {
-  // Use the app's own ThemeContext rather than next-themes, which is
-  // never mounted in this app — the previous import silently fell back
-  // to "system" and toasts inherited whatever the OS preferred, ignoring
-  // an in-app theme toggle. ThemeContext's `theme` is already
-  // "light" | "dark", which Sonner accepts directly.
+  // Read theme from the app's own ThemeContext. shadcn ships this
+  // component pre-wired to `next-themes`, which would only work if a
+  // <NextThemesProvider> were mounted — we never mounted one, so the
+  // original import silently fell back to "system" and toasts ignored
+  // the in-app theme toggle. `next-themes` has been removed from
+  // package.json; ThemeContext's `theme` is "light" | "dark", which
+  // Sonner accepts directly.
   const { theme } = useTheme();
 
   return (

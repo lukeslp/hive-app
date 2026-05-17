@@ -147,3 +147,4 @@ ios-backup-all-providers/
 # Throwaway icon previews and the scp drop dir — keep build_icons.py only
 assets/preview/
 assets/incoming/
+.scratch/

@@ -18,7 +18,7 @@ import {
 import {
   Plus,
   Zap,
-  Hexagon,
+  Lightbulb,
   Download,
   Undo2,
   Redo2,
@@ -198,7 +198,7 @@ export const Toolbar = ({
               {expanded ? (
                 <X className="w-5 h-5" />
               ) : (
-                <Hexagon
+                <Lightbulb
                   className="w-5 h-5 sm:w-6 sm:h-6 text-yellow-400"
                   strokeWidth={2.5}
                 />

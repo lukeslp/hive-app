@@ -1968,6 +1968,20 @@ Generate 6 diverse related ideas. Connect to key themes when relevant.`;
               }}
             />
 
+            {/* Smart Merge Suggestions — MUST be inside the transform layer
+                so each indicator's world coordinates (midpoint.x, midpoint.y)
+                get mapped to screen via the same translate/scale that
+                positions HexCanvas's nodes. See header comment in
+                MergeSuggestionIndicator.tsx for the convention. */}
+            {mergeSuggestions.suggestions.length > 0 && (
+              <MergeSuggestionIndicator
+                suggestions={mergeSuggestions.suggestions}
+                viewState={viewState}
+                onConnect={handleConnectSuggestion}
+                onDismiss={mergeSuggestions.dismissSuggestion}
+              />
+            )}
+
             {/* Empty canvas intentionally has no helper text/icon.
                 Users can tap anywhere to start without extra chrome. */}
           </div>
@@ -2397,16 +2411,6 @@ Generate 6 diverse related ideas. Connect to key themes when relevant.`;
       {/* Remote Cursors */}
       {collab.isConnected && collab.remoteCursors.length > 0 && (
         <RemoteCursors cursors={collab.remoteCursors} viewState={viewState} />
-      )}
-
-      {/* Smart Merge Suggestions */}
-      {mergeSuggestions.suggestions.length > 0 && (
-        <MergeSuggestionIndicator
-          suggestions={mergeSuggestions.suggestions}
-          viewState={viewState}
-          onConnect={handleConnectSuggestion}
-          onDismiss={mergeSuggestions.dismissSuggestion}
-        />
       )}
     </div>
   );
