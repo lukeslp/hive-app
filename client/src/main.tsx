@@ -234,3 +234,30 @@ if (isCapacitor()) {
     void hideSplash("fallback");
   }, 4000);
 }
+
+// Web only: satisfies Chrome/Android pairing of manifest icons + HTTPS origin install UX.
+// The worker does not cache assets for offline use — fetch always proxies to network.
+function registerMinimalServiceWorker() {
+  if (typeof navigator === "undefined" || !("serviceWorker" in navigator))
+    return;
+  if (isCapacitor()) return;
+  window.addEventListener("load", () => {
+    const baseRaw = import.meta.env.BASE_URL;
+    const baseNorm =
+      baseRaw === "./"
+        ? "./"
+        : baseRaw.endsWith("/")
+          ? baseRaw
+          : `${baseRaw}/`;
+    const swUrl = `${baseNorm}sw.js`;
+    void navigator.serviceWorker.register(swUrl).then(
+      () => {
+        cp("main.tsx: service worker registered");
+      },
+      err => {
+        console.warn("Service worker registration failed", err);
+      }
+    );
+  });
+}
+registerMinimalServiceWorker();

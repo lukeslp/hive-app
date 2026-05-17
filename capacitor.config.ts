@@ -28,13 +28,10 @@ const config: CapacitorConfig = {
     SplashScreen: {
       launchAutoHide: false,
       launchShowDuration: 0,
-      // Matches the near-white bg of the v2 light-splash artwork
-      // (Splash.imageset/splash-light-2732.png). The dark-mode variant
-      // is selected automatically by the imageset's appearances entry —
-      // the plugin can't pick a different backgroundColor per appearance
-      // in v8, so this is only the brief pre-image flash for cold
-      // launches; the imageset's solid bg covers the rest.
-      backgroundColor: "#fcfbfc",
+      // Matches splash PNG fill from assets/sync_app_icon_from_master.py (corner
+      // inference on the normalized icon master; regenerate if the master changes).
+      // Covers the transient pre-image flash — Launch Screen assets match the logo.
+      backgroundColor: "#192864",
       showSpinner: true,
       iosSpinnerStyle: "medium",
       spinnerColor: "#fbbf24",
