@@ -104,7 +104,6 @@ export const SettingsModal = ({
 }: SettingsModalProps) => {
   const iosOnly = isIos();
 
-  const currentProviderConfig = visibleProviders.find(p => p.id === provider);
   const aiControlsAvailable = iosOnly
     ? appleIntelligenceAvailable
     : isProviderConfigured;
@@ -280,15 +279,12 @@ export const SettingsModal = ({
                 {isProviderConfigured ? (
                   <>
                     <Check className="w-4 h-4 flex-shrink-0" />
-                    <span>
-                      {currentProviderConfig?.name ?? "Anthropic Claude"} is
-                      active (managed)
-                    </span>
+                    <span>Generation is ready (managed)</span>
                   </>
                 ) : (
                   <>
                     <Zap className="w-4 h-4 flex-shrink-0" />
-                    <span>AI is temporarily unavailable</span>
+                    <span>Generation is temporarily unavailable</span>
                   </>
                 )}
               </div>
