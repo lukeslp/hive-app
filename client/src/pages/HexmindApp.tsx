@@ -1766,7 +1766,12 @@ Generate 6 diverse related ideas. Connect to key themes when relevant.`;
         onShowSessions={() => sessions.setShowSessionsModal(true)}
         onExportSession={sessions.exportSession}
         onImportSession={sessions.importSession}
-        onShare={sessions.generateShareUrl}
+        // Cloud Share Link is web-only: it POSTs board JSON to /api/share.
+        // The iOS bundle is on-device-only per privacy.html / APP_STORE_PACK.md §10;
+        // leaving this wired on iOS would put board content on the server and break
+        // the "No cloud" promise. iOS users still get the native share sheet via
+        // Export PNG/SVG/JSON.
+        onShare={isIos() ? undefined : sessions.generateShareUrl}
         onShowSettings={() => setShowSettingsModal(true)}
         onSetFilterType={setFilterType}
         // MVP: Live collab is web-only. Native WebSocket URL + UX are not

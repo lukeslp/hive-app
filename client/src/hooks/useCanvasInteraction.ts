@@ -28,8 +28,6 @@ export interface UseCanvasInteractionReturn {
   setViewState: React.Dispatch<React.SetStateAction<ViewState>>;
   isDragging: boolean;
   setIsDragging: React.Dispatch<React.SetStateAction<boolean>>;
-  touchDistance: number;
-  setTouchDistance: React.Dispatch<React.SetStateAction<number>>;
   hasDragged: React.MutableRefObject<boolean>;
   handlers: CanvasInteractionHandlers;
 }
@@ -70,7 +68,11 @@ export function useCanvasInteraction(
     zoom: 0.8,
   });
   const [isDragging, setIsDragging] = useState(false);
-  const [touchDistance, setTouchDistance] = useState(0);
+  // Pinch baseline: ref, not state. Touch events fire ~60Hz and state
+  // updates are scheduled, so a state-backed touchDistance reads as 0 on
+  // the first move after touchstart and produces scale = newDist/0 =
+  // Infinity. Refs are synchronous.
+  const touchDistance = useRef(0);
 
   const dragStart = useRef({ x: 0, y: 0 });
   const hasDragged = useRef(false);
@@ -167,7 +169,7 @@ export function useCanvasInteraction(
       wasPinching.current = true;
       const dx = e.touches[0].clientX - e.touches[1].clientX;
       const dy = e.touches[0].clientY - e.touches[1].clientY;
-      setTouchDistance(Math.sqrt(dx * dx + dy * dy));
+      touchDistance.current = Math.sqrt(dx * dx + dy * dy);
     }
   };
 
@@ -196,12 +198,15 @@ export function useCanvasInteraction(
       const dx = e.touches[0].clientX - e.touches[1].clientX;
       const dy = e.touches[0].clientY - e.touches[1].clientY;
       const newTouchDistance = Math.sqrt(dx * dx + dy * dy);
-      const scale = newTouchDistance / touchDistance;
-      setViewState(prev => ({
-        ...prev,
-        zoom: Math.min(Math.max(prev.zoom * scale, 0.1), 3),
-      }));
-      setTouchDistance(newTouchDistance);
+      // Guard a missed touchstart so we never compute scale / 0 = Infinity.
+      if (touchDistance.current > 0) {
+        const scale = newTouchDistance / touchDistance.current;
+        setViewState(prev => ({
+          ...prev,
+          zoom: Math.min(Math.max(prev.zoom * scale, 0.1), 3),
+        }));
+      }
+      touchDistance.current = newTouchDistance;
     }
   };
 
@@ -245,7 +250,7 @@ export function useCanvasInteraction(
     touchStartTime.current = 0;
     touchMaxDrift.current = 0;
     setIsDragging(false);
-    setTouchDistance(0);
+    touchDistance.current = 0;
   };
 
   // Wheel handler for zoom (uses native event for non-passive listener)
@@ -284,8 +289,6 @@ export function useCanvasInteraction(
     setViewState,
     isDragging,
     setIsDragging,
-    touchDistance,
-    setTouchDistance,
     hasDragged,
     handlers,
   };

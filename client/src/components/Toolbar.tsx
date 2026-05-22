@@ -59,7 +59,9 @@ interface ToolbarProps {
   onShowSessions: () => void;
   onExportSession: () => void;
   onImportSession: (file: File) => void;
-  onShare: () => void;
+  /** Cloud Share Link. Omit (undefined) to hide the Share entries — iOS
+   *  bundle hides this since the cloud share path violates "No cloud." */
+  onShare?: () => void;
   onShowSettings: () => void;
   onSetFilterType: (type: string | null) => void;
   onShowCollab?: () => void;
@@ -378,18 +380,22 @@ export const Toolbar = ({
                     <Download className="w-4 h-4 text-muted-foreground" />
                     Export SVG
                   </button>
-                  <div className="h-px bg-border my-1" />
-                  <button
-                    onClick={() => {
-                      onShare();
-                      setFilesMenuOpen(false);
-                    }}
-                    disabled={nodeCount === 0}
-                    className="w-full flex items-center gap-3 px-4 py-2.5 text-sm hover:bg-accent text-foreground disabled:opacity-50 disabled:cursor-not-allowed"
-                  >
-                    <Share2 className="w-4 h-4 text-muted-foreground" />
-                    Share link
-                  </button>
+                  {onShare && (
+                    <>
+                      <div className="h-px bg-border my-1" />
+                      <button
+                        onClick={() => {
+                          onShare();
+                          setFilesMenuOpen(false);
+                        }}
+                        disabled={nodeCount === 0}
+                        className="w-full flex items-center gap-3 px-4 py-2.5 text-sm hover:bg-accent text-foreground disabled:opacity-50 disabled:cursor-not-allowed"
+                      >
+                        <Share2 className="w-4 h-4 text-muted-foreground" />
+                        Share link
+                      </button>
+                    </>
+                  )}
                 </div>
               )}
             </div>

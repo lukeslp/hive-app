@@ -72,7 +72,10 @@
     <script>
       !(function () {
         var t = localStorage.getItem("theme");
-        document.documentElement.className = t || "dark";
+        if (!t) {
+          t = window.matchMedia && window.matchMedia("(prefers-color-scheme: light)").matches ? "light" : "dark";
+        }
+        document.documentElement.className = t;
       })();
     </script>
     <script>
