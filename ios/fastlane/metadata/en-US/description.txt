@@ -5,9 +5,9 @@ fragments — writers chasing a stuck chapter, designers mapping a flow,
 indie product folks scoping the next feature, students breaking a topic
 into pieces. You start with a single tile. From there, four verbs:
 
-• Expand — tap any tile and the AI sketches six related directions
-  around it. Branches keep their context, so the third ring still
-  knows what the first tile was about.
+• Expand — tap any tile and the on-device model sketches six related
+  directions around it. Branches keep their context, so the third ring
+  still knows what the first tile was about.
 • Merge — drag two tiles together and the app synthesizes a new one
   that captures what the pair share.
 • Star — mark key themes and filter the canvas to just those threads
@@ -41,7 +41,7 @@ keyboard shortcuts for the desktop and iPad-with-keyboard crowd,
 and proper accessibility labels for VoiceOver.
 
 Requirements.
-• AI tile expansion needs Apple Intelligence (iOS 26 or later) on
+• Tile expansion needs Apple Intelligence (iOS 26 or later) on
   eligible hardware.
 • Other features — canvas, merge, star, filter, export — work on any
   supported iPhone or iPad.
@@ -49,4 +49,4 @@ Requirements.
   message instead of a confusing failure.
 
 Free, no in-app purchase, no subscription. Open-source under the MIT
-license. We'd love your feedback at luke@lukesteuber.com.
+license. I'd love your feedback at luke@lukesteuber.com.

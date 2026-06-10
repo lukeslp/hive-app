@@ -1,6 +1,6 @@
 Idea Tiles is a hexagonal brainstorming app.
 
-AI tile expansion uses Apple's on-device Foundation Models framework
+Tile expansion uses Apple's on-device Foundation Models framework
 (iOS 26 or later, Apple Intelligence eligible hardware). There is no
 cloud fallback for that path on iOS — on ineligible devices the user
 sees an explicit availability message instead of a silent failure.
