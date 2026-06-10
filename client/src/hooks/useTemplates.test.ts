@@ -80,4 +80,25 @@ describe("parseGeneratedTemplateNodes", () => {
     expect(nodes).toHaveLength(1);
     expect(nodes![0].description).toBeUndefined();
   });
+
+  it("extracts the array from prose preamble before a fence", () => {
+    const prose = "Here's your JSON:\n```json\n" + VALID + "\n```";
+    expect(parseGeneratedTemplateNodes(prose)).toHaveLength(2);
+  });
+
+  it("extracts the array despite trailing prose", () => {
+    const prose = VALID + "\n\nLet me know if you'd like changes!";
+    expect(parseGeneratedTemplateNodes(prose)).toHaveLength(2);
+  });
+
+  it("extracts the array with prose on both sides", () => {
+    const prose = "Sure! Here you go:\n" + VALID + "\nHope that helps.";
+    expect(parseGeneratedTemplateNodes(prose)).toHaveLength(2);
+  });
+
+  it("still rejects prose containing brackets but no valid array", () => {
+    expect(
+      parseGeneratedTemplateNodes("I considered [several options] here.")
+    ).toBeNull();
+  });
 });
