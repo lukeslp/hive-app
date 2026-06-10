@@ -7,10 +7,51 @@ import { useState, useCallback } from "react";
 import { toast } from "sonner";
 import { buildApiUrl } from "@/lib/api";
 import { GEMINI_TEXT_MODEL } from "@/lib/hexConstants";
+import { isIos } from "@/lib/platform";
+import { tryOnDeviceFirst } from "@/lib/foundationModelsPlugin";
 import { getNodeKey } from "@/types/hexmind";
 import type { HexNode, ViewState } from "@/types/hivemind";
 import type { Template } from "@/lib/templates";
 import type { UseHistoryReturn } from "@/hooks/useHistory";
+
+export interface GeneratedTemplateNode {
+  q: number;
+  r: number;
+  text: string;
+  description?: string;
+  type?: string;
+}
+
+/**
+ * Parse a model response (on-device or cloud) into template nodes.
+ * Strips markdown code fences — the on-device model isn't grammar-
+ * constrained on this path, so fenced output is common. Returns null
+ * when the payload isn't a non-empty array of valid nodes.
+ */
+export function parseGeneratedTemplateNodes(
+  raw: string
+): GeneratedTemplateNode[] | null {
+  if (!raw) return null;
+  const cleaned = raw
+    .replace(/^```json\s*/i, "")
+    .replace(/^```\s*/, "")
+    .replace(/\s*```$/, "")
+    .trim();
+  try {
+    const parsed = JSON.parse(cleaned);
+    if (!Array.isArray(parsed)) return null;
+    const nodes = parsed.filter(
+      (n): n is GeneratedTemplateNode =>
+        typeof n?.text === "string" &&
+        n.text.trim() !== "" &&
+        Number.isFinite(n?.q) &&
+        Number.isFinite(n?.r)
+    );
+    return nodes.length > 0 ? nodes : null;
+  } catch {
+    return null;
+  }
+}
 
 interface UseTemplatesProps {
   commitNodes: UseHistoryReturn<Record<string, HexNode>>["push"];
@@ -96,7 +137,65 @@ Keep descriptions concise (1-2 sentences). Make content specific to "${templateC
 Example format:
 [{"q":0,"r":0,"text":"Dog Walker App","description":"Mobile platform connecting busy professionals with reliable dog walkers","type":"concept"},...]`;
 
+    const applyGeneratedNodes = (generatedNodes: GeneratedTemplateNode[]) => {
+      const newNodes: Record<string, HexNode> = {};
+      generatedNodes.forEach((gNode, index) => {
+        const key = getNodeKey(gNode.q, gNode.r);
+        newNodes[key] = {
+          q: gNode.q,
+          r: gNode.r,
+          text: gNode.text,
+          description: gNode.description ?? "",
+          type:
+            index === 0 ? "root" : (gNode.type as HexNode["type"]) || "concept",
+          depth: gNode.q === 0 && gNode.r === 0 ? 0 : 1,
+          pinned: gNode.q === 0 && gNode.r === 0,
+        };
+      });
+
+      commitNodes(newNodes);
+      setViewState({ x: 0, y: 0, zoom: 1 });
+      setSelectedNodeId("0,0");
+      setInspectedNodeId("0,0");
+      setShowWelcome(false);
+    };
+
     try {
+      // ── On-device first (iOS 26+ Apple Intelligence) ──
+      // Same privacy contract as every other generation path: on iOS
+      // the user's template context NEVER goes to /api/generate
+      // (privacy.html promises "no prompts leave your device").
+      // Web/Android: tryOnDeviceFirst returns null fast and we fall
+      // through to the cloud proxy as before.
+      const fm = await tryOnDeviceFirst({
+        prompt,
+        temperature: 0.7,
+        maxTokens: 2048,
+      });
+      if (fm) {
+        const nodes = parseGeneratedTemplateNodes(fm.text);
+        if (nodes) {
+          applyGeneratedNodes(nodes);
+          return;
+        }
+      }
+
+      // iOS is Apple-Intelligence-only: no cloud fallback.
+      if (isIos()) {
+        toast.error(
+          fm
+            ? "On-device returned unparseable output"
+            : "Apple Intelligence isn't available on this device"
+        );
+        return;
+      }
+
+      if (fm) {
+        toast.warning("On-device returned unparseable output — using cloud", {
+          duration: 2500,
+        });
+      }
+
       const response = await fetch(buildApiUrl("generate"), {
         method: "POST",
         headers: getRequestHeaders
@@ -111,43 +210,11 @@ Example format:
 
       const result = await response.json();
       const generatedText = result.candidates?.[0]?.content?.parts?.[0]?.text;
-
-      if (generatedText) {
-        const generatedNodes = JSON.parse(generatedText);
-        const newNodes: Record<string, HexNode> = {};
-
-        generatedNodes.forEach(
-          (
-            gNode: {
-              q: number;
-              r: number;
-              text: string;
-              description: string;
-              type: string;
-            },
-            index: number
-          ) => {
-            const key = getNodeKey(gNode.q, gNode.r);
-            newNodes[key] = {
-              q: gNode.q,
-              r: gNode.r,
-              text: gNode.text,
-              description: gNode.description,
-              type:
-                index === 0
-                  ? "root"
-                  : (gNode.type as HexNode["type"]) || "concept",
-              depth: gNode.q === 0 && gNode.r === 0 ? 0 : 1,
-              pinned: gNode.q === 0 && gNode.r === 0,
-            };
-          }
-        );
-
-        commitNodes(newNodes);
-        setViewState({ x: 0, y: 0, zoom: 1 });
-        setSelectedNodeId("0,0");
-        setInspectedNodeId("0,0");
-        setShowWelcome(false);
+      const nodes = parseGeneratedTemplateNodes(generatedText ?? "");
+      if (nodes) {
+        applyGeneratedNodes(nodes);
+      } else {
+        toast.error("Failed to generate template. Please try again.");
       }
     } catch (error) {
       console.error("Template generation error:", error);
