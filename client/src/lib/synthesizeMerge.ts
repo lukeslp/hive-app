@@ -2,13 +2,13 @@
  * Async helper: synthesize two hex tiles into one new tile via LLM.
  *
  * Behavior by platform:
- *   - Web: returns null immediately (existing literal-concat preserved)
+ *   - Web: cloud /api/generate directly (no on-device model exists)
  *   - iOS: Apple Foundation Models on-device only — no cloud fallback
  *   - Android: Apple Foundation Models (always returns null) → cloud /api/generate
  *
- * 1500 ms total time budget on the cloud path. If the chain doesn't
- * produce a synthesis in time, returns null and the caller's existing
- * string-concat path runs.
+ * The merge itself commits synchronously before this runs, so latency
+ * never blocks the UI. If no path produces a synthesis in time, returns
+ * null and the caller's literal string-concat stands.
  */
 
 import { isCapacitor, isIos } from "./platform";
@@ -40,7 +40,10 @@ RULES:
 JSON schema:
 { "title": "Merged Label", "type": "concept", "description": "One-sentence synthesis." }`;
 
-const TIMEOUT_MS = 1500;
+// Cloud round-trips routinely exceed 1.5s; since the concat tile is already
+// committed and this only upgrades it in place, a longer budget just means
+// more merges get the good title.
+const TIMEOUT_MS = 4000;
 
 function buildUserPrompt(source: MergeInput, target: MergeInput): string {
   return (
@@ -138,8 +141,8 @@ export interface SynthesizedMergeResult {
 /**
  * Returns a synthesized merged tile (with a flag for whether it came
  * from on-device Apple Intelligence vs the cloud fallback), or null if
- * synthesis isn't applicable (web build) or both paths failed. Caller
- * should fall back to literal concat when null.
+ * every applicable path failed. Caller should fall back to literal
+ * concat when null.
  */
 export async function synthesizeMerge(
   source: MergeInput,
@@ -147,7 +150,9 @@ export async function synthesizeMerge(
   extraHeaders: Record<string, string> = {}
 ): Promise<SynthesizedMergeResult | null> {
   if (!isCapacitor()) {
-    return null; // Web: keep the existing literal-concat behavior.
+    // Web: no on-device model — go straight to the cloud proxy.
+    const cloud = await tryCloudFallback(source, target, extraHeaders);
+    return cloud ? { synth: cloud, viaOnDevice: false } : null;
   }
 
   const onDevice = await tryFoundationModels(source, target);

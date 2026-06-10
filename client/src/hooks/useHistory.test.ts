@@ -92,6 +92,60 @@ describe("useHistory", () => {
     expect(result.current.present.x).toBe(1);
   });
 
+  it("replace amends the present entry without growing history", () => {
+    const { result } = renderHook(() => useHistory({ title: "a + b" }));
+
+    act(() => {
+      result.current.push({ title: "a + b" }); // the merge commit
+    });
+    expect(result.current.historyLength).toBe(2);
+
+    act(() => {
+      result.current.replace(p => ({ ...p, title: "Synthesized" }));
+    });
+    expect(result.current.present.title).toBe("Synthesized");
+    expect(result.current.historyLength).toBe(2);
+
+    // One undo reverts past the whole amended entry.
+    act(() => {
+      result.current.undo();
+    });
+    expect(result.current.present.title).toBe("a + b");
+    expect(result.current.canUndo).toBe(false);
+  });
+
+  it("replace preserves the redo branch", () => {
+    const { result } = renderHook(() => useHistory(0));
+
+    act(() => {
+      result.current.push(1);
+      result.current.push(2);
+      result.current.undo(); // present = 1, redo -> 2
+    });
+
+    act(() => {
+      result.current.replace(10);
+    });
+    expect(result.current.present).toBe(10);
+    expect(result.current.canRedo).toBe(true);
+
+    act(() => {
+      result.current.redo();
+    });
+    expect(result.current.present).toBe(2);
+  });
+
+  it("replace with an identity updater is a no-op", () => {
+    const { result } = renderHook(() => useHistory({ x: 1 }));
+    const before = result.current.present;
+
+    act(() => {
+      result.current.replace(p => p);
+    });
+    expect(result.current.present).toBe(before);
+    expect(result.current.historyLength).toBe(1);
+  });
+
   it("resetHistory clears stack", () => {
     const { result } = renderHook(() => useHistory(0));
 

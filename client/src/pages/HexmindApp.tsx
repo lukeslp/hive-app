@@ -175,6 +175,7 @@ export default function HexmindApp() {
     canUndo,
     canRedo,
     push: pushHistory,
+    replace: replaceNodes,
     undo: performUndo,
     redo: performRedo,
     resetHistory,
@@ -1267,6 +1268,11 @@ Generate 6 diverse related ideas. Connect to key themes when relevant.`;
     const sourceNode = nodes[sourceKey];
     const targetNode = nodes[targetKey];
     if (!sourceNode || !targetNode || sourceKey === targetKey) return;
+    // Root and pinned tiles are never merge participants. Both input paths
+    // (HTML5 drag + touch drag) filter these, but guard here too so every
+    // future caller inherits the rule.
+    if (sourceNode.type === "root" || sourceNode.pinned) return;
+    if (targetNode.type === "root" || targetNode.pinned) return;
 
     // Release canvas grip so it doesn't pan after drop
     setCanvasIsDragging(false);
@@ -1350,6 +1356,12 @@ Generate 6 diverse related ideas. Connect to key themes when relevant.`;
       duration: 5000,
     });
 
+    // The concat title we just committed. The async synthesis below only
+    // upgrades a tile that still carries it — if the user undid the merge
+    // (sourceKey back in the board) or edited the tile, the result is stale
+    // and must be dropped, never applied.
+    const mergedText = `${targetNode.text} + ${sourceNode.text}`;
+
     void synthesizeMerge(
       {
         text: sourceNode.text,
@@ -1365,19 +1377,23 @@ Generate 6 diverse related ideas. Connect to key themes when relevant.`;
     ).then(result => {
       if (!result) return;
       const latest = nodesRef.current;
-      if (!latest[targetKey]) return;
-      commitNodes(prev => {
-        if (!prev[targetKey]) return prev;
+      const current = latest[targetKey];
+      if (!current || latest[sourceKey] || current.text !== mergedText) return;
+      // replace (not push): the synthesis refines the merge commit in
+      // place, so a single toast-Undo reverts the whole merge no matter
+      // when this lands.
+      replaceNodes(prev => {
+        const tile = prev[targetKey];
+        if (!tile || prev[sourceKey] || tile.text !== mergedText) return prev;
         return {
           ...prev,
           [targetKey]: {
-            ...prev[targetKey],
+            ...tile,
             text: result.synth.title,
-            description:
-              result.synth.description || prev[targetKey].description,
+            description: result.synth.description || tile.description,
             type: NODE_TYPES[result.synth.type]
               ? result.synth.type
-              : prev[targetKey].type,
+              : tile.type,
           },
         };
       });

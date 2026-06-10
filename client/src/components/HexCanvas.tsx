@@ -854,7 +854,14 @@ export const HexCanvas = React.memo<HexCanvasProps>(
               }}
               onDragEnd={onDragEnd}
               onDragOver={e => {
-                if (draggedNodeId && draggedNodeId !== key) {
+                // Pinned and root tiles refuse the drop (no preventDefault),
+                // matching the touch path's findNodeAt filter.
+                if (
+                  draggedNodeId &&
+                  draggedNodeId !== key &&
+                  !node.pinned &&
+                  node.type !== "root"
+                ) {
                   onDragOver(e, key);
                 }
               }}
@@ -864,7 +871,12 @@ export const HexCanvas = React.memo<HexCanvasProps>(
               onDrop={e => {
                 e.preventDefault();
                 e.stopPropagation();
-                if (draggedNodeId && draggedNodeId !== key) {
+                if (
+                  draggedNodeId &&
+                  draggedNodeId !== key &&
+                  !node.pinned &&
+                  node.type !== "root"
+                ) {
                   justDropped.current = true;
                   onDrop(e, key);
                   setTimeout(() => {

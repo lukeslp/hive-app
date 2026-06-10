@@ -98,7 +98,9 @@ export function useTouchDrag({
 
       for (const [key, node] of Object.entries(currentNodes)) {
         if (key === currentDraggedKey) continue;
-        if (node.pinned) continue;
+        // Pinned and root tiles are not valid merge targets (matches the
+        // HTML5 drag path in HexCanvas and the guard in mergeNodes).
+        if (node.pinned || node.type === "root") continue;
         const pos = hexToPixelRef.current(node.q, node.r);
         const dx = canvasX - pos.x;
         const dy = canvasY - pos.y;
@@ -131,6 +133,12 @@ export function useTouchDrag({
   }, [cancelLongPress, touchDragActiveRef]);
 
   const handleTouchStart = useCallback((key: string, e: React.TouchEvent) => {
+    // Single-finger only: a second finger means pinch/zoom, and a
+    // stationary two-finger hold must not arm the long-press drag.
+    if (e.touches.length !== 1) {
+      cancelLongPress();
+      return;
+    }
     const currentNodes = nodesRef.current;
     const node = currentNodes[key];
     if (!node || node.pinned || node.type === "root") return;
@@ -155,10 +163,20 @@ export function useTouchDrag({
       });
       onDragStateChangeRef.current(key, null);
     }, LONG_PRESS_MS);
-  }, []);
+  }, [cancelLongPress]);
 
   const handleTouchMove = useCallback(
     (e: React.TouchEvent) => {
+      // A second finger landing before the long-press fires means the user
+      // is pinching — cancel the pending drag. (An active drag keeps
+      // tracking touches[0] and ignores extras.)
+      if (e.touches.length > 1 && !isDraggingRef.current) {
+        cancelLongPress();
+        draggedKeyRef.current = null;
+        touchStartPos.current = null;
+        return;
+      }
+
       const touch = e.touches[0];
 
       // If not yet dragging, check if finger moved too far (cancel long-press)

@@ -14,6 +14,13 @@ export interface UseHistoryReturn<T> {
 
   /** Snapshot or functional updater (prev = current present). */
   push: (state: T | ((prev: T) => T)) => void;
+  /**
+   * Amend the present entry in place — no new history entry, redo stack
+   * untouched. For async refinements of an already-pushed action (e.g. an
+   * LLM upgrading a merged tile's title) so one undo reverts the whole
+   * action regardless of when the refinement lands.
+   */
+  replace: (state: T | ((prev: T) => T)) => void;
   undo: () => void;
   redo: () => void;
   clear: () => void;
@@ -88,6 +95,27 @@ export function useHistory<T>(
     [maxHistory]
   );
 
+  /**
+   * Replace the present entry without growing history. Entries before and
+   * after the index (the redo branch) are preserved.
+   */
+  const replace = useCallback((stateOrUpdater: T | ((prev: T) => T)) => {
+    setBundle(({ entries: prevEntries, index: prevIndex }) => {
+      const presentState =
+        prevEntries[prevIndex] ?? prevEntries[prevEntries.length - 1];
+      const nextPresent =
+        typeof stateOrUpdater === "function"
+          ? (stateOrUpdater as (prev: T) => T)(presentState)
+          : stateOrUpdater;
+      if (nextPresent === presentState) {
+        return { entries: prevEntries, index: prevIndex };
+      }
+      const newEntries = prevEntries.slice();
+      newEntries[prevIndex] = nextPresent;
+      return { entries: newEntries, index: prevIndex };
+    });
+  }, []);
+
   const undo = useCallback(() => {
     setBundle(s => (s.index > 0 ? { ...s, index: s.index - 1 } : s));
   }, []);
@@ -134,6 +162,7 @@ export function useHistory<T>(
     canRedo,
     historyLength: entries.length,
     push,
+    replace,
     undo,
     redo,
     clear,
