@@ -1,0 +1,5 @@
+# App Store Connect coordinates for Idea Tiles.
+# Bundle id and team are the legal-of-record (docs/APP_STORE_PACK.md §0).
+app_identifier("app.hexmind.ios")
+apple_id("luke@lukesteuber.com")
+team_id("596T7J7FB6")

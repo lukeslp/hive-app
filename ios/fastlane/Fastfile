@@ -1,0 +1,16 @@
+default_platform(:ios)
+
+platform :ios do
+  desc "Upload the App Store listing (metadata only — no binary, no screenshots)"
+  desc "Source of truth for the copy: ../docs/APP_STORE_PACK.md; files live in fastlane/metadata/en-US"
+  lane :upload_listing do
+    deliver(
+      app_version: "1.1",
+      skip_binary_upload: true,
+      skip_screenshots: true,
+      # Metadata is reviewed in git, not in the interactive HTML preview.
+      force: true,
+      submit_for_review: false
+    )
+  end
+end

@@ -148,3 +148,10 @@ ios-backup-all-providers/
 assets/preview/
 assets/incoming/
 .scratch/
+
+# fastlane (ios/): vendored gems + bundler config + run artifacts
+ios/vendor/
+ios/.bundle/
+ios/fastlane/report.xml
+ios/fastlane/Preview.html
+ios/fastlane/.env*

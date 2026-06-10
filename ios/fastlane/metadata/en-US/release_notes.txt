@@ -1,0 +1,11 @@
+Apple Intelligence detection is far more reliable: the app no longer
+reports it unavailable while the model is still warming up after a
+reboot or system update, and it re-checks automatically whenever you
+return to the app.
+
+Template customization now runs on-device, matching every other
+generation path on iPhone and iPad — your prompts never leave the
+device.
+
+Refreshed app icon and splash screen. Feedback welcome:
+luke@lukesteuber.com.
