@@ -32,6 +32,12 @@ export interface FMAvailability {
   available: boolean;
   /** Reason string when unavailable (iOS<26, no Apple Intelligence, framework missing, etc.). */
   reason?: string;
+  /**
+   * True when the unavailability is expected to self-resolve
+   * (modelNotReady: assets rehydrating after reboot/OS update).
+   * Callers must not latch "unavailable" UI state on a transient reason.
+   */
+  transient?: boolean;
 }
 
 export interface FoundationModelsPlugin {
@@ -60,14 +66,20 @@ export const FoundationModels =
 
 // Per-session cache. JS is single-threaded so the only "race" is two
 // concurrent first-callers both seeing null and both probing isAvailable;
-// they'll both write the same value back. Idempotent. Cache is invalidated
-// on app foreground via the `App` listener wired in main.tsx — Apple
-// Intelligence can be toggled in Settings while the app is backgrounded.
+// they'll both write the same value back. Idempotent. Invalidated on app
+// foreground (listener in main.tsx) — Apple Intelligence can be toggled
+// in Settings while the app is backgrounded — and whenever a generation
+// call times out or rejects as unavailable.
 let availabilityCache: boolean | null = null;
 
 /**
  * Cached availability check. Returns false fast on non-iOS platforms.
- * The cache survives until invalidateFoundationModelsCache() is called.
+ *
+ * Caching rules: a positive result and *permanent* negatives
+ * (deviceNotEligible, appleIntelligenceNotEnabled, iOS < 26) are cached.
+ * Transient negatives (modelNotReady — assets rehydrating after a
+ * reboot/OS update) and bridge errors are NOT cached, so the next call
+ * re-probes instead of locking the whole session to cloud-only.
  */
 export async function isFoundationModelsAvailable(): Promise<boolean> {
   if (availabilityCache !== null) return availabilityCache;
@@ -76,11 +88,14 @@ export async function isFoundationModelsAvailable(): Promise<boolean> {
     return false;
   }
   try {
-    const { available } = await FoundationModels.isAvailable();
-    availabilityCache = available;
+    const { available, transient } = await FoundationModels.isAvailable();
+    if (available || !transient) {
+      availabilityCache = available;
+    }
     return available;
   } catch {
-    availabilityCache = false;
+    // Bridge hiccup (e.g. probe raced plugin registration at launch).
+    // Report unavailable for THIS call but don't latch it.
     return false;
   }
 }
@@ -197,11 +212,12 @@ async function runWithBridge(
     if (!silent) {
       toast.error("On-device threw: " + msg, { duration: 4000 });
     }
-    // Timeout is a strong signal that the native side wedged. Drop the
-    // cache so the next call re-probes — covers the case where Apple
-    // Intelligence was disabled mid-session or the framework hit a
-    // recoverable transient.
-    if (msg.startsWith("FM timeout")) {
+    // Timeout is a strong signal that the native side wedged, and an
+    // "unavailable" rejection means availability flipped after the
+    // cached probe (Apple Intelligence toggled mid-session, or a
+    // transient modelNotReady). Either way, drop the cache so the next
+    // call re-probes instead of trusting stale state.
+    if (msg.startsWith("FM timeout") || msg.includes("unavailable")) {
       invalidateFoundationModelsCache();
     }
     return null;

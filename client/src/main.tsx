@@ -43,6 +43,18 @@ if (
 if (isCapacitor()) {
   void import("@capacitor/app")
     .then(({ App: CapacitorApp }) => {
+      // Re-probe Foundation Models availability on every foreground:
+      // Apple Intelligence can be toggled in Settings while we're
+      // backgrounded, and a transient modelNotReady at launch resolves
+      // itself once model assets finish hydrating.
+      CapacitorApp.addListener("appStateChange", ({ isActive }) => {
+        if (isActive) {
+          void import("@/lib/foundationModelsPlugin").then(
+            ({ invalidateFoundationModelsCache }) =>
+              invalidateFoundationModelsCache()
+          );
+        }
+      });
       CapacitorApp.addListener("appUrlOpen", event => {
         try {
           const url = new URL(event.url);

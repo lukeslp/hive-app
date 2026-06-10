@@ -85,9 +85,32 @@ public class FoundationModelsPlugin: CAPPlugin, CAPBridgedPlugin {
             case .available:
                 call.resolve(["available": true])
             case .unavailable(let reason):
+                // `modelNotReady` is transient — model assets rehydrate
+                // after reboot/OS update and availability flips to
+                // .available on its own. The JS side must NOT latch
+                // "unavailable" for the session on a transient reason,
+                // or the UI tells the user Apple Intelligence is off
+                // when it's merely warming up.
+                let reasonName: String
+                var transient = false
+                switch reason {
+                case .deviceNotEligible:
+                    reasonName = "deviceNotEligible"
+                case .appleIntelligenceNotEnabled:
+                    reasonName = "appleIntelligenceNotEnabled"
+                case .modelNotReady:
+                    reasonName = "modelNotReady"
+                    transient = true
+                @unknown default:
+                    // Unknown future reasons: assume transient so we
+                    // re-probe rather than latch off permanently.
+                    reasonName = String(describing: reason)
+                    transient = true
+                }
                 call.resolve([
                     "available": false,
-                    "reason": String(describing: reason),
+                    "reason": reasonName,
+                    "transient": transient,
                 ])
             }
             #else
@@ -118,8 +141,14 @@ public class FoundationModelsPlugin: CAPPlugin, CAPBridgedPlugin {
             Task {
                 do {
                     let model = SystemLanguageModel.default
-                    guard case .available = model.availability else {
-                        call.reject("FoundationModels unavailable on this device")
+                    if case .unavailable(let reason) = model.availability {
+                        // Include the reason: "modelNotReady" is a transient
+                        // warm-up state, not a capability statement, and the
+                        // JS layer keys off this string to re-probe instead
+                        // of latching the session to cloud-only.
+                        call.reject(
+                            "FoundationModels unavailable: \(String(describing: reason))"
+                        )
                         return
                     }
 
@@ -191,8 +220,14 @@ public class FoundationModelsPlugin: CAPPlugin, CAPBridgedPlugin {
             Task {
                 do {
                     let model = SystemLanguageModel.default
-                    guard case .available = model.availability else {
-                        call.reject("FoundationModels unavailable on this device")
+                    if case .unavailable(let reason) = model.availability {
+                        // Include the reason: "modelNotReady" is a transient
+                        // warm-up state, not a capability statement, and the
+                        // JS layer keys off this string to re-probe instead
+                        // of latching the session to cloud-only.
+                        call.reject(
+                            "FoundationModels unavailable: \(String(describing: reason))"
+                        )
                         return
                     }
 

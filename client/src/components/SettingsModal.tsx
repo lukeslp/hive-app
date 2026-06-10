@@ -265,7 +265,7 @@ export const SettingsModal = ({
                 <span>
                   {appleIntelligenceAvailable
                     ? "Apple Intelligence is active on this device. Generation runs entirely on-device — no network, no API key, no data leaves the device."
-                    : "Apple Intelligence isn't available here yet. Enable it in iOS Settings → Apple Intelligence & Siri to unlock AI controls below."}
+                    : "Apple Intelligence isn't reachable right now. If it's enabled in iOS Settings → Apple Intelligence & Siri, it may still be warming up — this updates automatically once it's ready."}
                 </span>
               </div>
             ) : (

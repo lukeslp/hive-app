@@ -163,21 +163,62 @@ export function useProviderSettings(): UseProviderSettingsReturn {
   const [serverProviders, setServerProviders] =
     useState<ServerProviderInfo | null>(null);
 
-  // Probe Foundation Models availability once on mount. The result is
-  // cached for the session in component state and used for both the
-  // visible-providers filter and the auto-default fallback.
+  // Probe Foundation Models availability on mount, on app foreground,
+  // and — when the framework reports a *transient* unavailability
+  // (modelNotReady: assets rehydrating after a reboot/OS update) —
+  // again on a backoff schedule. A one-shot probe at launch was how the
+  // UI ended up claiming Apple Intelligence "isn't available here" on
+  // devices where it merely hadn't finished warming up.
   useEffect(() => {
     if (!isCapacitor() || getPlatform() !== "ios") return;
     let cancelled = false;
-    FoundationModels.isAvailable()
-      .then(({ available }) => {
-        if (!cancelled) setAppleIntelligenceAvailable(available);
-      })
-      .catch(() => {
-        if (!cancelled) setAppleIntelligenceAvailable(false);
+    let retryHandle: ReturnType<typeof setTimeout> | undefined;
+
+    const probe = (attempt: number) => {
+      FoundationModels.isAvailable()
+        .then(({ available, transient }) => {
+          if (cancelled) return;
+          setAppleIntelligenceAvailable(available);
+          // 2s, 4s, 8s, 16s, 32s — covers ~1 min of model warm-up.
+          if (!available && transient && attempt < 5) {
+            retryHandle = setTimeout(
+              () => probe(attempt + 1),
+              2000 * 2 ** attempt
+            );
+          }
+        })
+        .catch(() => {
+          if (cancelled) return;
+          // Bridge hiccup (probe can race plugin registration on cold
+          // launch). Treat like transient: report off, retry shortly.
+          setAppleIntelligenceAvailable(false);
+          if (attempt < 5) {
+            retryHandle = setTimeout(
+              () => probe(attempt + 1),
+              2000 * 2 ** attempt
+            );
+          }
+        });
+    };
+    probe(0);
+
+    // Apple Intelligence can be toggled in iOS Settings while the app
+    // is backgrounded — re-probe every time we come back to foreground.
+    let removeListener: (() => void) | undefined;
+    void import("@capacitor/app").then(({ App: CapacitorApp }) => {
+      if (cancelled) return;
+      void CapacitorApp.addListener("appStateChange", ({ isActive }) => {
+        if (isActive && !cancelled) probe(0);
+      }).then(handle => {
+        removeListener = () => void handle.remove();
+        if (cancelled) removeListener();
       });
+    });
+
     return () => {
       cancelled = true;
+      if (retryHandle !== undefined) clearTimeout(retryHandle);
+      removeListener?.();
     };
   }, []);
 
