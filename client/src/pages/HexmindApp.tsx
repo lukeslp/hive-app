@@ -1770,7 +1770,7 @@ Generate 6 diverse related ideas. Connect to key themes when relevant.`;
         // The iOS bundle is on-device-only per privacy.html / APP_STORE_PACK.md §10;
         // leaving this wired on iOS would put board content on the server and break
         // the "No cloud" promise. iOS users still get the native share sheet via
-        // Export PNG/SVG/JSON.
+        // Export PNG/SVG/JSON. See docs/RELEASE_SPEC.md §1.
         onShare={isIos() ? undefined : sessions.generateShareUrl}
         onShowSettings={() => setShowSettingsModal(true)}
         onSetFilterType={setFilterType}
@@ -2260,15 +2260,19 @@ Generate 6 diverse related ideas. Connect to key themes when relevant.`;
         }}
       />
 
-      <ShareModal
-        isOpen={sessions.showShareModal}
-        onClose={() => sessions.setShowShareModal(false)}
-        shareUrl={sessions.shareUrl}
-        iosShareUrl={sessions.iosShareUrl}
-        copied={sessions.copied}
-        onCopy={sessions.copyShareUrl}
-        onBringToIos={sessions.bringToIos}
-      />
+      {/* Share-link Modal — hidden on iOS (export-only sharing), matching
+          the onShare gate above */}
+      {!isIos() && (
+        <ShareModal
+          isOpen={sessions.showShareModal}
+          onClose={() => sessions.setShowShareModal(false)}
+          shareUrl={sessions.shareUrl}
+          iosShareUrl={sessions.iosShareUrl}
+          copied={sessions.copied}
+          onCopy={sessions.copyShareUrl}
+          onBringToIos={sessions.bringToIos}
+        />
+      )}
 
       <SettingsModal
         isOpen={showSettingsModal}

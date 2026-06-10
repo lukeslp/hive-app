@@ -22,7 +22,7 @@
 
 - [ ] Metadata from [`APP_STORE_PACK.md`](./APP_STORE_PACK.md) pasted and character-limited verified
 - [ ] Screenshots uploaded per required device classes
-- [ ] Privacy questionnaire matches **actual** collection (including `/api/share` payload if disclosed)
+- [ ] Privacy questionnaire matches **actual** collection (iOS no longer uploads boards via `/api/share`; share-link creation is web-only)
 - [ ] Review notes describe Apple Intelligence requirement + snapshot vs live collab scope
 
 ### After upload
@@ -38,10 +38,11 @@
 
 | Capability                                                  | Web | iOS (Capacitor)                                                                                   |
 | ----------------------------------------------------------- | --- | ------------------------------------------------------------------------------------------------- |
-| **Snapshot share** (`?s=` via `POST /api/share`)            | Yes | **Yes** — link must use public web origin (`getPublicWebAppOrigin()` / `VITE_PUBLIC_WEB_APP_URL`) |
-| **Live collaboration** (WebSocket `/ws/collab`, `?collab=`) | Yes | **No** — UI entry hidden; not MVP for native                                                      |
+| **Snapshot share — create** (`POST /api/share` → `?s=` link) | Yes | **No** — "Share link" UI hidden; share boards via PNG/SVG/JSON exports + native share sheet |
+| **Snapshot share — open** (`?s=` link received)              | Yes | **Yes** — Universal Links still load shared boards in the app                               |
+| **Live collaboration** (WebSocket `/ws/collab`, `?collab=`)  | Yes | **No** — UI entry hidden; not MVP for native                                                |
 
-**Rationale:** Live collab requires a production-safe WebSocket URL strategy and full UX parity; partial implementation would confuse testers and reviewers.
+**Rationale:** Live collab requires a production-safe WebSocket URL strategy and full UX parity; partial implementation would confuse testers and reviewers. Share-link *creation* is web-only because links route recipients to the web app, where cloud generation is billed to the operator's API keys, and the share store is in-memory (links expire on every deploy) — exports are the reliable native sharing path.
 
 **Phase 2 (non-MVP) prerequisites for iOS live collab:**
 
@@ -65,7 +66,7 @@
 | Variable                      | Purpose                                                                                                                                                                                  |
 | ----------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `VITE_CAPACITOR_API_BASE_URL` | Hosted API root for native HTTP. Defaults to `${APP_PUBLIC_WEB_ORIGIN}/api` (currently `https://ideatiles.app/api`); set explicitly only when shipping a build that points off-canonical. |
-| `VITE_PUBLIC_WEB_APP_URL`     | Origin for share links on native (default `https://ideatiles.app` via `APP_PUBLIC_WEB_ORIGIN` if unset).                                                                                  |
+| `VITE_PUBLIC_WEB_APP_URL`     | Public web origin surfaced by native builds (default `https://ideatiles.app` via `APP_PUBLIC_WEB_ORIGIN` if unset). Mostly legacy now that share-link creation is web-only.                |
 
 Document chosen values in internal release notes (not committed secrets).
 
@@ -86,7 +87,7 @@ Document chosen values in internal release notes (not committed secrets).
 
 **Beta description (short):**
 
-> Idea Tiles is a hexagonal mind map. On supported devices, expansions use Apple Intelligence on-device. Merge tiles, export images, and share a **browser** snapshot link. Real-time “Collaborate” sessions are on the website in this build, not inside the iOS shell.
+> Idea Tiles is a hexagonal mind map. On supported devices, expansions use Apple Intelligence on-device. Merge tiles, then export and share boards as images (PNG/SVG) or JSON files. Snapshot share links and real-time “Collaborate” sessions are on the website in this build, not inside the iOS shell.
 
 **What to test:**
 
@@ -104,7 +105,7 @@ Document chosen values in internal release notes (not committed secrets).
 | ----------------------------------------- | ------------------------------------------------ |
 | Apple Intelligence unavailable            | Review notes + in-app error string; do not crash |
 | Metadata claims “real-time collab” on iOS | Remove; ASC copy matches §1                      |
-| Privacy label vs `/api/share`             | Disclose content upload if questionnaire asks    |
+| Privacy label vs `/api/share`             | iOS app no longer uploads via `/api/share` (web-only); verify label reflects this |
 | Broken legal URLs                         | Ensure Express routes precede SPA catchall       |
 
 ---

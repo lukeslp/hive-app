@@ -4,8 +4,11 @@
 
 **Summary**
 
-- **iOS / Capacitor:** Snapshot share links (`?s=`) are in scope; links MUST use a public `https` web origin (see `getPublicWebAppOrigin()` in `client/src/lib/platform.ts` and optional `VITE_PUBLIC_WEB_APP_URL`).
+- **Web:** Snapshot share links (`?s=` via `POST /api/share`) + live collaboration remain available.
+- **iOS / Capacitor:** Share-link **creation is off** — the "Share link" entry is hidden (`onShare` passed as `undefined` in `HexmindApp.tsx`, same pattern as collab). Sharing from iOS is local exports: PNG / SVG / JSON through the native share sheet.
+- **iOS / Capacitor:** **Opening** received `?s=` links via Universal Links still works; the `?s=` loader in `useSessionManagement.ts` is platform-agnostic.
 - **iOS / Capacitor:** Live collaboration entry points are **off** until a full native collab ship is ready.
-- **Web:** Snapshot share + live collaboration remain available.
 
-Do not re-enable native collab without updating WebSocket routing, tests, and ASC copy.
+**Why creation is web-only:** share links route recipients to the web app where cloud generation bills the operator's API keys, and the in-memory share store expires links on every deploy. Exports are the reliable native path.
+
+Do not re-enable native share-link creation or collab without updating `RELEASE_SPEC.md` §1, tests, and ASC copy.
