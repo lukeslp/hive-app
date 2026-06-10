@@ -33,21 +33,18 @@ fastlane upload_listing` pushes metadata only (Homebrew Ruby,
   vendored gems). First auth was interactive; keychain session lasts
   ~a month. Metadata uploaded for 1.1 — re-run after any copy change.
 
-### Pickup point (as of 2026-06-10)
+### Pickup point (as of 2026-06-10, evening)
 
-1. **Uncommitted working-tree changes from the gap** — commit or revert
-   deliberately; none of this is committed or reviewed:
-   - Xcode project rename **`App.xcodeproj` → `IdeaTiles.xcodeproj`**
-     (deletes old schemes + the `xcodecloud/` manifest). Before
-     committing: check `pnpm cap:open` / `cap sync`, Xcode Cloud
-     workflow, and the "Sync web assets" phase still resolve.
-   - **Splash/theme color `#192864` → `#c2cfe8`** across
-     `capacitor.config.ts`, `client/index.html`, `site.webmanifest`,
-     Android launcher background + regenerated Android splash/launcher
-     PNGs (output of `assets/sync_app_icon_from_master.py`).
-   - **`FoundationModelsPlugin.swift` `withTimeout` rewritten** to an
-     actor-based race with unstructured tasks (deadline can't be held
-     hostage by an uncooperative framework call).
+1. ~~Uncommitted working-tree changes~~ **Resolved** (`e01924e`,
+   `341d706`): splash recolor and the `withTimeout` actor-race rewrite
+   are landed and verified (cap sync + simulator build). The
+   **`App.xcodeproj` → `IdeaTiles.xcodeproj` rename was REVERTED** —
+   Capacitor CLI hardcodes `ios/App/App.xcodeproj/project.pbxproj` and
+   `cap sync` fails ENOENT with the rename in place. The pbxproj was
+   byte-identical, so nothing was lost; the scheme's
+   `queueDebuggingEnabled` tweak was ported. **Don't rename
+   `App.xcodeproj`** — rename the displayed product/scheme instead if
+   the sidebar name matters.
 2. **Archive 1.1** in Xcode (Any iOS Device, arm64; say no to Catalyst)
    → upload to ASC → TestFlight smoke per `docs/DEVICE_RELEASE_GATES.md`.
 3. **ASC:** add version 1.1, attach the build (What's New is already in
