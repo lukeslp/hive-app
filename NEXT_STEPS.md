@@ -1,6 +1,8 @@
 # Next steps — Idea Tiles
 
-_Product name **Idea Tiles** (live on the App Store). **Canonical web / marketing origin:** `https://ideatiles.app` (Porkbun). Bundle id stays `app.hexmind.ios`; legacy brand domains (`hexmind.app`, `hivemind.cx`, …) still route to the same deployment until retired._
+_Product name **Idea Tiles** (live on the App Store). **Canonical web / marketing origin:** `https://ideatiles.app` (Porkbun). Bundle id stays `app.hexmind.ios`._
+
+**Deployment (verified 2026-06-10):** `ideatiles.app` → dedicated sm service `ideatiles` (port **5065**, runs from `~/servers/ideatiles`, this workspace). Legacy brand domains (`hexmind.app`, `hexmind.io`, `hexpand.app`, `hexpander.app`, `hivemind.cx`, `hive-mind.pro`) and the `dr.eamer.dev/{hivemind,hexmind,hexpand}` subpaths route to the **HiveMind community canvas** (sm `hexmind`, port 5057, `~/projects/hivemind`) — a different deployment, pending retirement disposition. The 2026-05-13 "deploy hive-app into `~/projects/hivemind/dist`" arrangement described below is historical.
 
 **Canonical rollout (repo):** [`docs/infra/IDEATILES_DOMAIN.md`](docs/infra/IDEATILES_DOMAIN.md) · verify: `pnpm verify:canonical` · device gates: [`docs/DEVICE_RELEASE_GATES.md`](docs/DEVICE_RELEASE_GATES.md) · ASC URLs: [`docs/APP_STORE_CONNECT_CANONICAL.md`](docs/APP_STORE_CONNECT_CANONICAL.md).
 
@@ -154,7 +156,13 @@ Public TestFlight is already live — treat remaining items as **App Store submi
 
 ---
 
-## Right now — production Node (`hexmind.service`)
+## Historical (2026-05-13) — production Node (`hexmind.service`)
+
+> **Superseded:** the canonical web deploy is now the sm service `ideatiles`
+> (port 5065) running directly from this workspace — see the deployment note
+> at the top of this file. The section below describes the interim
+> deploy-into-`hivemind/dist` arrangement and is kept for the operational
+> details only.
 
 **Source of truth:** GitHub [`lukeslp/hive-app`](https://github.com/lukeslp/hive-app) (this workspace). **systemd** runs the bundle from **`~/projects/hivemind/dist/`** (unit `hexmind.service`, `PORT=5057`), **not** `~/projects/hexpand` or `~/servers/hexpand`.
 
