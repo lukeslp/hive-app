@@ -2,12 +2,12 @@ Idea Tiles is a hexagonal brainstorming app.
 
 Tile expansion uses Apple's on-device Foundation Models framework
 (iOS 26 or later, Apple Intelligence eligible hardware). There is no
-cloud fallback for that path on iOS — on ineligible devices the user
+cloud fallback for that path on iOS. On ineligible devices the user
 sees an explicit availability message instead of a silent failure.
 
 Sharing from iOS is local-only: boards export as PNG, JPG, SVG, or
 JSON through the standard share sheet (AirDrop, Messages, Files). The
-iOS app does not create server-hosted share links — link creation and
+iOS app does not create server-hosted share links. Link creation and
 live multi-user collaboration are features of the web app
 (ideatiles.app) only. The app can open board links created on the web
 app via Universal Links.
@@ -15,6 +15,6 @@ app via Universal Links.
 Please test on an Apple-Intelligence-eligible device (iPhone 15 Pro,
 iPhone 16 or later, M-series iPad) with Apple Intelligence enabled in
 Settings. On any other device, tapping a tile will surface a clear
-"Apple Intelligence isn't available" message — this is intentional.
+"Apple Intelligence isn't available" message; this is intentional.
 
 Open source under MIT (github.com/lukeslp/hive-app).

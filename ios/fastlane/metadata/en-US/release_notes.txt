@@ -4,7 +4,7 @@ reboot or system update, and it re-checks automatically whenever you
 return to the app.
 
 Template customization now runs on-device, matching every other
-generation path on iPhone and iPad — your prompts never leave the
+generation path on iPhone and iPad: your prompts never leave the
 device.
 
 New: export boards as JPG, alongside PNG, SVG, and JSON.
