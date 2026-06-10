@@ -12,11 +12,11 @@
   - iOS app (Capacitor + Apple Foundation Models path)
   - Android app (Capacitor + Gemma/on-device path when available)
 
-## Current Product State (May 2026)
+## Current Product State (June 2026)
 
-- **App Store:** Live; canonical ASC / marketing URLs use **ideatiles.app**.
+- **App Store:** 1.0 live; the **1.1 release train is open** (availability fixes, JPG export, on-device template customization). Listing metadata is managed as code in `ios/fastlane/` (`bundle exec fastlane upload_listing`).
 - Brand display name is **Idea Tiles** while legacy storage keys intentionally remain `hexpand_*` for data continuity.
-- **Sharing MVP:** iOS uses **snapshot** share links only (public `https` origin, not `capacitor://`). **Live collaboration** is **web-only** for this proof-of-concept — see [`docs/SHARING_MVP_POLICY.md`](docs/SHARING_MVP_POLICY.md).
+- **Sharing MVP:** iOS sharing is **local exports only** — PNG / JPG / SVG / JSON through the native share sheet (AirDrop, Messages, Files). **Share-link creation and live collaboration are web-only**; iOS still opens web-created `?s=` links via Universal Links. See [`docs/SHARING_MVP_POLICY.md`](docs/SHARING_MVP_POLICY.md).
 - Share modal includes a dedicated **Bring to iOS** action that prefers the canonical universal-link origin (`APP_PUBLIC_WEB_ORIGIN`) so boards can be handed off to the iOS app flow more reliably.
 - Settings modal now uses a compact, screen-space-first control row: theme toggle, accessibility font cycling (Atkinson/Lexend/OpenDyslexic/Aptos/System), font size +/- controls, animation toggle, high-contrast toggle, prominent Auto-Save, and a destructive "Delete Current Board" action.
 - Hex tile title rendering now favors readability: removed forced uppercase in-node labels and switched to balanced wrapping with normal word breaking to reduce awkward mid-word splits on mobile.
@@ -50,6 +50,9 @@ pnpm build        # Vite client + esbuild server bundle
 pnpm start        # Production server
 pnpm cap:build    # Build + sync iOS
 pnpm cap:sync:android
+
+# App Store listing metadata (no binary; copy in ios/fastlane/metadata/)
+cd ios && bundle install && bundle exec fastlane upload_listing
 ```
 
 ## Native build env (iOS)

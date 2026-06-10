@@ -6,6 +6,57 @@ _Product name **Idea Tiles** (live on the App Store). **Canonical web / marketin
 
 **Canonical rollout (repo):** [`docs/infra/IDEATILES_DOMAIN.md`](docs/infra/IDEATILES_DOMAIN.md) · verify: `pnpm verify:canonical` · device gates: [`docs/DEVICE_RELEASE_GATES.md`](docs/DEVICE_RELEASE_GATES.md) · ASC URLs: [`docs/APP_STORE_CONNECT_CANONICAL.md`](docs/APP_STORE_CONNECT_CANONICAL.md).
 
+## 2026-06-09/10 — 1.1 train opened; availability, privacy, fastlane
+
+All pushed to `main` (`f5a9972`…`eb78045`). Suite is **121 tests / 12 files**.
+
+- **Build unblocked:** Xcode 27's "recommended settings" had enabled
+  `ENABLE_USER_SCRIPT_SANDBOXING`, failing every build at the
+  "Sync web assets" phase (`f5a9972`). **Decline that setting if Xcode
+  re-prompts.**
+- **1.1 release train open** (`be7f9b1`): 1.0 is approved (train closed),
+  so `MARKETING_VERSION = 1.1`, build 1.
+- **Apple Intelligence availability** (`f4daec6`, `fd8283f`): transient
+  `modelNotReady` (post-reboot warm-up) no longer latches "unavailable"
+  for the session. Foreground re-probe + 2s→32s backoff, single-flight
+  probe chains, native rejections carry the real reason.
+- **Privacy contract closed** (`0ed7dad`, `8e69249`): contextual template
+  generation was the one path POSTing iOS prompts to `/api/generate`.
+  Now on-device with hard stop, lenient JSON extraction, and failures
+  keep the user's typed context for retry. Verified by two external
+  models + adversarial seats.
+- **JPG export + listing alignment** (`eb78045`): exports are
+  PNG/JPG/SVG/JSON; ASC description + review notes now match the
+  local-only iOS sharing policy (no more "tap Share to create a link").
+- **fastlane** (`3d87569`): `cd ios && bundle install && bundle exec
+fastlane upload_listing` pushes metadata only (Homebrew Ruby,
+  vendored gems). First auth was interactive; keychain session lasts
+  ~a month. Metadata uploaded for 1.1 — re-run after any copy change.
+
+### Pickup point (as of 2026-06-10)
+
+1. **Uncommitted working-tree changes from the gap** — commit or revert
+   deliberately; none of this is committed or reviewed:
+   - Xcode project rename **`App.xcodeproj` → `IdeaTiles.xcodeproj`**
+     (deletes old schemes + the `xcodecloud/` manifest). Before
+     committing: check `pnpm cap:open` / `cap sync`, Xcode Cloud
+     workflow, and the "Sync web assets" phase still resolve.
+   - **Splash/theme color `#192864` → `#c2cfe8`** across
+     `capacitor.config.ts`, `client/index.html`, `site.webmanifest`,
+     Android launcher background + regenerated Android splash/launcher
+     PNGs (output of `assets/sync_app_icon_from_master.py`).
+   - **`FoundationModelsPlugin.swift` `withTimeout` rewritten** to an
+     actor-based race with unstructured tasks (deadline can't be held
+     hostage by an uncooperative framework call).
+2. **Archive 1.1** in Xcode (Any iOS Device, arm64; say no to Catalyst)
+   → upload to ASC → TestFlight smoke per `docs/DEVICE_RELEASE_GATES.md`.
+3. **ASC:** add version 1.1, attach the build (What's New is already in
+   `ios/fastlane/metadata/en-US/release_notes.txt`), submit.
+4. **Server hardening trio** before promoting web traffic
+   (`docs/RELEASE_REVIEW.md`): LLM proxy rate limit + `maxTokens`
+   ceiling + fetch timeouts; DB-backed `/api/share` with TTL; collab
+   `state-sync` host enforcement.
+
 ## 2026-05-12 — MVP release alignment (docs + sharing)
 
 - **Release docs** (canonical): [`docs/RELEASE_SPEC.md`](docs/RELEASE_SPEC.md), [`docs/RELEASE_REVIEW.md`](docs/RELEASE_REVIEW.md), [`docs/APP_STORE_PACK.md`](docs/APP_STORE_PACK.md), [`docs/SHARING_MVP_POLICY.md`](docs/SHARING_MVP_POLICY.md).

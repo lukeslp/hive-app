@@ -676,12 +676,3 @@ export const DEFAULT_GENERATION_TRACKER: GenerationTracker = {
   generationCount: 0,
   lastGenerationTime: null,
 } as const;
-
-/**
- * Storage keys for localStorage
- */
-export const STORAGE_KEYS = {
-  SESSIONS: "hivemind_sessions",
-  AUTOSAVE: "hivemind_autosave",
-  SETTINGS: "hivemind_settings",
-} as const;
