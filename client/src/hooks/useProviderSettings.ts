@@ -335,8 +335,7 @@ export function useProviderSettings(): UseProviderSettingsReturn {
       "mistral",
     ];
     const serverHasKey =
-      keyBacked.includes(provider) &&
-      !!serverProviders?.available?.[provider];
+      keyBacked.includes(provider) && !!serverProviders?.available?.[provider];
 
     const key = apiKeys[provider as keyof ApiKeys] as string | undefined;
     if (!serverHasKey && key && key.trim()) {

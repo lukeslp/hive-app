@@ -256,11 +256,7 @@ function registerMinimalServiceWorker() {
   window.addEventListener("load", () => {
     const baseRaw = import.meta.env.BASE_URL;
     const baseNorm =
-      baseRaw === "./"
-        ? "./"
-        : baseRaw.endsWith("/")
-          ? baseRaw
-          : `${baseRaw}/`;
+      baseRaw === "./" ? "./" : baseRaw.endsWith("/") ? baseRaw : `${baseRaw}/`;
     const swUrl = `${baseNorm}sw.js`;
     void navigator.serviceWorker.register(swUrl).then(
       () => {
