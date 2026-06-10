@@ -31,7 +31,7 @@ const config: CapacitorConfig = {
       // Matches splash PNG fill from assets/sync_app_icon_from_master.py (corner
       // inference on the normalized icon master; regenerate if the master changes).
       // Covers the transient pre-image flash — Launch Screen assets match the logo.
-      backgroundColor: "#192864",
+      backgroundColor: "#c2cfe8",
       showSpinner: true,
       iosSpinnerStyle: "medium",
       spinnerColor: "#fbbf24",

@@ -92,7 +92,7 @@ FOREGROUND_SIZES = {
 WHITE_CORNER_MAX_RGB = 246
 # Halo trim exits only once corners duck under this tighter bar so LANCZOS upsamples
 # to 1024² do not reintroduce pastel corners at canvas edges.
-INNER_TRIM_UNTIL_UNDER = 222
+INNER_TRIM_UNTIL_UNDER = 245
 
 _HEX_RE = re.compile(r"^\s*#?([0-9a-fA-F]{6})\s*$")
 
