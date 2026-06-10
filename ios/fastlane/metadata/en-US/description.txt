@@ -1,52 +1,30 @@
-Turn one idea into a whole canvas.
+Turn one idea into a map of everything around it.
 
-Idea Tiles is a hexagonal brainstorming app for anyone who thinks in
-fragments: writers chasing a stuck chapter, designers mapping a flow,
-indie product folks scoping the next feature, students breaking a topic
-into pieces. You start with a single tile. From there, four verbs:
+Idea Tiles is a hexagonal brainstorming canvas for anyone who thinks in fragments: writers chasing a stuck chapter, designers mapping a flow, indie product folks scoping the next feature, students breaking a topic into pieces. You start with a single tile holding a single thought. Every tap pushes outward from there, expanding the conceptual space around your idea until the canvas holds its whole neighborhood: the obvious next steps, the odd angles, the connections you wouldn't have found staring at a list.
 
-• Expand: tap any tile and the on-device model sketches six related
-  directions around it. Branches keep their context, so the third ring
-  still knows what the first tile was about.
-• Merge: drag two tiles together and the app synthesizes a new one
-  that captures what the pair share.
-• Star: mark key themes and filter the canvas to just those threads
-  when the board gets dense.
-• Export: save a board as PNG, JPG, SVG, or JSON, or pick up where
-  you left off across sessions.
+Four verbs do the work:
+
+• Expand: tap any tile and the on-device model sketches six related directions around it. Branches keep their context, so the third ring still knows what the first tile was about.
+• Merge: drag two tiles together and the app synthesizes a new one that captures what the pair share.
+• Star: mark key themes and filter the canvas to just those threads when the board gets dense.
+• Export: save a board as PNG, JPG, SVG, or JSON, or pick up where you left off across sessions.
 
 Private by default on iPhone and iPad.
-On supported iPhones (iPhone 15 Pro, iPhone 16 and later, or an
-M-series iPad with Apple Intelligence enabled), tile expansion uses
-Apple's on-device Foundation Models. Your prompts and ideas never
-leave the device. There is no cloud fallback on iOS. If the model
-isn't available, the app tells you instead of quietly sending data
-elsewhere. No accounts, no analytics SDK, no tracking IDs.
 
-On the web (ideatiles.app) and Android, you can bring your own API key
-for Gemini, Claude, GPT, Grok, Mistral, or a local Ollama server.
-Boards still save to your device first.
+On supported devices (iPhone 15 Pro, iPhone 16 and later, or an M-series iPad with Apple Intelligence enabled), tile expansion runs on Apple's on-device Foundation Models. Your prompts and ideas never leave the device. There is no cloud fallback: if the model isn't available, the app says so instead of quietly sending data elsewhere. No accounts, no analytics SDK, no tracking IDs.
 
 Share a board.
-Export your canvas as a PNG, JPG, or SVG image, or as JSON, straight
-from the iOS share sheet: AirDrop it, message it, or save it to
-Files. Links created on the web app open right in the app. Share-link
-creation and live multi-user collaboration are web-app features
-(ideatiles.app); boards made on iOS stay on your device unless you
-choose to export them.
+
+Boards live on your device. When you want one out in the world, export it as a PNG, JPG, or SVG image, or as JSON, straight from the share sheet: AirDrop it, message it, save it to Files.
 
 Built to feel fast.
-Smooth pan and pinch on the canvas, undo/redo for every move,
-keyboard shortcuts for the desktop and iPad-with-keyboard crowd,
-and proper accessibility labels for VoiceOver.
 
-Requirements.
-• Tile expansion needs Apple Intelligence (iOS 26 or later) on
-  eligible hardware.
-• Other features (canvas, merge, star, filter, export) work on any
-  supported iPhone or iPad.
-• If your device can't run Apple Intelligence, you'll see a clear
-  message instead of a confusing failure.
+Smooth pan and pinch on the canvas, undo/redo for every move, keyboard shortcuts for the iPad-with-keyboard crowd, and proper accessibility labels for VoiceOver.
 
-Free, no in-app purchase, no subscription. Open-source under the MIT
-license. I'd love your feedback at luke@lukesteuber.com.
+Requirements:
+
+• Tile expansion needs Apple Intelligence (iOS 26 or later) on eligible hardware.
+• Everything else (canvas, merge, star, filter, export) works on any supported iPhone or iPad.
+• If your device can't run Apple Intelligence, you'll see a clear message instead of a confusing failure.
+
+Free, no in-app purchase, no subscription. Open-source under the MIT license. I'd love your feedback at luke@lukesteuber.com.
