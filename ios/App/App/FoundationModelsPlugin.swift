@@ -277,28 +277,64 @@ public class FoundationModelsPlugin: CAPPlugin, CAPBridgedPlugin {
     }
 
     /// Race an async throwing operation against a wall-clock deadline.
-    /// First task to finish wins; the loser is cancelled. If the deadline
-    /// task wins, the operation continues running (Swift can't preempt
-    /// Apple's framework) but its eventual result is discarded — the
-    /// promise to JS rejects on time. Only callable from the iOS 26+
-    /// guarded path inside generate().
+    /// First result wins and resumes the caller immediately. The losing task
+    /// is cancelled as a best effort, but this helper deliberately uses
+    /// unstructured tasks so an uncooperative framework call can't keep the
+    /// Capacitor promise pending past the deadline.
     @available(iOS 16.0, *)
     private static func withTimeout<T: Sendable>(
         seconds: Double,
         operation: @escaping @Sendable () async throws -> T
     ) async throws -> T {
-        try await withThrowingTaskGroup(of: T.self) { group in
-            group.addTask { try await operation() }
-            group.addTask {
-                try await Task.sleep(for: .seconds(seconds))
-                throw FoundationModelsTimeout()
+        let race = TimeoutRace<T>()
+
+        let operationTask = Task {
+            do {
+                let value = try await operation()
+                await race.resolve(.success(value))
+            } catch {
+                await race.resolve(.failure(error))
             }
-            guard let result = try await group.next() else {
-                throw FoundationModelsTimeout()
-            }
-            group.cancelAll()
-            return result
         }
+
+        let timeoutTask = Task {
+            do {
+                try await Task.sleep(for: .seconds(seconds))
+                await race.resolve(.failure(FoundationModelsTimeout()))
+            } catch {
+                // The operation won and cancelled the deadline task.
+            }
+        }
+
+        defer {
+            operationTask.cancel()
+            timeoutTask.cancel()
+        }
+
+        return try await race.wait()
+    }
+}
+
+private actor TimeoutRace<Value: Sendable> {
+    private var continuation: CheckedContinuation<Value, any Error>?
+    private var result: Result<Value, any Error>?
+
+    func wait() async throws -> Value {
+        if let result {
+            return try result.get()
+        }
+
+        return try await withCheckedThrowingContinuation { continuation in
+            self.continuation = continuation
+        }
+    }
+
+    func resolve(_ result: Result<Value, any Error>) {
+        guard self.result == nil else { return }
+
+        self.result = result
+        continuation?.resume(with: result)
+        continuation = nil
     }
 }
 
