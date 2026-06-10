@@ -173,34 +173,49 @@ export function useProviderSettings(): UseProviderSettingsReturn {
     if (!isCapacitor() || getPlatform() !== "ios") return;
     let cancelled = false;
     let retryHandle: ReturnType<typeof setTimeout> | undefined;
+    // Single-flight guard: only the chain whose seq matches probeSeq may
+    // write state or schedule a retry. Starting a new chain (foreground
+    // re-probe) bumps the seq, which both kills the pending retry timer
+    // and inert-ifies any in-flight probe from the old chain — so stale
+    // results can't land after fresher ones, and there's never more
+    // than one retry timer to clean up.
+    let probeSeq = 0;
 
-    const probe = (attempt: number) => {
+    const probe = (attempt: number, seq: number) => {
+      if (cancelled || seq !== probeSeq) return;
       FoundationModels.isAvailable()
         .then(({ available, transient }) => {
-          if (cancelled) return;
+          if (cancelled || seq !== probeSeq) return;
           setAppleIntelligenceAvailable(available);
           // 2s, 4s, 8s, 16s, 32s — covers ~1 min of model warm-up.
           if (!available && transient && attempt < 5) {
             retryHandle = setTimeout(
-              () => probe(attempt + 1),
+              () => probe(attempt + 1, seq),
               2000 * 2 ** attempt
             );
           }
         })
         .catch(() => {
-          if (cancelled) return;
+          if (cancelled || seq !== probeSeq) return;
           // Bridge hiccup (probe can race plugin registration on cold
           // launch). Treat like transient: report off, retry shortly.
           setAppleIntelligenceAvailable(false);
           if (attempt < 5) {
             retryHandle = setTimeout(
-              () => probe(attempt + 1),
+              () => probe(attempt + 1, seq),
               2000 * 2 ** attempt
             );
           }
         });
     };
-    probe(0);
+
+    const startProbeChain = () => {
+      if (retryHandle !== undefined) clearTimeout(retryHandle);
+      retryHandle = undefined;
+      probeSeq += 1;
+      probe(0, probeSeq);
+    };
+    startProbeChain();
 
     // Apple Intelligence can be toggled in iOS Settings while the app
     // is backgrounded — re-probe every time we come back to foreground.
@@ -208,7 +223,7 @@ export function useProviderSettings(): UseProviderSettingsReturn {
     void import("@capacitor/app").then(({ App: CapacitorApp }) => {
       if (cancelled) return;
       void CapacitorApp.addListener("appStateChange", ({ isActive }) => {
-        if (isActive && !cancelled) probe(0);
+        if (isActive && !cancelled) startProbeChain();
       }).then(handle => {
         removeListener = () => void handle.remove();
         if (cancelled) removeListener();
