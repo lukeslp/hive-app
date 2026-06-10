@@ -5,7 +5,7 @@
 **Summary**
 
 - **Web:** Snapshot share links (`?s=` via `POST /api/share`) + live collaboration remain available.
-- **iOS / Capacitor:** Share-link **creation is off** — the "Share link" entry is hidden (`onShare` passed as `undefined` in `HexmindApp.tsx`, same pattern as collab). Sharing from iOS is local exports: PNG / SVG / JSON through the native share sheet.
+- **iOS / Capacitor:** Share-link **creation is off** — the "Share link" entry is hidden (`onShare` passed as `undefined` in `HexmindApp.tsx`, same pattern as collab). Sharing from iOS is local exports: PNG / JPG / SVG / JSON through the native share sheet.
 - **iOS / Capacitor:** **Opening** received `?s=` links via Universal Links still works; the `?s=` loader in `useSessionManagement.ts` is platform-agnostic.
 - **iOS / Capacitor:** Live collaboration entry points are **off** until a full native collab ship is ready.
 

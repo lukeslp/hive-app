@@ -48,6 +48,7 @@ interface ToolbarProps {
   filterType: string | null;
   onShowWelcome: () => void;
   onExportPNG: () => void;
+  onExportJPG: () => void;
   onExportSVG: () => void;
   onUndo: () => void;
   onRedo: () => void;
@@ -83,6 +84,7 @@ export const Toolbar = ({
   filterType,
   onShowWelcome,
   onExportPNG,
+  onExportJPG,
   onExportSVG,
   onUndo,
   onRedo,
@@ -219,10 +221,7 @@ export const Toolbar = ({
             role="group"
             aria-label="Topbar actions"
           >
-            <span
-              className="w-px h-5 bg-border/70 mx-0.5"
-              aria-hidden="true"
-            />
+            <span className="w-px h-5 bg-border/70 mx-0.5" aria-hidden="true" />
 
             {/* Generation counter — purely informational, when used. */}
             {nodeCount > 0 && generationsThisSession > 0 && (
@@ -369,6 +368,16 @@ export const Toolbar = ({
                   >
                     <Download className="w-4 h-4 text-muted-foreground" />
                     Export PNG
+                  </button>
+                  <button
+                    onClick={() => {
+                      onExportJPG();
+                      setFilesMenuOpen(false);
+                    }}
+                    className="w-full flex items-center gap-3 px-4 py-2.5 text-sm hover:bg-accent text-foreground"
+                  >
+                    <Download className="w-4 h-4 text-muted-foreground" />
+                    Export JPG
                   </button>
                   <button
                     onClick={() => {

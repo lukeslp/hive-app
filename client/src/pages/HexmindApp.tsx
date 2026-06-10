@@ -1391,9 +1391,7 @@ Generate 6 diverse related ideas. Connect to key themes when relevant.`;
             ...tile,
             text: result.synth.title,
             description: result.synth.description || tile.description,
-            type: NODE_TYPES[result.synth.type]
-              ? result.synth.type
-              : tile.type,
+            type: NODE_TYPES[result.synth.type] ? result.synth.type : tile.type,
           },
         };
       });
@@ -1569,8 +1567,13 @@ Generate 6 diverse related ideas. Connect to key themes when relevant.`;
     }
   };
 
-  const exportAsPNG = () => {
+  // PNG and JPG share one raster pipeline: render the SVG layer onto an
+  // opaque dark canvas, then encode. The opaque background fill is what
+  // makes JPEG (no alpha channel) safe here.
+  const exportAsRaster = (format: "png" | "jpg") => {
     haptics.medium();
+    const label = format.toUpperCase();
+    const mime = format === "jpg" ? "image/jpeg" : "image/png";
     const svgContent = document.getElementById("hex-canvas-layer")?.innerHTML;
     if (!svgContent) return;
     const fullSvg = `<svg xmlns="http://www.w3.org/2000/svg" width="2000" height="2000" viewBox="-1000 -1000 2000 2000"><style>text { font-family: sans-serif; fill: white; } path { stroke: gray; fill: #222; }</style><g transform="translate(0,0)">${svgContent}</g></svg>`;
@@ -1589,35 +1592,42 @@ Generate 6 diverse related ideas. Connect to key themes when relevant.`;
     img.onload = () => {
       ctx.drawImage(img, 0, 0);
       URL.revokeObjectURL(url);
-      canvas.toBlob(async blob => {
-        if (!blob) {
-          toast.error("PNG export failed — couldn't encode the canvas.");
-          return;
-        }
-        try {
-          await saveBlob(
-            blob,
-            `${APP_EXPORT_FILE_PREFIX}-export-${Date.now()}.png`,
-            {
-              dialogTitle: `Share ${APP_DISPLAY_NAME} PNG`,
-            }
-          );
-        } catch (err) {
-          toast.error(
-            `PNG export failed: ${err instanceof Error ? err.message : "unknown error"}`
-          );
-        }
-      });
+      canvas.toBlob(
+        async blob => {
+          if (!blob) {
+            toast.error(`${label} export failed — couldn't encode the canvas.`);
+            return;
+          }
+          try {
+            await saveBlob(
+              blob,
+              `${APP_EXPORT_FILE_PREFIX}-export-${Date.now()}.${format}`,
+              {
+                dialogTitle: `Share ${APP_DISPLAY_NAME} ${label}`,
+              }
+            );
+          } catch (err) {
+            toast.error(
+              `${label} export failed: ${err instanceof Error ? err.message : "unknown error"}`
+            );
+          }
+        },
+        mime,
+        format === "jpg" ? 0.9 : undefined
+      );
     };
     img.onerror = () => {
       // SVG-as-Image rasterization can silently fail on certain SVG features
       // (foreignObject, complex filters). Without this handler the user
       // taps Export and nothing happens.
       URL.revokeObjectURL(url);
-      toast.error("PNG export failed — SVG rasterization rejected.");
+      toast.error(`${label} export failed — SVG rasterization rejected.`);
     };
     img.src = url;
   };
+
+  const exportAsPNG = () => exportAsRaster("png");
+  const exportAsJPG = () => exportAsRaster("jpg");
 
   // ── Computed values ─────────────────────────────────────────────────────
   const hoveredNode = hoveredNodeId ? nodes[hoveredNodeId] : null;
@@ -1760,6 +1770,7 @@ Generate 6 diverse related ideas. Connect to key themes when relevant.`;
           resetBoard();
         }}
         onExportPNG={exportAsPNG}
+        onExportJPG={exportAsJPG}
         onExportSVG={exportAsImage}
         onUndo={handleUndo}
         onRedo={handleRedo}

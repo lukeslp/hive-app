@@ -5,12 +5,12 @@ AI tile expansion uses Apple's on-device Foundation Models framework
 cloud fallback for that path on iOS — on ineligible devices the user
 sees an explicit availability message instead of a silent failure.
 
-Snapshot sharing creates a browser-openable link by POSTing the board
-JSON to /api/share; the server returns a short id used in a ?s=ID URL
-hosted at ideatiles.app (legacy brand domains still resolve).
-Recipients open the link in Safari, no account required. Live
-multi-user collaboration is available on the web app only for this
-release.
+Sharing from iOS is local-only: boards export as PNG, JPG, SVG, or
+JSON through the standard share sheet (AirDrop, Messages, Files). The
+iOS app does not create server-hosted share links — link creation and
+live multi-user collaboration are features of the web app
+(ideatiles.app) only. The app can open board links created on the web
+app via Universal Links.
 
 Please test on an Apple-Intelligence-eligible device (iPhone 15 Pro,
 iPhone 16 or later, M-series iPad) with Apple Intelligence enabled in

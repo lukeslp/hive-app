@@ -15,7 +15,7 @@
 - [ ] Cold launch: splash hides, canvas interactive
 - [ ] Tile expand on **eligible** hardware; clear error on ineligible
 - [ ] Share link from iOS: opens in Safari as **https** public URL (not `capacitor://`)
-- [ ] Export PNG/SVG/JSON on device
+- [ ] Export PNG/JPG/SVG/JSON on device
 - [ ] Privacy + Terms URLs return real HTML (`/privacy`, `/terms`)
 
 ### App Store Connect
@@ -38,7 +38,7 @@
 
 | Capability                                                  | Web | iOS (Capacitor)                                                                                   |
 | ----------------------------------------------------------- | --- | ------------------------------------------------------------------------------------------------- |
-| **Snapshot share — create** (`POST /api/share` → `?s=` link) | Yes | **No** — "Share link" UI hidden; share boards via PNG/SVG/JSON exports + native share sheet |
+| **Snapshot share — create** (`POST /api/share` → `?s=` link) | Yes | **No** — "Share link" UI hidden; share boards via PNG/JPG/SVG/JSON exports + native share sheet |
 | **Snapshot share — open** (`?s=` link received)              | Yes | **Yes** — Universal Links still load shared boards in the app                               |
 | **Live collaboration** (WebSocket `/ws/collab`, `?collab=`)  | Yes | **No** — UI entry hidden; not MVP for native                                                |
 
@@ -87,7 +87,7 @@ Document chosen values in internal release notes (not committed secrets).
 
 **Beta description (short):**
 
-> Idea Tiles is a hexagonal mind map. On supported devices, expansions use Apple Intelligence on-device. Merge tiles, then export and share boards as images (PNG/SVG) or JSON files. Snapshot share links and real-time “Collaborate” sessions are on the website in this build, not inside the iOS shell.
+> Idea Tiles is a hexagonal mind map. On supported devices, expansions use Apple Intelligence on-device. Merge tiles, then export and share boards as images (PNG/JPG/SVG) or JSON files. Snapshot share links and real-time “Collaborate” sessions are on the website in this build, not inside the iOS shell.
 
 **What to test:**
 

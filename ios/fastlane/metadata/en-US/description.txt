@@ -12,8 +12,8 @@ into pieces. You start with a single tile. From there, four verbs:
   that captures what the pair share.
 • Star — mark key themes and filter the canvas to just those threads
   when the board gets dense.
-• Export — save a board as PNG, SVG, or JSON, share a link, or pick up
-  where you left off across sessions.
+• Export — save a board as PNG, JPG, SVG, or JSON, or pick up where
+  you left off across sessions.
 
 Private by default on iPhone and iPad.
 On supported iPhones (iPhone 15 Pro, iPhone 16 and later, or an
@@ -28,11 +28,12 @@ for Gemini, Claude, GPT, Grok, Mistral, or a local Ollama server.
 Boards still save to your device first.
 
 Share a board.
-Tap Share to create a snapshot link. It opens in Safari (or any
-browser) so the people you send it to don't need the app. Live
-multi-user collaboration is available on the web app today; the iOS
-shell focuses on solo brainstorming and snapshot sharing for this
-release.
+Export your canvas as a PNG, JPG, or SVG image, or as JSON, straight
+from the iOS share sheet — AirDrop it, message it, or save it to
+Files. Links created on the web app open right in the app. Share-link
+creation and live multi-user collaboration are web-app features
+(ideatiles.app); boards made on iOS stay on your device unless you
+choose to export them.
 
 Built to feel fast.
 Smooth pan and pinch on the canvas, undo/redo for every move,
@@ -42,8 +43,8 @@ and proper accessibility labels for VoiceOver.
 Requirements.
 • AI tile expansion needs Apple Intelligence (iOS 26 or later) on
   eligible hardware.
-• Other features — canvas, merge, star, filter, export, snapshot
-  share — work on any supported iPhone or iPad.
+• Other features — canvas, merge, star, filter, export — work on any
+  supported iPhone or iPad.
 • If your device can't run Apple Intelligence, you'll see a clear
   message instead of a confusing failure.
 

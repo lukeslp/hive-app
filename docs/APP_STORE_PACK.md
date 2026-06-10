@@ -1,6 +1,6 @@
 # App Store Pack — Idea Tiles MVP
 
-Copy-paste oriented metadata + asset checklist for App Store Connect. Aligned to **current** product behavior: iOS on-device AI, snapshot share links, **no** native live collaboration. App Store **Name** / **Subtitle** below match in-app branding; bundle id stays `app.hexmind.ios`. **Canonical marketing URLs** use `ideatiles.app`; legacy domains may still proxy to the same deployment. Update before each ASC submission.
+Copy-paste oriented metadata + asset checklist for App Store Connect. Aligned to **current** product behavior: iOS on-device AI, local exports (PNG/JPG/SVG/JSON — share-link creation and collab are web-only, per `SHARING_MVP_POLICY.md`), **no** native live collaboration. App Store **Name** / **Subtitle** below match in-app branding; bundle id stays `app.hexmind.ios`. **Canonical marketing URLs** use `ideatiles.app`; legacy domains may still proxy to the same deployment. Update before each ASC submission.
 
 > **Source of decisions:** `/consensus` + `/team` pass on 2026-05-13, with a partial re-run later the same day to retry Ollama Cloud, xAI, and OpenAI. See [§0 below](#0-consensus--team-summary) for the rationale, dissent, and ASO risks behind every copy block.
 
@@ -122,8 +122,8 @@ into pieces. You start with a single tile. From there, four verbs:
   that captures what the pair share.
 • Star — mark key themes and filter the canvas to just those threads
   when the board gets dense.
-• Export — save a board as PNG, SVG, or JSON, share a link, or pick up
-  where you left off across sessions.
+• Export — save a board as PNG, JPG, SVG, or JSON, or pick up where
+  you left off across sessions.
 
 Private by default on iPhone and iPad.
 On supported iPhones (iPhone 15 Pro, iPhone 16 and later, or an
@@ -138,11 +138,12 @@ for Gemini, Claude, GPT, Grok, Mistral, or a local Ollama server.
 Boards still save to your device first.
 
 Share a board.
-Tap Share to create a snapshot link. It opens in Safari (or any
-browser) so the people you send it to don't need the app. Live
-multi-user collaboration is available on the web app today; the iOS
-shell focuses on solo brainstorming and snapshot sharing for this
-release.
+Export your canvas as a PNG, JPG, or SVG image, or as JSON, straight
+from the iOS share sheet — AirDrop it, message it, or save it to
+Files. Links created on the web app open right in the app. Share-link
+creation and live multi-user collaboration are web-app features
+(ideatiles.app); boards made on iOS stay on your device unless you
+choose to export them.
 
 Built to feel fast.
 Smooth pan and pinch on the canvas, undo/redo for every move,
@@ -213,7 +214,7 @@ Prepare **5–10** per required device class. Real boards, large legible type, c
 | 2   | Expansion in progress / freshly generated tiles  | Tap to brainstorm six new directions. |
 | 3   | Drag-to-merge in motion                          | Merge two tiles into one.             |
 | 4   | Star + filter view                               | Star themes. Filter the canvas.       |
-| 5   | Export sheet / share link                        | Export PNG, SVG, or a link.           |
+| 5   | Export sheet via iOS share sheet                 | Export PNG, JPG, SVG, or JSON.        |
 | 6   | Settings showing on-device path / privacy stance | Private by design on iPhone.          |
 
 **Required sizes (verify in your ASC version):**
@@ -264,11 +265,12 @@ AI tile expansion uses Apple's on-device Foundation Models framework
 cloud fallback for that path on iOS — on ineligible devices the user
 sees an explicit availability message instead of a silent failure.
 
-Snapshot sharing creates a browser-openable link by POSTing the board
-JSON to /api/share; the server returns a short id used in a ?s=ID URL
-hosted at ideatiles.app (legacy brand domains still resolve). Recipients open the link in Safari, no account
-required. Live multi-user collaboration is available on the web app
-only for this release.
+Sharing from iOS is local-only: boards export as PNG, JPG, SVG, or
+JSON through the standard share sheet (AirDrop, Messages, Files). The
+iOS app does not create server-hosted share links — link creation and
+live multi-user collaboration are features of the web app
+(ideatiles.app) only. The app can open board links created on the web
+app via Universal Links.
 
 Please test on an Apple-Intelligence-eligible device (iPhone 15 Pro,
 iPhone 16 or later, M-series iPad) with Apple Intelligence enabled in
@@ -293,7 +295,7 @@ Open source under MIT (github.com/lukeslp/hive-app).
 - [ ] `pnpm check` + `pnpm test` green
 - [ ] Cold launch smoke test on hardware: splash hides → canvas interactive
 - [ ] Tile expand on an eligible device + the clear error on an ineligible one
-- [ ] Snapshot share link copy-pasted into Safari on a second device opens the board
-- [ ] Export PNG / SVG / JSON each produces a usable file via the iOS share sheet
+- [ ] Opening a web-created `?s=` link on iOS loads the board (Universal Link)
+- [ ] Export PNG / JPG / SVG / JSON each produces a usable file via the iOS share sheet
 
 See [`RELEASE_SPEC.md`](./RELEASE_SPEC.md) for the full submission workflow and [`RELEASE_REVIEW.md`](./RELEASE_REVIEW.md) for the prioritized risk register.

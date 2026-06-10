@@ -7,5 +7,7 @@ Template customization now runs on-device, matching every other
 generation path on iPhone and iPad — your prompts never leave the
 device.
 
+New: export boards as JPG, alongside PNG, SVG, and JSON.
+
 Refreshed app icon and splash screen. Feedback welcome:
 luke@lukesteuber.com.
