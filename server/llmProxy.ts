@@ -10,7 +10,7 @@
  * is handled in the client (foundationModelsPlugin), not this router.
  */
 
-import { Router, Request, Response } from "express";
+import { Router, Request, Response, NextFunction, json } from "express";
 import rateLimit from "express-rate-limit";
 import { nanoid } from "nanoid";
 
@@ -413,6 +413,62 @@ export function createLlmProxyRouter(): Router {
   const skipForTest = () =>
     Boolean(process.env.VITEST || process.env.NODE_ENV === "test");
 
+  // Reject oversized /generate bodies at the door, before they are buffered.
+  // The app-wide express.json parser is mounted with a 50 MB limit (it has to
+  // be — /api/share legitimately uploads large boards), but AI prompts never
+  // approach that. Mounting these guards at the head of the route means a
+  // pathological payload is rejected at parse time rather than after the
+  // global parser has already buffered up to 50 MB into memory.
+  //
+  // Two layers, both pre-handler:
+  //   1. contentLengthGuard — fast 413 on a declared Content-Length over cap,
+  //      so an honest oversized request never streams a byte.
+  //   2. generateBodyParser — a 64 KB-capped JSON parser; if the body lies
+  //      about its length (or omits Content-Length), the parser aborts once
+  //      it has read past the cap and hands a PayloadTooLargeError to the
+  //      error guard below. Skipped under test, where the suite invokes the
+  //      handler directly with an already-parsed body.
+  const contentLengthGuard = (
+    req: Request,
+    res: Response,
+    next: NextFunction
+  ) => {
+    const declared = Number(req.headers["content-length"]);
+    if (Number.isFinite(declared) && declared > GENERATE_MAX_BODY_BYTES) {
+      console.warn(
+        `[generate] 413 Content-Length ${declared} > ${GENERATE_MAX_BODY_BYTES} cap ip=${req.ip}`
+      );
+      return res.status(413).json({
+        error: {
+          message: `Request too large (${declared} bytes > ${GENERATE_MAX_BODY_BYTES} byte cap).`,
+        },
+      });
+    }
+    next();
+  };
+
+  const generateBodyParser = json({ limit: GENERATE_MAX_BODY_BYTES });
+
+  const generateParseErrorGuard = (
+    err: unknown,
+    req: Request,
+    res: Response,
+    next: NextFunction
+  ) => {
+    if (err && (err as { type?: string }).type === "entity.too.large") {
+      console.warn(
+        `[generate] 413 body exceeded ${GENERATE_MAX_BODY_BYTES} byte parse cap ip=${req.ip}`
+      );
+      return res.status(413).json({
+        error: {
+          message: `Request too large (exceeds ${GENERATE_MAX_BODY_BYTES} byte cap).`,
+        },
+      });
+    }
+    if (err) return next(err);
+    next();
+  };
+
   const generateMinuteLimiter = rateLimit({
     windowMs: 60_000,
     limit: GENERATE_RATE_PER_MINUTE,
@@ -423,6 +479,14 @@ export function createLlmProxyRouter(): Router {
       error: {
         message: `Too many AI requests — try again in a moment. (Limit: ${GENERATE_RATE_PER_MINUTE}/min per IP.)`,
       },
+    },
+    // Log every trip so the control is observable in prod logs without
+    // having to reproduce the abuse. The body is never touched here.
+    handler: (req, res, _next, options) => {
+      console.warn(
+        `[generate] 429 per-minute limit hit ip=${req.ip} (${GENERATE_RATE_PER_MINUTE}/min)`
+      );
+      res.status(options.statusCode).json(options.message);
     },
   });
 
@@ -437,11 +501,20 @@ export function createLlmProxyRouter(): Router {
         message: `Hourly AI rate limit reached — please try again later. (Limit: ${GENERATE_RATE_PER_HOUR}/hour per IP.)`,
       },
     },
+    handler: (req, res, _next, options) => {
+      console.warn(
+        `[generate] 429 per-hour limit hit ip=${req.ip} (${GENERATE_RATE_PER_HOUR}/hour)`
+      );
+      res.status(options.statusCode).json(options.message);
+    },
   });
 
   // Generate endpoint
   apiRouter.post(
     "/generate",
+    contentLengthGuard,
+    generateBodyParser,
+    generateParseErrorGuard,
     generateMinuteLimiter,
     generateHourLimiter,
     async (req: Request, res: Response) => {
@@ -458,6 +531,9 @@ export function createLlmProxyRouter(): Router {
         // any real tester usage.
         const bodyBytes = JSON.stringify(req.body).length;
         if (bodyBytes > GENERATE_MAX_BODY_BYTES) {
+          console.warn(
+            `[generate] 413 in-handler cap ${bodyBytes} > ${GENERATE_MAX_BODY_BYTES} bytes ip=${req.ip}`
+          );
           return res.status(413).json({
             error: {
               message: `Request too large (${bodyBytes} bytes > ${GENERATE_MAX_BODY_BYTES} byte cap).`,

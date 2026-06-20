@@ -152,6 +152,57 @@ describe("LLM Proxy Router", () => {
       expect(mockFetch).not.toHaveBeenCalled();
     });
 
+    it("rejects an oversized body at parse time via the Content-Length guard", async () => {
+      // The first middleware on /generate is a Content-Length pre-check that
+      // fires before the body is parsed, so an honest oversized request never
+      // makes the 50 MB global parser buffer it. This complements the
+      // in-handler byte cap above (defense in depth).
+      process.env.GEMINI_API_KEY = "test-gemini-key";
+
+      const req = mockReq({
+        headers: { "content-length": String(200_000) },
+        body: {},
+      });
+      const res = mockRes();
+      let nextCalled = false;
+
+      const layer = router.stack.find(
+        (l: any) => l.route?.path === "/generate" && l.route?.methods?.post
+      );
+      // stack[0] is the Content-Length guard (head of the route stack).
+      const guard = layer!.route!.stack[0];
+      await guard.handle(req, res, () => {
+        nextCalled = true;
+      });
+
+      expect(res._status).toBe(413);
+      expect(res._json?.error?.message).toMatch(/too large/i);
+      // The guard short-circuits — it must not call next() down the stack.
+      expect(nextCalled).toBe(false);
+      expect(mockFetch).not.toHaveBeenCalled();
+    });
+
+    it("lets a normally-sized Content-Length pass the parse-time guard", async () => {
+      // A small declared length must fall through to the rest of the stack.
+      const req = mockReq({
+        headers: { "content-length": String(128) },
+        body: {},
+      });
+      const res = mockRes();
+      let nextCalled = false;
+
+      const layer = router.stack.find(
+        (l: any) => l.route?.path === "/generate" && l.route?.methods?.post
+      );
+      const guard = layer!.route!.stack[0];
+      await guard.handle(req, res, () => {
+        nextCalled = true;
+      });
+
+      expect(nextCalled).toBe(true);
+      expect(res._status).toBe(200);
+    });
+
     it("clamps oversized maxOutputTokens server-side so a single call can't drain the env key", async () => {
       process.env.GEMINI_API_KEY = "test-gemini-key";
       mockFetch.mockResolvedValueOnce(geminiSuccessResponse());
