@@ -33,8 +33,17 @@ async function findAvailablePort(startPort: number = 3000): Promise<number> {
 async function startServer() {
   const app = express();
   const server = createServer(app);
-  // Configure body parser with larger size limit for file uploads
-  app.use(express.json({ limit: "50mb" }));
+  // Configure body parser with larger size limit for file uploads.
+  // /api/generate is deliberately excluded: it parses its own body under a
+  // tight 64 KB cap inside createLlmProxyRouter, so an unauthenticated LLM
+  // request can't make this 50 MB parser buffer a giant payload into memory
+  // before the route ever runs. /api/share and everything else still need
+  // the large limit (board uploads).
+  const largeJsonParser = express.json({ limit: "50mb" });
+  app.use((req, res, next) => {
+    if (req.path === "/api/generate") return next();
+    return largeJsonParser(req, res, next);
+  });
   app.use(express.urlencoded({ limit: "50mb", extended: true }));
   // Trust proxy for rate limiting behind reverse proxies
   app.set("trust proxy", 1);
