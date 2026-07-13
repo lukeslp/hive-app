@@ -1,6 +1,6 @@
 # PROJECT_PLAN
 
-Last updated: 2026-05-16
+Last updated: 2026-07-10
 
 ## Objectives
 
@@ -21,6 +21,9 @@ Last updated: 2026-05-16
 - Mobile readability pass: improved in-hex label wrapping behavior (balanced wrap, non-forced uppercase, reduced hard word-splitting) to avoid fragmented words in constrained tile geometry.
 - Provider regression containment: non-iOS builds now lock app-level provider selection to Anthropic and suppress provider-management UI in Settings to align with hosted product behavior.
 - Settings visual cohesion pass: shifted modal styling away from dense "admin panel" controls toward cleaner card/glass presentation aligned with the main canvas tone.
+- Production restoration: Node now binds a fixed loopback port, unknown API
+  routes return JSON 404 responses, and client-supplied Ollama routing and
+  credentials are ignored to close the public SSRF boundary.
 
 ## Active Workstreams
 
@@ -66,6 +69,7 @@ Use council runs intentionally:
 2. Land UIScene migration with verification pass (`MIGRATION_PLAN.md`).
 3. Optional: persist `/api/share` payloads beyond in-memory (if 404s after deploy hurt users).
 4. Phase 2: native live collab only as a deliberate project (WS host, UX, ASC copy).
+5. Add persistent storage for public shares before promising durable links.
 
 ## Risks
 

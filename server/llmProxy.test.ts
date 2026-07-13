@@ -1,8 +1,10 @@
-import { describe, expect, it, vi, beforeEach, afterEach } from "vitest";
+/**
+ * File Purpose: Verify Idea Tiles provider routing and public generation limits.
+ * Primary Functions: Exercise provider selection, request caps, SSRF containment, and shares.
+ * Inputs/Outputs (I/O): Uses mocked Express requests/fetch and asserts structured responses.
+ */
 
-// Provider routing tests for the LLM proxy.
-// Generation requires a configured provider (server env key or client x-api-key).
-// Apple Foundation Models is iOS on-device only (client), not this router.
+import { describe, expect, it, vi, beforeEach, afterEach } from "vitest";
 
 import { createLlmProxyRouter } from "./llmProxy";
 import type { Request, Response } from "express";
@@ -57,11 +59,34 @@ function geminiSuccessResponse() {
   };
 }
 
+function ollamaSuccessResponse() {
+  return {
+    ok: true,
+    status: 200,
+    json: async () => ({
+      message: { content: '{"subtopics":[{"label":"Safe Topic"}]}' },
+    }),
+    text: async () => "",
+  };
+}
+
 describe("LLM Proxy Router", () => {
   let router: ReturnType<typeof createLlmProxyRouter>;
   const originalEnv = { ...process.env };
 
   beforeEach(() => {
+    for (const key of [
+      "GEMINI_API_KEY",
+      "ANTHROPIC_API_KEY",
+      "OPENAI_API_KEY",
+      "XAI_API_KEY",
+      "MISTRAL_API_KEY",
+      "OLLAMA_HOST",
+      "OLLAMA_MODEL",
+      "OLLAMA_API_KEY",
+    ]) {
+      delete process.env[key];
+    }
     router = createLlmProxyRouter();
     mockFetch.mockReset();
   });
@@ -230,6 +255,72 @@ describe("LLM Proxy Router", () => {
       expect(upstreamBody.generationConfig.maxOutputTokens).toBe(4096);
     });
 
+    it("ignores client-supplied Ollama hosts, models, and credentials", async () => {
+      process.env.OLLAMA_HOST = "https://trusted-ollama.example";
+      process.env.OLLAMA_MODEL = "trusted-model";
+      process.env.OLLAMA_API_KEY = "server-ollama-key";
+      mockFetch.mockResolvedValueOnce(ollamaSuccessResponse());
+
+      const req = mockReq({
+        headers: {
+          "x-provider": "ollama",
+          "x-ollama-host": "http://127.0.0.1:3306",
+          "x-ollama-model": "untrusted-model",
+          "x-ollama-api-key": "client-ollama-key",
+        },
+        body: {
+          contents: [{ parts: [{ text: "hello" }] }],
+          generationConfig: { maxOutputTokens: 512 },
+        },
+      });
+      const res = mockRes();
+      const layer = router.stack.find(
+        (l: any) => l.route?.path === "/generate" && l.route?.methods?.post
+      );
+
+      await layer!.route!.stack.at(-1)!.handle(req, res, () => {});
+
+      expect(res._status).toBe(200);
+      expect(String(mockFetch.mock.calls[0]?.[0])).toBe(
+        "https://trusted-ollama.example/api/chat"
+      );
+      const fetchInit = mockFetch.mock.calls[0]?.[1];
+      expect(fetchInit.redirect).toBe("error");
+      expect(fetchInit.headers.Authorization).toBe("Bearer server-ollama-key");
+      expect(fetchInit.headers.Authorization).not.toContain(
+        "client-ollama-key"
+      );
+      expect(JSON.parse(fetchInit.body).model).toBe("trusted-model");
+    });
+
+    it("does not treat client Ollama headers as server configuration", async () => {
+      delete process.env.OLLAMA_HOST;
+      delete process.env.OLLAMA_MODEL;
+      delete process.env.OLLAMA_API_KEY;
+
+      const req = mockReq({
+        headers: {
+          "x-provider": "ollama",
+          "x-ollama-host": "http://169.254.169.254",
+          "x-ollama-model": "anything",
+        },
+        body: {
+          contents: [{ parts: [{ text: "hello" }] }],
+          generationConfig: { maxOutputTokens: 512 },
+        },
+      });
+      const res = mockRes();
+      const layer = router.stack.find(
+        (l: any) => l.route?.path === "/generate" && l.route?.methods?.post
+      );
+
+      await layer!.route!.stack.at(-1)!.handle(req, res, () => {});
+
+      expect(res._status).toBe(500);
+      expect(res._json?.error?.message).toMatch(/Ollama is not configured/i);
+      expect(mockFetch).not.toHaveBeenCalled();
+    });
+
     it("returns 500 when no provider is configured anywhere", async () => {
       // Strip every provider env key.
       delete process.env.GEMINI_API_KEY;
@@ -263,6 +354,22 @@ describe("LLM Proxy Router", () => {
   });
 
   describe("GET /providers", () => {
+    it("prefers OpenAI when multiple server providers are configured", () => {
+      process.env.GEMINI_API_KEY = "test-gemini-key";
+      process.env.ANTHROPIC_API_KEY = "test-anthropic-key";
+      process.env.OPENAI_API_KEY = "test-openai-key";
+
+      const req = mockReq();
+      const res = mockRes();
+      const layer = router.stack.find(
+        (l: any) => l.route?.path === "/providers" && l.route?.methods?.get
+      );
+
+      layer!.route!.stack[0].handle(req, res, () => {});
+
+      expect(res._json.default).toBe("openai");
+    });
+
     it("lists only standard providers and picks first env-configured key as default", () => {
       delete process.env.GEMINI_API_KEY;
       process.env.ANTHROPIC_API_KEY = "test-anthropic-key";

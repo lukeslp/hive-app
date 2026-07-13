@@ -1,3 +1,9 @@
+/**
+ * File Purpose: Start the Idea Tiles Express, tRPC, static, and collaboration server.
+ * Primary Functions: Mount APIs, serve the SPA/legal files, and own HTTP/WebSocket listeners.
+ * Inputs/Outputs (I/O): Reads runtime environment and serves HTTP on a fixed loopback port in production.
+ */
+
 import "dotenv/config";
 import express from "express";
 import { createServer } from "http";
@@ -11,19 +17,24 @@ import { createLlmProxyRouter } from "../llmProxy";
 import { setupCollabWebSocket } from "../collab";
 import { createOGRouter } from "../ogRoute";
 
-function isPortAvailable(port: number): Promise<boolean> {
+const DEFAULT_LISTEN_HOST = "127.0.0.1";
+
+function isPortAvailable(port: number, host: string): Promise<boolean> {
   return new Promise(resolve => {
     const server = net.createServer();
-    server.listen(port, () => {
+    server.listen(port, host, () => {
       server.close(() => resolve(true));
     });
     server.on("error", () => resolve(false));
   });
 }
 
-async function findAvailablePort(startPort: number = 3000): Promise<number> {
+async function findAvailablePort(
+  startPort: number = 3000,
+  host: string = DEFAULT_LISTEN_HOST
+): Promise<number> {
   for (let port = startPort; port < startPort + 20; port++) {
-    if (await isPortAvailable(port)) {
+    if (await isPortAvailable(port, host)) {
       return port;
     }
   }
@@ -111,6 +122,12 @@ async function startServer() {
       createContext,
     })
   );
+  // API misses must stay machine-readable. Without this guard they reach the
+  // SPA fallback and return index.html with HTTP 200, which clients then try
+  // to parse as JSON.
+  app.use("/api", (_req, res) => {
+    res.status(404).json({ error: "API endpoint not found" });
+  });
 
   // Set up WebSocket for collaborative editing BEFORE Vite
   // This is critical: Vite's HMR also uses WebSocket on the same server,
@@ -172,15 +189,28 @@ async function startServer() {
   }
 
   const preferredPort = parseInt(process.env.PORT || "3000");
-  const port = await findAvailablePort(preferredPort);
-
-  if (port !== preferredPort) {
-    console.log(`Port ${preferredPort} is busy, using port ${port} instead`);
+  const host = process.env.HOST || DEFAULT_LISTEN_HOST;
+  let port: number;
+  if (process.env.NODE_ENV === "production") {
+    port = preferredPort;
+    if (!(await isPortAvailable(port, host))) {
+      throw new Error(
+        `Port ${host}:${port} is already in use; production refuses to auto-select another port.`
+      );
+    }
+  } else {
+    port = await findAvailablePort(preferredPort, host);
+    if (port !== preferredPort) {
+      console.log(`Port ${preferredPort} is busy, using port ${port} instead`);
+    }
   }
 
-  server.listen(port, () => {
-    console.log(`Server running on http://localhost:${port}/`);
+  server.listen(port, host, () => {
+    console.log(`Server running on http://${host}:${port}/`);
   });
 }
 
-startServer().catch(console.error);
+startServer().catch(error => {
+  console.error(error);
+  process.exit(1);
+});

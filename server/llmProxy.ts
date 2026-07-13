@@ -1,5 +1,7 @@
 /**
- * LLM proxy routes for Idea Tiles (web cloud fallback).
+ * File Purpose: Provide bounded cloud-generation and share routes for Idea Tiles.
+ * Primary Functions: Normalize requests, select providers, enforce limits, and proxy generation.
+ * Inputs/Outputs (I/O): Accepts JSON/headers and returns Gemini-shaped JSON or structured errors.
  *
  * Provides /api/generate, /api/providers, /api/share endpoints.
  * Routes generation requests to the configured provider based on either
@@ -198,7 +200,7 @@ async function callOpenAI(
 ): Promise<string> {
   if (!apiKey)
     throw new Error("No OpenAI API key provided. Add your key in Settings.");
-  const model = "gpt-4o-mini";
+  const model = "gpt-5.6-luna";
 
   const messages: any[] = [];
   if (req.system) messages.push({ role: "system", content: req.system });
@@ -207,8 +209,9 @@ async function callOpenAI(
   const body: any = {
     model,
     messages,
-    temperature: req.temperature,
-    max_tokens: req.maxTokens,
+    // GPT-5.6 Luna only accepts its default temperature (1). Sending the
+    // normalized 0.7 value makes the API reject otherwise valid requests.
+    max_completion_tokens: req.maxTokens,
   };
   if (req.jsonMode) body.response_format = { type: "json_object" };
 
@@ -272,12 +275,30 @@ async function callOllama(
   req: NormalizedRequest,
   opts: { host?: string; model?: string; apiKey?: string }
 ): Promise<string> {
-  const host = opts.host || "http://localhost:11434";
+  const host = opts.host;
   const model = opts.model;
+  if (!host)
+    throw new Error(
+      "Ollama is not configured on this server. Set OLLAMA_HOST."
+    );
   if (!model)
     throw new Error(
-      "No Ollama model specified. Set the model name in Settings."
+      "Ollama is not configured on this server. Set OLLAMA_MODEL."
     );
+
+  let endpoint: URL;
+  try {
+    const base = new URL(host);
+    if (!["http:", "https:"].includes(base.protocol)) {
+      throw new Error("unsupported protocol");
+    }
+    if (base.username || base.password) {
+      throw new Error("credentials in URL are not allowed");
+    }
+    endpoint = new URL("/api/chat", base);
+  } catch {
+    throw new Error("OLLAMA_HOST must be a valid HTTP or HTTPS URL.");
+  }
 
   const messages: any[] = [];
   if (req.system) messages.push({ role: "system", content: req.system });
@@ -288,9 +309,10 @@ async function callOllama(
   };
   if (opts.apiKey) headers["Authorization"] = `Bearer ${opts.apiKey}`;
 
-  const res = await fetch(`${host}/api/chat`, {
+  const res = await fetch(endpoint, {
     method: "POST",
     headers,
+    redirect: "error",
     body: JSON.stringify({
       model,
       messages,
@@ -314,9 +336,6 @@ function resolveProvider(req: Request): {
 } {
   const clientProvider = (req.headers["x-provider"] as string) || "";
   const clientApiKey = req.headers["x-api-key"] as string;
-  const ollamaHost = req.headers["x-ollama-host"] as string;
-  const ollamaModel = req.headers["x-ollama-model"] as string;
-  const ollamaApiKey = req.headers["x-ollama-api-key"] as string;
 
   const getEnvKey = (p: Provider): string | undefined => {
     switch (p) {
@@ -338,9 +357,9 @@ function resolveProvider(req: Request): {
   };
 
   const validProviders: Provider[] = [
+    "openai",
     "gemini",
     "anthropic",
-    "openai",
     "grok",
     "mistral",
     "ollama",
@@ -354,7 +373,8 @@ function resolveProvider(req: Request): {
   } else {
     // No valid provider chosen; fall back to whichever has a server env key configured.
     const fallback = validProviders.find(p => {
-      if (p === "ollama") return !!(ollamaModel || process.env.OLLAMA_MODEL);
+      if (p === "ollama")
+        return !!(process.env.OLLAMA_HOST && process.env.OLLAMA_MODEL);
       return !!getEnvKey(p);
     });
     if (!fallback) {
@@ -369,9 +389,13 @@ function resolveProvider(req: Request): {
   return {
     provider,
     apiKey,
-    ollamaHost: ollamaHost || process.env.OLLAMA_HOST,
-    ollamaModel: ollamaModel || process.env.OLLAMA_MODEL,
-    ollamaApiKey: ollamaApiKey || process.env.OLLAMA_API_KEY,
+    // Never accept client-supplied Ollama routing or credentials. A public
+    // relay cannot safely infer the client's localhost, and arbitrary hosts
+    // create an SSRF/credential-forwarding boundary. Operators configure one
+    // trusted upstream through the service environment.
+    ollamaHost: process.env.OLLAMA_HOST,
+    ollamaModel: process.env.OLLAMA_MODEL,
+    ollamaApiKey: process.env.OLLAMA_API_KEY,
   };
 }
 
@@ -560,12 +584,12 @@ export function createLlmProxyRouter(): Router {
   // Apple Foundation Models is iOS-only and lives client-side, not here.
   apiRouter.get("/providers", (_req: Request, res: Response) => {
     const available: Record<string, boolean> = {
+      openai: !!process.env.OPENAI_API_KEY,
       gemini: !!process.env.GEMINI_API_KEY,
       anthropic: !!process.env.ANTHROPIC_API_KEY,
-      openai: !!process.env.OPENAI_API_KEY,
       grok: !!process.env.XAI_API_KEY,
       mistral: !!process.env.MISTRAL_API_KEY,
-      ollama: !!(process.env.OLLAMA_HOST || process.env.OLLAMA_MODEL),
+      ollama: !!(process.env.OLLAMA_HOST && process.env.OLLAMA_MODEL),
     };
     const defaultProvider =
       Object.entries(available).find(([, v]) => v)?.[0] ?? null;

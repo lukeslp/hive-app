@@ -139,7 +139,7 @@ export interface UseProviderSettingsReturn {
   visibleProviders: ProviderConfig[];
 }
 
-const LOCKED_CLOUD_PROVIDER: Provider = "anthropic";
+const LOCKED_CLOUD_PROVIDER: Provider = "openai";
 
 export function useProviderSettings(): UseProviderSettingsReturn {
   const [appleIntelligenceAvailable, setAppleIntelligenceAvailable] =
@@ -285,7 +285,7 @@ export function useProviderSettings(): UseProviderSettingsReturn {
       setProviderState("apple");
       return;
     }
-    // Web/hosted builds intentionally lock to Anthropic.
+    // Web/hosted builds intentionally lock to OpenAI.
     setProviderState(LOCKED_CLOUD_PROVIDER);
   }, []);
 

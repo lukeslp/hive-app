@@ -81,6 +81,9 @@ The server entrypoint is `server/_core/index.ts` and mounts:
 5. tRPC routes
 6. collaboration websocket handling
 
+In production the server binds a fixed loopback address and port. Unknown
+`/api/*` paths return JSON 404 responses rather than the SPA document.
+
 ## AI Dispatch Model
 
 Client generation paths use on-device-first logic with platform-specific behavior:
@@ -89,6 +92,17 @@ Client generation paths use on-device-first logic with platform-specific behavio
 - Web/Android: on-device attempt when available, otherwise cloud `/api/generate` fallback.
 
 See `client/src/hooks/useAIGeneration.ts` and `client/src/lib/foundationModelsPlugin.ts`.
+
+## Production Safety
+
+- Client-supplied `X-Ollama-Host`, `X-Ollama-Model`, and
+  `X-Ollama-API-Key` values are ignored. The public server may use only its
+  operator-configured `OLLAMA_HOST`, `OLLAMA_MODEL`, and `OLLAMA_API_KEY`.
+- `/api/generate` enforces request-body, output-token, per-minute, and
+  per-hour limits.
+- Production refuses to select another port when the configured port is busy.
+- Deploy behind a single trusted reverse proxy and keep the Node listener on
+  loopback.
 
 ## Documentation Map
 
