@@ -26,6 +26,13 @@ type StudioStage =
   | "cancelled"
   | "error";
 
+type ArtifactAction = "save" | "export" | "attachImage";
+
+interface ArtifactActionOperation {
+  artifactId: string;
+  token: symbol;
+}
+
 export interface ArtifactStudioProps {
   isOpen: boolean;
   onClose: () => void;
@@ -144,15 +151,23 @@ export function ArtifactStudio({
   const [cloudImageFileIds, setCloudImageFileIds] = useState<Set<string>>(
     () => new Set()
   );
+  const [activeAction, setActiveAction] = useState<ArtifactAction | null>(null);
   const abortController = useRef<AbortController | null>(null);
+  const actionOperation = useRef<ArtifactActionOperation | null>(null);
 
   useEffect(() => {
+    actionOperation.current = null;
+    setActiveAction(null);
     if (!isOpen) return;
     setStage("configure");
     setProgress(null);
     setArtifact(null);
     setMessage(null);
     setCloudImageFileIds(new Set());
+
+    return () => {
+      actionOperation.current = null;
+    };
   }, [isOpen]);
 
   const scope = useMemo<ArtifactScope>(() => {
@@ -173,6 +188,8 @@ export function ArtifactStudio({
   const recipe = getArtifactRecipe(recipeId) ?? ARTIFACT_RECIPES[0];
 
   const closeStudio = () => {
+    actionOperation.current = null;
+    setActiveAction(null);
     const controller = abortController.current;
     controller?.abort();
     if (abortController.current === controller) abortController.current = null;
@@ -180,6 +197,7 @@ export function ArtifactStudio({
   };
 
   const beginGeneration = async () => {
+    if (actionOperation.current) return;
     if (!services) {
       setMessage("Artifact generation is available in the Idea Tiles Mac app.");
       setStage("error");
@@ -249,8 +267,17 @@ export function ArtifactStudio({
     }
   };
 
-  const runAction = async (action: "save" | "export" | "attachImage") => {
-    if (!artifact || !services) return;
+  const runAction = async (action: ArtifactAction) => {
+    if (!artifact || !services || actionOperation.current) return;
+    const operation: ArtifactActionOperation = {
+      artifactId: artifact.id,
+      token: Symbol(action),
+    };
+    actionOperation.current = operation;
+    setActiveAction(action);
+    const isCurrentOperation = () =>
+      actionOperation.current?.token === operation.token &&
+      actionOperation.current.artifactId === operation.artifactId;
     setMessage(null);
     try {
       if (action === "save") {
@@ -271,6 +298,7 @@ export function ArtifactStudio({
             },
           };
           const pendingSaved = await services.persistence.save(pendingArtifact);
+          if (!isCurrentOperation()) return;
           setArtifact(pendingSaved);
           const uploadArtifact: ArtifactManifest = {
             ...pendingSaved,
@@ -287,6 +315,7 @@ export function ArtifactStudio({
           };
           try {
             const { remoteId } = await cloudSync(uploadArtifact, imageFileIds);
+            if (!isCurrentOperation()) return;
             const syncedArtifact: ArtifactManifest = {
               ...pendingSaved,
               sync: {
@@ -299,14 +328,17 @@ export function ArtifactStudio({
             try {
               const syncedSaved =
                 await services.persistence.save(syncedArtifact);
+              if (!isCurrentOperation()) return;
               setArtifact(syncedSaved);
               setMessage("Artifact saved locally and synced.");
             } catch {
+              if (!isCurrentOperation()) return;
               setMessage(
                 "Artifact synced to cloud, but its local status remains pending."
               );
             }
           } catch (error) {
+            if (!isCurrentOperation()) return;
             const safeMessage = safeCloudSyncError(error);
             const errorArtifact: ArtifactManifest = {
               ...pendingSaved,
@@ -319,6 +351,7 @@ export function ArtifactStudio({
             };
             try {
               const errorSaved = await services.persistence.save(errorArtifact);
+              if (!isCurrentOperation()) return;
               setArtifact(errorSaved);
               setMessage(
                 error instanceof ArtifactCloudSyncError
@@ -326,16 +359,19 @@ export function ArtifactStudio({
                   : "Artifact saved locally. Cloud sync failed."
               );
             } catch {
+              if (!isCurrentOperation()) return;
               setMessage(`${safeMessage} The local status remains pending.`);
             }
           }
         } else {
           const saved = await services.persistence.save(artifact);
+          if (!isCurrentOperation()) return;
           setArtifact(saved);
           setMessage("Artifact saved.");
         }
       } else if (action === "export") {
         await services.persistence.export(artifact);
+        if (!isCurrentOperation()) return;
         setMessage("Export started.");
       } else {
         const targetNodeId =
@@ -347,11 +383,19 @@ export function ArtifactStudio({
           artifact,
           targetNodeId
         );
+        if (!isCurrentOperation()) return;
         await onAttachImage(attachment);
+        if (!isCurrentOperation()) return;
         setMessage("Image attached to tile.");
       }
     } catch (error) {
+      if (!isCurrentOperation()) return;
       setMessage(error instanceof Error ? error.message : "Action failed.");
+    } finally {
+      if (isCurrentOperation()) {
+        actionOperation.current = null;
+        setActiveAction(null);
+      }
     }
   };
 
@@ -484,7 +528,9 @@ export function ArtifactStudio({
               </Button>
               <Button
                 onClick={() => setStage("confirm")}
-                disabled={context.originalNodeCount === 0}
+                disabled={
+                  context.originalNodeCount === 0 || activeAction !== null
+                }
               >
                 Review generation
               </Button>
@@ -506,7 +552,10 @@ export function ArtifactStudio({
               <Button variant="outline" onClick={() => setStage("configure")}>
                 Back
               </Button>
-              <Button onClick={() => void beginGeneration()}>
+              <Button
+                onClick={() => void beginGeneration()}
+                disabled={activeAction !== null}
+              >
                 Generate artifact
               </Button>
             </div>
@@ -573,6 +622,7 @@ export function ArtifactStudio({
                           type="checkbox"
                           aria-label="Sync image to cloud"
                           checked={cloudImageFileIds.has(file.id)}
+                          disabled={activeAction !== null}
                           onChange={event => {
                             setCloudImageFileIds(current => {
                               const next = new Set(current);
@@ -600,6 +650,7 @@ export function ArtifactStudio({
                 </p>
                 <Button
                   variant="outline"
+                  disabled={activeAction !== null}
                   onClick={() => {
                     setMessage(null);
                     void onCloudSignIn().catch(error =>
@@ -621,12 +672,17 @@ export function ArtifactStudio({
               </p>
             )}
             <div className="flex flex-wrap justify-end gap-2">
-              <Button variant="outline" onClick={() => setStage("configure")}>
+              <Button
+                variant="outline"
+                disabled={activeAction !== null}
+                onClick={() => setStage("configure")}
+              >
                 New artifact
               </Button>
               {artifact.kind === "image" && (
                 <Button
                   variant="outline"
+                  disabled={activeAction !== null}
                   onClick={() => void runAction("attachImage")}
                 >
                   Attach image
@@ -634,11 +690,17 @@ export function ArtifactStudio({
               )}
               <Button
                 variant="outline"
+                disabled={activeAction !== null}
                 onClick={() => void runAction("export")}
               >
                 Export
               </Button>
-              <Button onClick={() => void runAction("save")}>Save</Button>
+              <Button
+                disabled={activeAction !== null}
+                onClick={() => void runAction("save")}
+              >
+                Save
+              </Button>
             </div>
           </section>
         )}

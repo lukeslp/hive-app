@@ -77,6 +77,16 @@ const attachment = {
   checksum: artifact.files[0].checksum,
 };
 
+function deferred<T>() {
+  let resolve!: (value: T | PromiseLike<T>) => void;
+  let reject!: (reason?: unknown) => void;
+  const promise = new Promise<T>((nextResolve, nextReject) => {
+    resolve = nextResolve;
+    reject = nextReject;
+  });
+  return { promise, resolve, reject };
+}
+
 afterEach(cleanup);
 
 describe("Artifact Studio", () => {
@@ -191,6 +201,166 @@ describe("Artifact Studio", () => {
       remoteId: "artifact:remote:1",
       includeImages: false,
     });
+  });
+
+  it("starts only one save and disables conflicting result controls", async () => {
+    const pendingSave = deferred<ArtifactManifest>();
+    const pendingCloud = deferred<{ remoteId: string }>();
+    const imageArtifact: ArtifactManifest = {
+      ...artifact,
+      kind: "image",
+      files: [
+        {
+          ...artifact.files[0],
+          id: "file:image:single-flight",
+          path: "single-flight.png",
+          mimeType: "image/png",
+          encoding: "base64",
+          content: "iVBORw0KGgo=",
+        },
+      ],
+    };
+    const save = vi
+      .fn<(value: ArtifactManifest) => Promise<ArtifactManifest>>()
+      .mockImplementationOnce(() => pendingSave.promise)
+      .mockImplementation(async value => value);
+    const cloudSync = vi.fn(() => pendingCloud.promise);
+    const services: ArtifactStudioServices = {
+      generator: { generate: vi.fn(async () => imageArtifact) },
+      persistence: { save, export: vi.fn(async () => undefined) },
+      attachImageToBoard: vi.fn(async () => attachment),
+    };
+    render(
+      React.createElement(ArtifactStudio, {
+        isOpen: true,
+        onClose: vi.fn(),
+        boardId: "board:cloud:single-flight",
+        nodes,
+        selectedNodeIds: ["0,0"],
+        services,
+        cloudSync,
+        onAttachImage: vi.fn(),
+      })
+    );
+    fireEvent.click(screen.getByRole("button", { name: "Review generation" }));
+    fireEvent.click(screen.getByRole("button", { name: "Generate artifact" }));
+    const saveButton = await screen.findByRole("button", { name: "Save" });
+
+    fireEvent.click(saveButton);
+    fireEvent.click(saveButton);
+
+    expect(save).toHaveBeenCalledTimes(1);
+    expect((saveButton as HTMLButtonElement).disabled).toBe(true);
+    expect(
+      (
+        screen.getByRole("button", {
+          name: "New artifact",
+        }) as HTMLButtonElement
+      ).disabled
+    ).toBe(true);
+    expect(
+      (screen.getByRole("button", { name: "Export" }) as HTMLButtonElement)
+        .disabled
+    ).toBe(true);
+    expect(
+      (
+        screen.getByRole("button", {
+          name: "Attach image",
+        }) as HTMLButtonElement
+      ).disabled
+    ).toBe(true);
+    expect(
+      (
+        screen.getByRole("checkbox", {
+          name: "Sync image to cloud",
+        }) as HTMLInputElement
+      ).disabled
+    ).toBe(true);
+
+    await act(async () => pendingSave.resolve(save.mock.calls[0][0]));
+    await waitFor(() => expect(cloudSync).toHaveBeenCalledTimes(1));
+    expect((saveButton as HTMLButtonElement).disabled).toBe(true);
+
+    await act(async () =>
+      pendingCloud.resolve({ remoteId: "artifact:remote:single-flight" })
+    );
+    expect(
+      await screen.findByText("Artifact saved locally and synced.")
+    ).toBeTruthy();
+    expect(save).toHaveBeenCalledTimes(2);
+    expect((saveButton as HTMLButtonElement).disabled).toBe(false);
+  });
+
+  it("does not let a stale save completion replace a newly generated artifact", async () => {
+    const staleSave = deferred<ArtifactManifest>();
+    const replacementSave = deferred<ArtifactManifest>();
+    const replacementArtifact: ArtifactManifest = {
+      ...artifact,
+      id: "artifact:test:replacement",
+      title: "Replacement brief",
+    };
+    const generate = vi
+      .fn<ArtifactStudioServices["generator"]["generate"]>()
+      .mockResolvedValueOnce(artifact)
+      .mockResolvedValueOnce(replacementArtifact);
+    const save = vi
+      .fn<(value: ArtifactManifest) => Promise<ArtifactManifest>>()
+      .mockImplementationOnce(() => staleSave.promise)
+      .mockImplementationOnce(() => replacementSave.promise)
+      .mockImplementation(async value => value);
+    const cloudSync = vi.fn(async () => ({
+      remoteId: "artifact:remote:stale",
+    }));
+    const services: ArtifactStudioServices = {
+      generator: { generate },
+      persistence: { save, export: vi.fn(async () => undefined) },
+      attachImageToBoard: vi.fn(async () => attachment),
+    };
+    const props = {
+      onClose: vi.fn(),
+      boardId: "board:cloud:stale",
+      nodes,
+      services,
+      cloudSync,
+    };
+    const rendered = render(
+      React.createElement(ArtifactStudio, { ...props, isOpen: true })
+    );
+    fireEvent.click(screen.getByRole("button", { name: "Review generation" }));
+    fireEvent.click(screen.getByRole("button", { name: "Generate artifact" }));
+    fireEvent.click(await screen.findByRole("button", { name: "Save" }));
+    expect(save).toHaveBeenCalledTimes(1);
+
+    rendered.rerender(
+      React.createElement(ArtifactStudio, { ...props, isOpen: false })
+    );
+    rendered.rerender(
+      React.createElement(ArtifactStudio, { ...props, isOpen: true })
+    );
+    fireEvent.click(screen.getByRole("button", { name: "Review generation" }));
+    fireEvent.click(screen.getByRole("button", { name: "Generate artifact" }));
+    expect(await screen.findByText("Replacement brief")).toBeTruthy();
+    const replacementSaveButton = screen.getByRole("button", { name: "Save" });
+    fireEvent.click(replacementSaveButton);
+    expect(save).toHaveBeenCalledTimes(2);
+
+    await act(async () => staleSave.resolve(save.mock.calls[0][0]));
+
+    expect(screen.getByText("Replacement brief")).toBeTruthy();
+    expect(screen.queryByText("Prototype brief")).toBeNull();
+    expect(cloudSync).not.toHaveBeenCalled();
+    expect((replacementSaveButton as HTMLButtonElement).disabled).toBe(true);
+
+    await act(async () => replacementSave.resolve(save.mock.calls[1][0]));
+    expect(
+      await screen.findByText("Artifact saved locally and synced.")
+    ).toBeTruthy();
+    expect(cloudSync).toHaveBeenCalledTimes(1);
+    expect(cloudSync.mock.calls[0][0].id).toBe(replacementArtifact.id);
+    expect(
+      (screen.getByRole("button", { name: "Save" }) as HTMLButtonElement)
+        .disabled
+    ).toBe(false);
   });
 
   it("persists a bounded safe error after cloud failure", async () => {
