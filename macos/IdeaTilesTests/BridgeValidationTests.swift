@@ -93,12 +93,12 @@ struct BridgeValidationTests {
 
     @Test("workspace timestamps match canonical offset datetime semantics")
     func validatesWorkspaceTimestamps() throws {
-        for accepted in ["0000-01-01T00:00Z", "2026-01-01T00:00Z", "2026-01-01T00:00:00Z", "2026-01-01T00:00:00.123+05:30"] {
+        for accepted in ["0000-01-01T00:00Z", "0000-02-29T00:00Z", "2026-01-01T00:00Z", "2026-01-01T00:00:00Z", "2026-01-01T00:00:00.123+05:30", "0400-02-29T00:00Z"] {
             _ = try RPCRequestValidator().parse(
                 JSONSerialization.data(withJSONObject: workspaceSaveRequest(createdAt: accepted))
             )
         }
-        for rejected in ["2026-02-30T00:00:00Z", "2026-01-01T00:00+0100", "2026-01-01T00:00:00+99:99"] {
+        for rejected in ["0100-02-29T00:00Z", "2026-02-30T00:00:00Z", "2026-01-01T00:00+0100", "2026-01-01T00:00:00+99:99"] {
             #expect(throws: RPCValidationError.self) {
                 try RPCRequestValidator().parse(
                     JSONSerialization.data(withJSONObject: workspaceSaveRequest(createdAt: rejected))
@@ -297,6 +297,60 @@ struct BridgeValidationTests {
         let data = Data(#"{"id":"rpc:1","method":"platform.getCapabilities","params":{"nested":\#(nested)}}"#.utf8)
         #expect(throws: RPCValidationError.invalidJSON) {
             try RPCRequestValidator().parse(data)
+        }
+    }
+
+    @Test("requires canonical UTF-8 before checking RPC and package depth")
+    func rejectsNonUTF8TransportAndLeadingBOM() throws {
+        let payloads = try deeplyNestedWorkspaceJSON()
+        for encoding in [String.Encoding.utf16LittleEndian, .utf16BigEndian] {
+            let request = try #require(payloads.request.data(using: encoding))
+            #expect(throws: RPCValidationError.invalidJSON) {
+                try RPCRequestValidator().parse(request)
+            }
+            let envelope = try #require(payloads.envelope.data(using: encoding))
+            #expect(throws: RPCValidationError.invalidParameters) {
+                try RPCRequestValidator.validateWorkspaceEnvelopeData(
+                    envelope,
+                    expectedBoardID: "board:stable"
+                )
+            }
+        }
+
+        let validRequest = try JSONSerialization.data(withJSONObject: workspaceSaveRequest())
+        var requestWithBOM = Data([0xEF, 0xBB, 0xBF])
+        requestWithBOM.append(validRequest)
+        #expect(throws: RPCValidationError.invalidJSON) {
+            try RPCRequestValidator().parse(requestWithBOM)
+        }
+
+        let envelope = try workspaceEnvelopeData()
+        var envelopeWithBOM = Data([0xEF, 0xBB, 0xBF])
+        envelopeWithBOM.append(envelope)
+        #expect(throws: RPCValidationError.invalidParameters) {
+            try RPCRequestValidator.validateWorkspaceEnvelopeData(
+                envelopeWithBOM,
+                expectedBoardID: "board:stable"
+            )
+        }
+    }
+
+    @Test("rejects duplicate and escape-equivalent workspace keys")
+    func rejectsDuplicateWorkspaceKeys() throws {
+        let request = try JSONSerialization.data(withJSONObject: workspaceSaveRequest())
+        let envelope = try workspaceEnvelopeData()
+        for duplicateKey in ["id", #"\u0069d"#] {
+            #expect(throws: RPCValidationError.invalidJSON) {
+                try RPCRequestValidator().parse(
+                    try addingDuplicateWorkspaceID(to: request, key: duplicateKey)
+                )
+            }
+            #expect(throws: RPCValidationError.invalidParameters) {
+                try RPCRequestValidator.validateWorkspaceEnvelopeData(
+                    try addingDuplicateWorkspaceID(to: envelope, key: duplicateKey),
+                    expectedBoardID: "board:stable"
+                )
+            }
         }
     }
 
@@ -561,6 +615,46 @@ private func workspaceSaveRequest(
     params["envelope"] = envelope
     request["params"] = params
     return request
+}
+
+private func workspaceEnvelopeData() throws -> Data {
+    let request = workspaceSaveRequest()
+    let params = try #require(request["params"] as? [String: Any])
+    let envelope = try #require(params["envelope"] as? [String: Any])
+    return try JSONSerialization.data(withJSONObject: envelope)
+}
+
+private func deeplyNestedWorkspaceJSON() throws -> (request: String, envelope: String) {
+    let node: [String: Any] = [
+        "id": "tile:0:0", "text": "Root", "type": "root", "depth": 0,
+        "parentId": NSNull(), "isKeyTheme": false, "pinned": false,
+        "artifactAttachments": [],
+        "compatibility": [
+            "tiles": [
+                "visualization": ["type": "chart", "data": "DEPTH_SENTINEL"],
+            ],
+        ],
+    ]
+    let request = workspaceSaveRequest(node: node)
+    let params = try #require(request["params"] as? [String: Any])
+    let envelope = try #require(params["envelope"] as? [String: Any])
+    let nested = String(repeating: "[", count: 70) + "0" + String(repeating: "]", count: 70)
+    let replacement = #"{"before":"Ģ","deep":\#(nested),"after":"Ģ"}"#
+    func replacingSentinel(in object: Any) throws -> String {
+        let data = try JSONSerialization.data(withJSONObject: object)
+        let json = try #require(String(data: data, encoding: .utf8))
+        return json.replacingOccurrences(of: #""DEPTH_SENTINEL""#, with: replacement)
+    }
+    return try (replacingSentinel(in: request), replacingSentinel(in: envelope))
+}
+
+private func addingDuplicateWorkspaceID(to data: Data, key: String) throws -> Data {
+    let json = try #require(String(data: data, encoding: .utf8))
+    let original = #""id":"board:stable""#
+    let replacement = original + ",\"\(key)\":\"board:different\""
+    let mutated = json.replacingOccurrences(of: original, with: replacement)
+    #expect(mutated != json)
+    return Data(mutated.utf8)
 }
 
 private func artifactGenerationRequest(

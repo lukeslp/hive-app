@@ -49,7 +49,7 @@ struct RPCRequestValidator: Sendable {
     func parse(_ data: Data) throws -> ValidatedRPCRequest {
         guard data.count <= maximumBytes else { throw RPCValidationError.messageTooLarge }
         // RPC adds the request and params containers around a workspace envelope.
-        guard Self.hasAcceptableJSONDepth(data, maximumDepth: 66) else {
+        guard Self.hasCanonicalJSONLexicalForm(data, maximumDepth: 66) else {
             throw RPCValidationError.invalidJSON
         }
         let root: JSONValue
@@ -83,7 +83,7 @@ struct RPCRequestValidator: Sendable {
     }
 
     static func validateWorkspaceEnvelopeData(_ data: Data, expectedBoardID: String) throws {
-        guard data.count <= maximumWorkspaceBytes, hasAcceptableJSONDepth(data),
+        guard data.count <= maximumWorkspaceBytes, hasCanonicalJSONLexicalForm(data),
               let root = try? JSONDecoder().decode(JSONValue.self, from: data),
               case .object(let object) = root
         else { throw RPCValidationError.invalidParameters }
@@ -102,26 +102,71 @@ struct RPCRequestValidator: Sendable {
         }
     }
 
-    private static func hasAcceptableJSONDepth(_ data: Data, maximumDepth: Int = 64) -> Bool {
-        var depth = 0
-        var inString = false
-        var escaped = false
-        for byte in data {
-            if inString {
-                if escaped { escaped = false }
-                else if byte == 0x5c { escaped = true }
-                else if byte == 0x22 { inString = false }
-            } else if byte == 0x22 {
-                inString = true
-            } else if byte == 0x7b || byte == 0x5b {
-                depth += 1
-                if depth > maximumDepth { return false }
-            } else if byte == 0x7d || byte == 0x5d {
-                depth -= 1
-                if depth < 0 { return false }
+    private enum JSONLexicalContainer {
+        case object(keys: Set<String>, expectsKey: Bool)
+        case array
+    }
+
+    private static func hasCanonicalJSONLexicalForm(
+        _ data: Data,
+        maximumDepth: Int = 64
+    ) -> Bool {
+        guard !data.starts(with: [0xEF, 0xBB, 0xBF]),
+              !data.contains(0),
+              String(data: data, encoding: .utf8) != nil
+        else { return false }
+
+        let bytes = Array(data)
+        let keyDecoder = JSONDecoder()
+        var containers: [JSONLexicalContainer] = []
+        var index = 0
+        while index < bytes.count {
+            switch bytes[index] {
+            case 0x22:
+                let start = index
+                index += 1
+                var closed = false
+                while index < bytes.count {
+                    if bytes[index] == 0x5C {
+                        index += 2
+                        continue
+                    }
+                    if bytes[index] == 0x22 {
+                        closed = true
+                        break
+                    }
+                    index += 1
+                }
+                guard closed else { return false }
+                if case .object(var keys, true)? = containers.last {
+                    let encodedKey = Data(bytes[start...index])
+                    guard let key = try? keyDecoder.decode(String.self, from: encodedKey),
+                          keys.insert(key).inserted
+                    else { return false }
+                    containers[containers.count - 1] = .object(keys: keys, expectsKey: false)
+                }
+            case 0x7B:
+                containers.append(.object(keys: [], expectsKey: true))
+                if containers.count > maximumDepth { return false }
+            case 0x5B:
+                containers.append(.array)
+                if containers.count > maximumDepth { return false }
+            case 0x7D:
+                guard case .object? = containers.last else { return false }
+                containers.removeLast()
+            case 0x5D:
+                guard case .array? = containers.last else { return false }
+                containers.removeLast()
+            case 0x2C:
+                if case .object(let keys, _)? = containers.last {
+                    containers[containers.count - 1] = .object(keys: keys, expectsKey: true)
+                }
+            default:
+                break
             }
+            index += 1
         }
-        return depth == 0 && !inString
+        return containers.isEmpty
     }
 
     private func validateParameters(_ params: [String: Any], for method: RPCMethod) throws {
@@ -572,13 +617,15 @@ struct RPCRequestValidator: Sendable {
               let minute = integer(5), (0...59).contains(minute),
               (0...59).contains(second)
         else { return false }
-        var calendar = Calendar(identifier: .gregorian)
-        calendar.timeZone = TimeZone(secondsFromGMT: 0)!
-        guard let firstOfMonth = calendar.date(
-            from: DateComponents(year: year, month: month, day: 1)
-        ), let days = calendar.range(of: .day, in: .month, for: firstOfMonth),
-           days.contains(day)
-        else { return false }
+        let isLeapYear = year.isMultiple(of: 400)
+            || (year.isMultiple(of: 4) && !year.isMultiple(of: 100))
+        let daysInMonth: Int
+        switch month {
+        case 2: daysInMonth = isLeapYear ? 29 : 28
+        case 4, 6, 9, 11: daysInMonth = 30
+        default: daysInMonth = 31
+        }
+        guard (1...daysInMonth).contains(day) else { return false }
         if value.last != "Z" {
             guard let offsetHour = integer(9), (0...23).contains(offsetHour),
                   let offsetMinute = integer(10), (0...59).contains(offsetMinute)
