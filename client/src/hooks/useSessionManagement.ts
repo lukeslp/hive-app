@@ -26,6 +26,15 @@ import {
 } from "@/lib/boardIdentity";
 import type { HexNode, ViewState } from "@/types/hivemind";
 import {
+  mergeTilesSessionIntoWorkspace,
+  migrateTilesSession,
+  parseWorkspaceTransport,
+  workspaceEnvelopeForBoard,
+  workspaceToLegacyTilesSession,
+  workspaceTransportForCloud,
+  type WorkspaceDocument,
+} from "@shared/workspaceDocument";
+import {
   APP_DISPLAY_NAME,
   APP_EXPORT_FILE_PREFIX,
   APP_PUBLIC_WEB_ORIGIN,
@@ -92,7 +101,92 @@ export function useSessionManagement({
 
   // Refs for cloud auto-save debounce
   const cloudAutoSaveTimer = useRef<NodeJS.Timeout | null>(null);
+  const nativeWorkspaceSaveTimer = useRef<NodeJS.Timeout | null>(null);
+  const nativeWorkspaceSaveInFlight = useRef<Promise<void>>(Promise.resolve());
   const lastCloudSaveRef = useRef<number>(0);
+  const workspaceRef = useRef<WorkspaceDocument | null>(null);
+
+  const buildSessionData = useCallback(() => {
+    const legacy = {
+      boardId: localBoardId,
+      nodes,
+      viewState,
+      creativity,
+      keyThemes: Object.keys(nodes).filter(key => nodes[key].isKeyTheme),
+    };
+    const workspace = workspaceRef.current
+      ? mergeTilesSessionIntoWorkspace(workspaceRef.current, legacy)
+      : migrateTilesSession(legacy);
+    workspaceRef.current = workspace;
+    return workspaceTransportForCloud(workspace);
+  }, [creativity, localBoardId, nodes, viewState]);
+
+  const decodeSessionData = useCallback((raw: unknown) => {
+    const candidate =
+      typeof raw === "object" && raw !== null && "workspaceEnvelope" in raw
+        ? (raw as { workspaceEnvelope: unknown }).workspaceEnvelope
+        : raw;
+    const envelope = parseWorkspaceTransport(candidate);
+    workspaceRef.current = envelope.workspace;
+    return workspaceToLegacyTilesSession(envelope.workspace);
+  }, []);
+
+  const persistNativeWorkspace = useCallback(async () => {
+    const persistence = window.ideaTilesMac?.workspacePersistence;
+    if (!persistence || Object.keys(nodes).length === 0) return;
+    const sessionData = buildSessionData();
+    const boardId = activeCloudSessionId
+      ? `board:cloud:${activeCloudSessionId}`
+      : localBoardId;
+    const envelope = workspaceEnvelopeForBoard(
+      sessionData.workspaceEnvelope,
+      boardId
+    );
+    const previous = nativeWorkspaceSaveInFlight.current.catch(() => undefined);
+    const operation = previous.then(async () => {
+      await persistence.saveBoard({
+        boardId,
+        title: activeCloudSessionName || `${APP_DISPLAY_NAME} Board`,
+        envelope,
+      });
+    });
+    nativeWorkspaceSaveInFlight.current = operation;
+    await operation;
+  }, [
+    activeCloudSessionId,
+    activeCloudSessionName,
+    buildSessionData,
+    localBoardId,
+    nodes,
+  ]);
+
+  const flushNativeWorkspace = useCallback(async () => {
+    if (nativeWorkspaceSaveTimer.current) {
+      clearTimeout(nativeWorkspaceSaveTimer.current);
+      nativeWorkspaceSaveTimer.current = null;
+    }
+    await persistNativeWorkspace();
+  }, [persistNativeWorkspace]);
+
+  // Keep the opaque board payload behind native `.ideatiles` export current.
+  // Export calls `flushNativeWorkspace` and awaits the same serialized queue.
+  useEffect(() => {
+    if (!window.ideaTilesMac?.workspacePersistence) return;
+    if (nativeWorkspaceSaveTimer.current) {
+      clearTimeout(nativeWorkspaceSaveTimer.current);
+    }
+    nativeWorkspaceSaveTimer.current = setTimeout(() => {
+      void persistNativeWorkspace().catch(error => {
+        console.warn("Native workspace persistence failed:", error);
+      });
+    }, 500);
+
+    return () => {
+      if (nativeWorkspaceSaveTimer.current) {
+        clearTimeout(nativeWorkspaceSaveTimer.current);
+      }
+    };
+  }, [persistNativeWorkspace]);
 
   // ── tRPC hooks (only fire when authenticated) ──────────────────────────
   const utils = trpc.useUtils();
@@ -147,10 +241,7 @@ export function useSessionManagement({
     if (Object.keys(nodes).length > 0 && enableAutoSave) {
       try {
         const autosave = {
-          boardId: localBoardId,
-          nodes,
-          viewState,
-          creativity,
+          ...buildSessionData(),
           timestamp: Date.now(),
         };
         localStorage.setItem(AUTOSAVE_KEY, JSON.stringify(autosave));
@@ -158,7 +249,7 @@ export function useSessionManagement({
         // ignore
       }
     }
-  }, [nodes, viewState, creativity, enableAutoSave, localBoardId]);
+  }, [nodes, enableAutoSave, buildSessionData]);
 
   // ── Auto-save to cloud (debounced) ────────────────────────────────────
   useEffect(() => {
@@ -176,13 +267,7 @@ export function useSessionManagement({
       if (now - lastCloudSaveRef.current < CLOUD_AUTOSAVE_INTERVAL * 0.8)
         return;
 
-      const sessionData = {
-        boardId: localBoardId,
-        nodes,
-        viewState,
-        creativity,
-        keyThemes: Object.keys(nodes).filter(k => nodes[k].isKeyTheme),
-      };
+      const sessionData = buildSessionData();
 
       updateMutation.mutate(
         {
@@ -213,19 +298,13 @@ export function useSessionManagement({
     isAuthenticated,
     enableAutoSave,
     activeCloudSessionId,
-    localBoardId,
+    buildSessionData,
   ]);
 
   // ── Save (create new or overwrite existing) ───────────────────────────
   const saveSession = useCallback(
     async (name: string, overwriteId?: number) => {
-      const sessionData = {
-        boardId: localBoardId,
-        nodes,
-        viewState,
-        creativity,
-        keyThemes: Object.keys(nodes).filter(k => nodes[k].isKeyTheme),
-      };
+      const sessionData = buildSessionData();
       const nodeCount = Object.keys(nodes).length;
       const displayName = name || `Session ${savedSessions.length + 1}`;
 
@@ -309,7 +388,7 @@ export function useSessionManagement({
       isAuthenticated,
       createMutation,
       updateMutation,
-      localBoardId,
+      buildSessionData,
     ]
   );
 
@@ -336,9 +415,10 @@ export function useSessionManagement({
         if (isCloud && typeof sessionId === "number") {
           const session = await utils.sessions.get.fetch({ id: sessionId });
           if (session?.data) {
-            resetHistory(session.data.nodes);
-            setViewState(session.data.viewState || { x: 0, y: 0, zoom: 0.8 });
-            setCreativity(session.data.creativity || 0.5);
+            const data = decodeSessionData(session.data);
+            resetHistory(data.nodes);
+            setViewState(data.viewState);
+            setCreativity(data.creativity);
             setShowWelcome(false);
             setShowSessionsModal(false);
             // Track as active cloud session for auto-save
@@ -354,22 +434,30 @@ export function useSessionManagement({
         const data = localStorage.getItem(String(sessionId));
         if (data) {
           const parsed = JSON.parse(data);
-          resetHistory(parsed.nodes);
-          setViewState(parsed.viewState || { x: 0, y: 0, zoom: 0.8 });
-          setCreativity(parsed.creativity || 0.5);
+          const decoded = decodeSessionData(parsed);
+          resetHistory(decoded.nodes);
+          setViewState(decoded.viewState);
+          setCreativity(decoded.creativity);
           setShowWelcome(false);
           setShowSessionsModal(false);
           // Clear active cloud session when loading a local session
           setActiveCloudSessionId(null);
           setActiveCloudSessionName("");
-          setLocalBoardId(boardIdForLocalSession(String(sessionId), parsed));
+          setLocalBoardId(boardIdForLocalSession(String(sessionId), decoded));
         }
       } catch (e) {
         console.error("Failed to load session:", e);
         toast.error("Failed to load session");
       }
     },
-    [resetHistory, setViewState, setCreativity, setShowWelcome, utils]
+    [
+      decodeSessionData,
+      resetHistory,
+      setViewState,
+      setCreativity,
+      setShowWelcome,
+      utils,
+    ]
   );
 
   const loadAutosave = useCallback(() => {
@@ -377,10 +465,11 @@ export function useSessionManagement({
       const autosave = localStorage.getItem(AUTOSAVE_KEY);
       if (autosave) {
         const data = JSON.parse(autosave);
-        if (data.nodes && Object.keys(data.nodes).length > 0) {
-          resetHistory(data.nodes);
-          setViewState(data.viewState || { x: 0, y: 0, zoom: 0.8 });
-          setCreativity(data.creativity || 0.5);
+        const decoded = decodeSessionData(data);
+        if (Object.keys(decoded.nodes).length > 0) {
+          resetHistory(decoded.nodes);
+          setViewState(decoded.viewState);
+          setCreativity(decoded.creativity);
           setShowWelcome(false);
           setShowSessionsModal(false);
           // Not a cloud session
@@ -394,7 +483,13 @@ export function useSessionManagement({
     } catch {
       // ignore
     }
-  }, [resetHistory, setViewState, setCreativity, setShowWelcome]);
+  }, [
+    decodeSessionData,
+    resetHistory,
+    setViewState,
+    setCreativity,
+    setShowWelcome,
+  ]);
 
   // ── Delete ─────────────────────────────────────────────────────────────
   const deleteSession = useCallback(
@@ -429,10 +524,7 @@ export function useSessionManagement({
   // ── Export / Import ────────────────────────────────────────────────────
   const exportSession = useCallback(async () => {
     const data = {
-      boardId: localBoardId,
-      nodes,
-      viewState,
-      creativity,
+      ...buildSessionData(),
       exportDate: new Date().toISOString(),
     };
     const blob = new Blob([JSON.stringify(data, null, 2)], {
@@ -447,7 +539,7 @@ export function useSessionManagement({
         `Session export failed: ${err instanceof Error ? err.message : "unknown error"}`
       );
     }
-  }, [nodes, viewState, creativity, localBoardId]);
+  }, [buildSessionData]);
 
   const importSession = useCallback(
     (file: File) => {
@@ -455,15 +547,16 @@ export function useSessionManagement({
       reader.onload = e => {
         try {
           const data = JSON.parse(e.target?.result as string);
-          if (data.nodes) {
+          const decoded = decodeSessionData(data);
+          if (Object.keys(decoded.nodes).length > 0) {
             setLocalBoardId(
-              typeof data.boardId === "string"
-                ? boardIdForLocalSession("imported", data)
+              typeof decoded.boardId === "string"
+                ? boardIdForLocalSession("imported", decoded)
                 : createLocalBoardId()
             );
-            resetHistory(data.nodes);
-            setViewState(data.viewState || { x: 0, y: 0, zoom: 0.8 });
-            setCreativity(data.creativity || 0.5);
+            resetHistory(decoded.nodes);
+            setViewState(decoded.viewState);
+            setCreativity(decoded.creativity);
             setShowWelcome(false);
           }
         } catch {
@@ -472,7 +565,13 @@ export function useSessionManagement({
       };
       reader.readAsText(file);
     },
-    [resetHistory, setViewState, setCreativity, setShowWelcome]
+    [
+      decodeSessionData,
+      resetHistory,
+      setViewState,
+      setCreativity,
+      setShowWelcome,
+    ]
   );
 
   // ── Share ──────────────────────────────────────────────────────────────
@@ -581,6 +680,7 @@ export function useSessionManagement({
     setActiveCloudSessionId(null);
     setActiveCloudSessionName("");
     setLocalBoardId(createLocalBoardId());
+    workspaceRef.current = null;
   }, []);
 
   const artifactBoardId = activeCloudSessionId
@@ -614,6 +714,7 @@ export function useSessionManagement({
     activeCloudSessionId,
     activeCloudSessionName,
     artifactBoardId,
+    flushNativeWorkspace,
     beginNewBoard,
   };
 }

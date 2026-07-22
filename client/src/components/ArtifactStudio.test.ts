@@ -90,6 +90,38 @@ function deferred<T>() {
 afterEach(cleanup);
 
 describe("Artifact Studio", () => {
+  it("flushes the current workspace before native package export", async () => {
+    const pendingFlush = deferred<void>();
+    const beforeExport = vi.fn(() => pendingFlush.promise);
+    const exportArtifact = vi.fn(async () => undefined);
+    const services: ArtifactStudioServices = {
+      generator: { generate: vi.fn(async () => artifact) },
+      persistence: {
+        save: vi.fn(async value => value),
+        export: exportArtifact,
+      },
+      attachImageToBoard: vi.fn(async () => attachment),
+    };
+    render(
+      React.createElement(ArtifactStudio, {
+        isOpen: true,
+        onClose: vi.fn(),
+        boardId: "board:test",
+        nodes,
+        services,
+        beforeExport,
+      })
+    );
+    fireEvent.click(screen.getByRole("button", { name: "Review generation" }));
+    fireEvent.click(screen.getByRole("button", { name: "Generate artifact" }));
+    fireEvent.click(await screen.findByRole("button", { name: "Export" }));
+
+    expect(beforeExport).toHaveBeenCalledTimes(1);
+    expect(exportArtifact).not.toHaveBeenCalled();
+    await act(async () => pendingFlush.resolve());
+    await waitFor(() => expect(exportArtifact).toHaveBeenCalledWith(artifact));
+  });
+
   it("strips embedded image payloads until each image is selected", async () => {
     const imageArtifact: ArtifactManifest = {
       ...artifact,

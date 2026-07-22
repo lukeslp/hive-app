@@ -77,6 +77,7 @@ import {
   type NativeCredentialService,
   type NativeDreamerAccessService,
   type NativeGenerationSettingsService,
+  type NativeWorkspacePersistenceService,
   type NativeAuthenticationService,
 } from "@shared/macArtifacts";
 import {
@@ -102,6 +103,7 @@ declare global {
     ideaTilesMac?: {
       capabilities?: unknown;
       artifactStudioServices?: ArtifactStudioServices;
+      workspacePersistence?: NativeWorkspacePersistenceService;
       generationSettings?: NativeGenerationSettingsService;
       credentials?: NativeCredentialService;
       dreamer?: NativeDreamerAccessService;
@@ -159,6 +161,13 @@ export default function HexmindApp() {
   const macArtifactStudioAvailable = hasMacArtifactStudioCapability(
     macArtifactHost?.capabilities
   );
+  const spherePreviewEnabled =
+    import.meta.env.VITE_ENABLE_SPHERE_MODE_PREVIEW === "true";
+  const requestSpherePreview = () => {
+    toast.info(
+      "Sphere workspace data is ready. The 3D renderer is planned for a later preview."
+    );
+  };
   // ── Core state ──────────────────────────────────────────────────────────
   const [loadingNodes, setLoadingNodes] = useState<Set<string>>(new Set());
   const [generatingNeighbors, setGeneratingNeighbors] = useState<Set<string>>(
@@ -1870,6 +1879,8 @@ Generate 6 diverse related ideas. Connect to key themes when relevant.`;
             ? () => setShowArtifactStudio(true)
             : undefined
         }
+        spherePreviewEnabled={spherePreviewEnabled}
+        onRequestSpherePreview={requestSpherePreview}
         onExportSession={sessions.exportSession}
         onImportSession={sessions.importSession}
         // Cloud Share Link is web-only: it POSTs board JSON to /api/share.
@@ -2303,6 +2314,7 @@ Generate 6 diverse related ideas. Connect to key themes when relevant.`;
           selectedNodeIds={selectedNodeId ? [selectedNodeId] : []}
           branchRootNodeId={selectedNodeId}
           services={macArtifactHost?.artifactStudioServices}
+          beforeExport={sessions.flushNativeWorkspace}
           onAttachImage={attachArtifactImage}
           cloudSync={isAuthenticated ? syncArtifactToCloud : undefined}
           onCloudSignIn={!isAuthenticated ? login : undefined}
@@ -2425,6 +2437,8 @@ Generate 6 diverse related ideas. Connect to key themes when relevant.`;
         serverProviders={providerSettings.serverProviders}
         appleIntelligenceAvailable={providerSettings.appleIntelligenceAvailable}
         visibleProviders={providerSettings.visibleProviders}
+        spherePreviewEnabled={spherePreviewEnabled}
+        onRequestSpherePreview={requestSpherePreview}
         onDeleteBoard={requestDeleteBoard}
       />
 

@@ -16,6 +16,7 @@ struct MacHostBootstrapTests {
         #expect(source.contains("artifact.save"))
         #expect(source.contains("artifact.export"))
         #expect(source.contains("artifact.attachImage"))
+        #expect(source.contains("workspace.saveBoard"))
         #expect(source.contains("generation.settings.get"))
         #expect(source.contains("generation.settings.set"))
         #expect(source.contains("credentials.status"))
@@ -28,6 +29,35 @@ struct MacHostBootstrapTests {
         #expect(source.contains("dreamer.requestAccess"))
         #expect(!source.contains("localStorage"))
         #expect(source.contains("bridgeVersion: 1"))
+    }
+
+    @Test("persists the canonical workspace payload for package export")
+    func workspacePersistence() async throws {
+        let repository = try ArtifactRepository(root: TestDirectory.make(), inMemory: true)
+        let router = NativeBridgeRouter(repository: repository, exporter: { _ in true })
+        let requestObject = macHostWorkspaceSaveRequest()
+        let validated = try RPCRequestValidator().parse(
+            JSONSerialization.data(withJSONObject: requestObject)
+        )
+
+        let result = try await router.execute(validated)
+        let payload = try await repository.boardPayload(id: "board:stable")
+        let decoded = try #require(
+            try JSONSerialization.jsonObject(with: payload) as? [String: Any]
+        )
+
+        #expect(result.objectValue?["boardId"] == .string("board:stable"))
+        #expect(result.objectValue?["saved"] == .bool(true))
+        #expect(decoded["format"] as? String == "app.ideatiles.workspace-envelope")
+
+        let packageURL = try TestDirectory.make().appending(path: "workspace.ideatiles")
+        try IdeaTilesPackageCodec().export(
+            manifest: ArtifactFixture.manifest(content: "workspace"),
+            boardPayload: payload,
+            to: packageURL
+        )
+        let imported = try IdeaTilesPackageCodec().importContents(at: packageURL)
+        #expect(imported.boardPayload == payload)
     }
 
     @Test("bootstrap and RPC expose the same runtime-derived capabilities")
@@ -95,6 +125,38 @@ struct MacHostBootstrapTests {
         #expect(!AppContentSecurityPolicy.allowsExternalRequest(try #require(URL(string: "https://api.ideatiles.app/generate"))))
         #expect(!AppContentSecurityPolicy.allowsExternalRequest(try #require(URL(string: "http://ideatiles.app/api/generate"))))
     }
+}
+
+private func macHostWorkspaceSaveRequest() -> [String: Any] {
+    [
+        "id": "rpc:workspace:save",
+        "method": "workspace.saveBoard",
+        "params": [
+            "boardId": "board:stable",
+            "title": "Native package seam",
+            "envelope": [
+                "format": "app.ideatiles.workspace-envelope",
+                "envelopeVersion": 1,
+                "workspace": [
+                    "format": "app.ideatiles.workspace",
+                    "schemaVersion": 1,
+                    "id": "board:stable",
+                    "activeMode": "tiles",
+                    "graph": ["nodes": [], "edges": []],
+                    "projections": [
+                        "tiles": ["nodes": [:], "viewport": ["x": 0, "y": 0, "zoom": 1]],
+                        "sphere": [
+                            "nodes": [:], "alignments": [],
+                            "camera": ["position": [0, 0, 15], "target": [0, 0, 0], "fov": 60, "zoom": 1],
+                            "subdivisions": 4,
+                        ],
+                    ],
+                    "preferences": ["creativity": 0.5],
+                    "metadata": [:],
+                ],
+            ],
+        ],
+    ]
 }
 
 @Suite("Native bridge routing")

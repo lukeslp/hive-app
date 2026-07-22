@@ -47,6 +47,23 @@ struct NativeBridgeRouter: Sendable {
         switch request.method {
         case .getCapabilities:
             return capabilities.jsonValue
+        case .saveWorkspace:
+            guard let boardID = request.params["boardId"]?.stringValue,
+                  let title = request.params["title"]?.stringValue,
+                  let envelope = request.params["envelope"]
+            else { throw invalidParameters() }
+            let payload = try JSONEncoder().encode(envelope)
+            guard payload.count <= RPCRequestValidator.maximumWorkspaceBytes
+            else { throw invalidParameters() }
+            let saved = try await repository.saveBoard(
+                id: boardID,
+                title: title,
+                payload: payload
+            )
+            return .object([
+                "boardId": .string(saved.id),
+                "saved": .bool(true),
+            ])
         case .generateArtifact:
             guard let generationCoordinator else { throw NativeRPCError.notConfigured }
             do {

@@ -11,6 +11,10 @@ import {
   type ArtifactManifest,
   type MacPlatformCapabilities,
 } from "@shared/macArtifacts";
+import {
+  createWorkspaceTransportEnvelope,
+  migrateTilesSession,
+} from "@shared/workspaceDocument";
 
 const manifest: ArtifactManifest = {
   schemaVersion: ARTIFACT_SCHEMA_VERSION,
@@ -54,6 +58,44 @@ const manifest: ArtifactManifest = {
 };
 
 describe("Mac artifact contracts", () => {
+  it("validates the native workspace persistence RPC envelope", () => {
+    const envelope = createWorkspaceTransportEnvelope(
+      migrateTilesSession({
+        boardId: "board:native",
+        nodes: {
+          "0,0": {
+            q: 0,
+            r: 0,
+            text: "Native package seam",
+            type: "root",
+            depth: 0,
+            pinned: false,
+          },
+        },
+        viewState: { x: 0, y: 0, zoom: 1 },
+        creativity: 0.5,
+      })
+    );
+    const request = {
+      id: "rpc:workspace:save",
+      method: "workspace.saveBoard",
+      params: {
+        boardId: "board:native",
+        title: "Native package seam",
+        envelope,
+      },
+    };
+    const response = {
+      id: request.id,
+      method: request.method,
+      ok: true,
+      result: { boardId: "board:native", saved: true },
+    };
+
+    expect(macRpcRequestSchema.parse(request)).toEqual(request);
+    expect(macRpcResponseSchema.parse(response)).toEqual(response);
+  });
+
   it("parses a complete versioned artifact manifest", () => {
     expect(artifactManifestSchema.parse(manifest)).toEqual(manifest);
   });
