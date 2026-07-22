@@ -52,27 +52,28 @@ struct RPCRequestValidator: Sendable {
         guard Self.hasAcceptableJSONDepth(data, maximumDepth: 66) else {
             throw RPCValidationError.invalidJSON
         }
-        let raw: Any
+        let root: JSONValue
         do {
-            raw = try JSONSerialization.jsonObject(with: data, options: [.fragmentsAllowed])
+            root = try JSONDecoder().decode(JSONValue.self, from: data)
         } catch {
             throw RPCValidationError.invalidJSON
         }
-        guard let object = raw as? [String: Any],
+        guard case .object(let object) = root,
               Set(object.keys) == ["id", "method", "params"],
-              let id = object["id"] as? String,
-              let methodName = object["method"] as? String,
-              let rawParams = object["params"] as? [String: Any]
+              case .string(let id)? = object["id"],
+              case .string(let methodName)? = object["method"],
+              case .object(let params)? = object["params"]
         else {
             throw RPCValidationError.invalidShape
         }
+        let rawParams = params.mapValues(Self.foundationValue)
         guard Self.isStableID(id) else { throw RPCValidationError.invalidID }
         guard let method = RPCMethod(rawValue: methodName) else { throw RPCValidationError.unknownMethod }
         try validateParameters(rawParams, for: method)
         return ValidatedRPCRequest(
             id: id,
             method: method,
-            params: try rawParams.mapValues(JSONValue.init(any:))
+            params: params
         )
     }
 
@@ -83,9 +84,22 @@ struct RPCRequestValidator: Sendable {
 
     static func validateWorkspaceEnvelopeData(_ data: Data, expectedBoardID: String) throws {
         guard data.count <= maximumWorkspaceBytes, hasAcceptableJSONDepth(data),
-              let envelope = try JSONSerialization.jsonObject(with: data) as? [String: Any]
+              let root = try? JSONDecoder().decode(JSONValue.self, from: data),
+              case .object(let object) = root
         else { throw RPCValidationError.invalidParameters }
+        let envelope = object.mapValues(foundationValue)
         try RPCRequestValidator().validateWorkspaceEnvelope(envelope, boardID: expectedBoardID)
+    }
+
+    private static func foundationValue(_ value: JSONValue) -> Any {
+        switch value {
+        case .object(let object): object.mapValues(foundationValue)
+        case .array(let array): array.map(foundationValue)
+        case .string(let string): string
+        case .number(let number): NSNumber(value: number)
+        case .bool(let boolean): NSNumber(value: boolean)
+        case .null: NSNull()
+        }
     }
 
     private static func hasAcceptableJSONDepth(_ data: Data, maximumDepth: Int = 64) -> Bool {
@@ -253,7 +267,7 @@ struct RPCRequestValidator: Sendable {
         else { throw RPCValidationError.invalidParameters }
         if let name = metadata["name"] {
             guard let value = name as? String,
-                  value == value.trimmingCharacters(in: .whitespacesAndNewlines),
+                  hasCanonicalStringBoundaries(value),
                   !value.isEmpty,
                   value.utf16.count <= 255
             else { throw RPCValidationError.invalidParameters }
@@ -295,7 +309,7 @@ struct RPCRequestValidator: Sendable {
                   Set(node.keys).subtracting(required).isSubset(of: optional),
                   let id = node["id"] as? String, Self.isStableID(id),
                   let text = node["text"] as? String,
-                  text == text.trimmingCharacters(in: .whitespacesAndNewlines),
+                  hasCanonicalStringBoundaries(text),
                   !text.isEmpty,
                   text.utf16.count <= 512,
                   let type = node["type"] as? String, types.contains(type),
@@ -435,7 +449,7 @@ struct RPCRequestValidator: Sendable {
                   Self.isStableID(source), Self.isStableID(target),
                   source != target, nodeIDs.contains(source), nodeIDs.contains(target),
                   alignmentKeys.insert("\(source)\u{0}\(target)\u{0}\(category)").inserted,
-                  reason == reason.trimmingCharacters(in: .whitespacesAndNewlines),
+                  hasCanonicalStringBoundaries(reason),
                   !reason.isEmpty,
                   reason.utf16.count <= 1_000,
                   categories.contains(category),
@@ -537,7 +551,7 @@ struct RPCRequestValidator: Sendable {
     }
 
     private func validISO8601(_ value: String) -> Bool {
-        let pattern = #"^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2})(?::(\d{2})(?:\.(\d+))?)?(Z|[+-](\d{2}):?(\d{2}))$"#
+        let pattern = #"^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2})(?::(\d{2})(?:\.(\d+))?)?(Z|[+-](\d{2}):(\d{2}))$"#
         guard let expression = try? NSRegularExpression(pattern: pattern),
               let match = expression.firstMatch(
                 in: value,
@@ -551,7 +565,7 @@ struct RPCRequestValidator: Sendable {
             return Int(value[swiftRange])
         }
         let second = integer(6) ?? 0
-        guard let year = integer(1), year > 0,
+        guard let year = integer(1), year >= 0,
               let month = integer(2), (1...12).contains(month),
               let day = integer(3),
               let hour = integer(4), (0...23).contains(hour),
@@ -571,6 +585,26 @@ struct RPCRequestValidator: Sendable {
             else { return false }
         }
         return true
+    }
+
+    private func hasCanonicalStringBoundaries(_ value: String) -> Bool {
+        guard let first = value.unicodeScalars.first,
+              let last = value.unicodeScalars.last
+        else { return false }
+        return !isECMAScriptTrimCharacter(first) && !isECMAScriptTrimCharacter(last)
+    }
+
+    private func isECMAScriptTrimCharacter(_ scalar: Unicode.Scalar) -> Bool {
+        switch scalar.value {
+        case 0x0009...0x000D,
+             0x0020, 0x00A0, 0x1680,
+             0x2000...0x200A,
+             0x2028, 0x2029, 0x202F,
+             0x205F, 0x3000, 0xFEFF:
+            true
+        default:
+            false
+        }
     }
 
     private func jsonBoolean(_ value: Any?) -> Bool? {
