@@ -6,6 +6,15 @@ _Product name **Idea Tiles** (live on the App Store). **Canonical web / marketin
 
 **Canonical rollout (repo):** [`docs/infra/IDEATILES_DOMAIN.md`](docs/infra/IDEATILES_DOMAIN.md) · verify: `pnpm verify:canonical` · device gates: [`docs/DEVICE_RELEASE_GATES.md`](docs/DEVICE_RELEASE_GATES.md) · ASC URLs: [`docs/APP_STORE_CONNECT_CANONICAL.md`](docs/APP_STORE_CONNECT_CANONICAL.md).
 
+## Artifact sync deployment gate
+
+Before deploying the updated server, web client, or native Mac client, apply
+`drizzle/0003_glamorous_jackpot.sql` (artifact and artifact-file tables), then
+`drizzle/0004_illegal_red_ghost.sql` (widens `sessions.data` to `MEDIUMTEXT`).
+Verify both artifact tables, their foreign keys and indexes, and the
+`sessions.data` column type in the target database before promoting clients.
+Do not deploy a client that can sync artifacts until these schema checks pass.
+
 ## 2026-06-09/10 — 1.1 train opened; availability, privacy, fastlane
 
 All pushed to `main` (`f5a9972`…`eb78045`). Suite is **121 tests / 12 files**.

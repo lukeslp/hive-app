@@ -163,11 +163,11 @@ function extractCanonicalContext(
   displayIdBySemanticId: Map<string, string>
 ): ArtifactContext {
   const nodes = Object.fromEntries(graph.nodes.map(node => [node.id, node]));
-  const entries: Array<[string, SemanticNode]> = selectEntries(
-    nodes,
-    scope
-  ).map(([id, node]) => [displayIdBySemanticId.get(id) ?? id, node]);
-  const reduced = reduceToBudget(entries, maximumCharacters);
+  const entries = selectEntries(nodes, scope);
+  const displayEntries: Array<[string, SemanticNode]> = entries.map(
+    ([id, node]) => [displayIdBySemanticId.get(id) ?? id, node]
+  );
+  const reduced = reduceToBudget(displayEntries, maximumCharacters);
 
   return {
     scope,
@@ -182,9 +182,7 @@ function extractCanonicalContext(
       contextInfo: node.contextInfo,
       type: node.type,
       depth: node.depth,
-      parentId: node.parentId
-        ? (displayIdBySemanticId.get(node.parentId) ?? node.parentId)
-        : node.parentId,
+      parentId: node.parentId,
       isKeyTheme: !!node.isKeyTheme,
     })),
     text: reduced.text,

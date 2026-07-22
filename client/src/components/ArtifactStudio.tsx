@@ -186,6 +186,16 @@ export function ArtifactStudio({
     () => extractArtifactContext(nodes, scope),
     [nodes, scope]
   );
+  const nodeIdentity = useMemo(() => {
+    const semanticIdByRendererKey = new Map<string, string>();
+    const rendererKeyBySemanticId = new Map<string, string>();
+    for (const [rendererKey, node] of Object.entries(nodes)) {
+      const semanticId = node.semanticId ?? `tile:${node.q}:${node.r}`;
+      semanticIdByRendererKey.set(rendererKey, semanticId);
+      rendererKeyBySemanticId.set(semanticId, rendererKey);
+    }
+    return { semanticIdByRendererKey, rendererKeyBySemanticId };
+  }, [nodes]);
   const suggestions = useMemo(() => suggestArtifactRecipes(context), [context]);
   const recipe = getArtifactRecipe(recipeId) ?? ARTIFACT_RECIPES[0];
 
@@ -238,7 +248,7 @@ export function ArtifactStudio({
           originalNodeCount: context.originalNodeCount,
           contextTruncated: context.truncated,
           recipeId: recipe.id,
-          scope,
+          scope: context.scope,
           context: context.text,
           instructions: instructions.trim() || undefined,
         },
@@ -378,9 +388,14 @@ export function ArtifactStudio({
         if (!isCurrentOperation()) return;
         setMessage("Export started.");
       } else {
-        const targetNodeId =
-          selectedNodeIds[0] ?? artifact.provenance.sourceNodeIds[0];
-        if (!targetNodeId || !nodes[targetNodeId] || !onAttachImage) {
+        const selectedRendererKey = selectedNodeIds[0];
+        const targetNodeId = selectedRendererKey
+          ? nodeIdentity.semanticIdByRendererKey.get(selectedRendererKey)
+          : artifact.provenance.sourceNodeIds[0];
+        const rendererTargetKey = targetNodeId
+          ? nodeIdentity.rendererKeyBySemanticId.get(targetNodeId)
+          : undefined;
+        if (!targetNodeId || !rendererTargetKey || !onAttachImage) {
           throw new Error("Select a source tile before attaching the image.");
         }
         const attachment = await services.attachImageToBoard(
@@ -388,7 +403,15 @@ export function ArtifactStudio({
           targetNodeId
         );
         if (!isCurrentOperation()) return;
-        await onAttachImage(attachment);
+        const attachmentRendererKey =
+          nodeIdentity.rendererKeyBySemanticId.get(attachment.targetNodeId);
+        if (!attachmentRendererKey || !nodes[attachmentRendererKey]) {
+          throw new Error("The image target is no longer on this board.");
+        }
+        await onAttachImage({
+          ...attachment,
+          targetNodeId: attachmentRendererKey,
+        });
         if (!isCurrentOperation()) return;
         setMessage("Image attached to tile.");
       }

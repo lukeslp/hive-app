@@ -642,8 +642,8 @@ describe("canonical workspace document", () => {
     );
     expect(canonical.originalNodeCount).toBe(legacy.originalNodeCount);
     expect(canonical.truncated).toBe(legacy.truncated);
-    expect(legacy.nodeIds).toEqual(["0,0", "-1,0"]);
-    expect(legacy.nodes[1].parentId).toBe("0,0");
+    expect(legacy.nodeIds).toEqual(["tile:0:0", "tile:-1:0"]);
+    expect(legacy.nodes[1].parentId).toBe("tile:0:0");
     expect(canonical.text).toContain("Keep the constraint visible.");
   });
 });

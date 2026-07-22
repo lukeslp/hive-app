@@ -91,7 +91,7 @@ async function callGemini(
 ): Promise<string> {
   if (!apiKey)
     throw new Error("No Gemini API key provided. Add your key in Settings.");
-  const model = "gemini-2.0-flash";
+  const model = "gemini-3.6-flash";
 
   const body: any = {
     contents: [{ parts: [{ text: req.userText }] }],
@@ -239,7 +239,7 @@ async function callGrok(
 ): Promise<string> {
   if (!apiKey)
     throw new Error("No Grok/xAI API key provided. Add your key in Settings.");
-  const model = "grok-3-mini-fast";
+  const model = "grok-4.5";
 
   const messages: any[] = [];
   if (req.system) messages.push({ role: "system", content: req.system });

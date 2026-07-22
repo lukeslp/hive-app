@@ -26,10 +26,10 @@ enum GenerationProvider: String, Codable, CaseIterable, Sendable {
     var defaultModel: String {
         switch self {
         case .apple: "system-language-model"
-        case .gemini: "gemini-2.0-flash"
+        case .gemini: "gemini-3.6-flash"
         case .anthropic: "claude-haiku-4-5-20251001"
         case .openAI: "gpt-5.6-luna"
-        case .xAI: "grok-3-mini-fast"
+        case .xAI: "grok-4.5"
         case .mistral: "mistral-small-latest"
         case .ollama: "gemma3:4b"
         case .dreamer: "automatic"
@@ -37,6 +37,19 @@ enum GenerationProvider: String, Codable, CaseIterable, Sendable {
     }
 
     var requiresCredential: Bool { self != .apple && self != .ollama }
+
+    var privacyDisclosure: String {
+        switch self {
+        case .apple:
+            "Generation runs on this Mac with Apple Foundation Models. Prompts, board context, and responses stay on this Mac."
+        case .ollama:
+            "Prompts and artifact context go only to the loopback Ollama server you configure on this Mac."
+        case .dreamer:
+            "Prompts and artifact context go through the Dreamer gateway to the provider and model authorized for your invite."
+        case .gemini, .anthropic, .openAI, .xAI, .mistral:
+            "Prompts and artifact context go directly to \(displayName). Your API key is stored in Keychain and is sent only to that provider."
+        }
+    }
 }
 
 struct GenerationSettings: Codable, Equatable, Sendable {

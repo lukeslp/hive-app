@@ -143,6 +143,23 @@ struct NativeCredentialTests {
 @MainActor
 @Suite("Native generation settings")
 struct NativeGenerationSettingsTests {
+    @Test("cloud provider defaults match the release-reviewed model set")
+    func providerDefaultModels() {
+        #expect(GenerationProvider.gemini.defaultModel == "gemini-3.6-flash")
+        #expect(GenerationProvider.anthropic.defaultModel == "claude-haiku-4-5-20251001")
+        #expect(GenerationProvider.openAI.defaultModel == "gpt-5.6-luna")
+        #expect(GenerationProvider.xAI.defaultModel == "grok-4.5")
+        #expect(GenerationProvider.mistral.defaultModel == "mistral-small-latest")
+    }
+
+    @Test("provider disclosures distinguish local, direct, and managed processing")
+    func providerPrivacyDisclosures() {
+        #expect(GenerationProvider.apple.privacyDisclosure.contains("on this Mac"))
+        #expect(GenerationProvider.openAI.privacyDisclosure.contains("directly to OpenAI"))
+        #expect(GenerationProvider.openAI.privacyDisclosure.contains("Keychain"))
+        #expect(GenerationProvider.dreamer.privacyDisclosure.contains("Dreamer gateway"))
+    }
+
     @Test("settings save an explicit provider/model and transfer a credential only to the vault")
     func savesSettingsAndCredential() async throws {
         let preferences = InMemoryGenerationPreferences()

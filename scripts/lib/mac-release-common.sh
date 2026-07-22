@@ -28,7 +28,11 @@ require_clean_tree() {
 verify_release_metadata() {
   local app_path="$1"
   local plist="$app_path/Contents/Info.plist"
+  local privacy_manifest="$app_path/Contents/Resources/PrivacyInfo.xcprivacy"
+  local app_icon="$app_path/Contents/Resources/AppIcon.icns"
   [[ -f "$plist" ]] || release_error "missing archived Info.plist: $plist"
+  [[ -f "$privacy_manifest" ]] || release_error "missing bundled privacy manifest: $privacy_manifest"
+  [[ -s "$app_icon" ]] || release_error "missing bundled app icon: $app_icon"
 
   local bundle version build
   bundle="$(/usr/libexec/PlistBuddy -c 'Print :CFBundleIdentifier' "$plist")"
@@ -37,6 +41,15 @@ verify_release_metadata() {
   [[ "$bundle" == "$IDEATILES_BUNDLE_ID" ]] || release_error "archive bundle is $bundle, expected $IDEATILES_BUNDLE_ID"
   [[ "$version" == "$IDEATILES_VERSION" ]] || release_error "archive version is $version, expected $IDEATILES_VERSION"
   [[ "$build" == "$IDEATILES_BUILD" ]] || release_error "archive build is $build, expected $IDEATILES_BUILD"
+
+  local tracking accessed_category reason
+  tracking="$(/usr/libexec/PlistBuddy -c 'Print :NSPrivacyTracking' "$privacy_manifest")"
+  accessed_category="$(/usr/libexec/PlistBuddy -c 'Print :NSPrivacyAccessedAPITypes:0:NSPrivacyAccessedAPIType' "$privacy_manifest")"
+  reason="$(/usr/libexec/PlistBuddy -c 'Print :NSPrivacyAccessedAPITypes:0:NSPrivacyAccessedAPITypeReasons:0' "$privacy_manifest")"
+  [[ "$tracking" == "false" ]] || release_error "privacy manifest must declare tracking false"
+  [[ "$accessed_category" == "NSPrivacyAccessedAPICategoryUserDefaults" ]] \
+    || release_error "privacy manifest is missing the UserDefaults category"
+  [[ "$reason" == "CA92.1" ]] || release_error "privacy manifest has the wrong UserDefaults reason"
 }
 
 find_developer_id_identity() {

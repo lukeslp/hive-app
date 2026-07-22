@@ -54,7 +54,7 @@ const artifact: ArtifactManifest = {
   ],
   provenance: {
     sourceBoardId: "board:test",
-    sourceNodeIds: ["0,0"],
+    sourceNodeIds: ["tile:0:0"],
     recipeId: "brief",
     generatedAt: "2026-07-21T12:00:00.000Z",
     generator: { kind: "onDevice", name: "Test generator" },
@@ -70,7 +70,7 @@ const artifact: ArtifactManifest = {
 
 const attachment = {
   artifactId: artifact.id,
-  targetNodeId: "0,0",
+  targetNodeId: "tile:0:0",
   fileId: artifact.files[0].id,
   mimeType: "image/png" as const,
   dataURL: "data:image/png;base64,iVBORw0KGgo=",
@@ -554,7 +554,7 @@ describe("Artifact Studio", () => {
     expect(generate).toHaveBeenCalledTimes(1);
     expect(generate.mock.calls[0][0]).toMatchObject({
       sourceBoardId: "board:test",
-      sourceNodeIds: ["0,0"],
+      sourceNodeIds: ["tile:0:0"],
       includedNodeCount: 1,
       originalNodeCount: 1,
       contextTruncated: false,
@@ -563,6 +563,72 @@ describe("Artifact Studio", () => {
 
     fireEvent.click(screen.getByRole("button", { name: "Save" }));
     await waitFor(() => expect(save).toHaveBeenCalledWith(artifact));
+  });
+
+  it("sends semantic selection scope and source IDs for negative coordinates", async () => {
+    const scopedNodes: NodeMap = {
+      "-1,0": {
+        q: -1,
+        r: 0,
+        semanticId: "idea:negative-root",
+        text: "Negative root",
+        type: "root",
+        depth: 0,
+        parentId: null,
+        pinned: false,
+      },
+      "-2,0": {
+        q: -2,
+        r: 0,
+        text: "Negative selection",
+        type: "concept",
+        depth: 1,
+        parentId: "-1,0",
+        pinned: false,
+      },
+    };
+    const generate = vi.fn<ArtifactStudioServices["generator"]["generate"]>(
+      async () => ({
+        ...artifact,
+        scope: { kind: "selection", nodeIds: ["tile:-2:0"] },
+        provenance: {
+          ...artifact.provenance,
+          sourceNodeIds: ["tile:-2:0"],
+        },
+      })
+    );
+    const services: ArtifactStudioServices = {
+      generator: { generate },
+      persistence: {
+        save: vi.fn(async value => value),
+        export: vi.fn(async () => undefined),
+      },
+      attachImageToBoard: vi.fn(async () => attachment),
+    };
+    render(
+      React.createElement(ArtifactStudio, {
+        isOpen: true,
+        onClose: vi.fn(),
+        boardId: "board:test",
+        nodes: scopedNodes,
+        selectedNodeIds: ["-2,0"],
+        branchRootNodeId: "-1,0",
+        services,
+      })
+    );
+
+    fireEvent.change(screen.getByLabelText("Context scope"), {
+      target: { value: "selection" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Review generation" }));
+    fireEvent.click(screen.getByRole("button", { name: "Generate artifact" }));
+
+    await waitFor(() => expect(generate).toHaveBeenCalledTimes(1));
+    expect(generate.mock.calls[0][0]).toMatchObject({
+      sourceNodeIds: ["tile:-2:0"],
+      scope: { kind: "selection", nodeIds: ["tile:-2:0"] },
+    });
+    expect(generate.mock.calls[0][0].context).toContain("Tile: -2,0; depth: 1");
   });
 
   it("moves to a cancelled state immediately when generation is cancelled", async () => {
@@ -832,10 +898,25 @@ describe("Artifact Studio", () => {
   });
 
   it("reports attachment only after React board state accepts the typed image handoff", async () => {
+    const negativeNodes: NodeMap = {
+      "-1,0": {
+        q: -1,
+        r: 0,
+        text: "Negative tile",
+        type: "root",
+        depth: 0,
+        parentId: null,
+        pinned: false,
+      },
+    };
     const imageArtifact: ArtifactManifest = {
       ...artifact,
       kind: "image",
       recipeId: "image-playground-artwork",
+      provenance: {
+        ...artifact.provenance,
+        sourceNodeIds: ["tile:-1:0"],
+      },
       files: [
         {
           ...artifact.files[0],
@@ -849,7 +930,7 @@ describe("Artifact Studio", () => {
     };
     const handoff = {
       artifactId: imageArtifact.id,
-      targetNodeId: "0,0",
+      targetNodeId: "tile:-1:0",
       fileId: "file:image:1",
       mimeType: "image/png",
       dataURL: "data:image/png;base64,iVBORw0KGgo=",
@@ -876,8 +957,8 @@ describe("Artifact Studio", () => {
         isOpen: true,
         onClose: vi.fn(),
         boardId: "board:test",
-        nodes,
-        selectedNodeIds: ["0,0"],
+        nodes: negativeNodes,
+        selectedNodeIds: ["-1,0"],
         services,
         onAttachImage,
       })
@@ -888,11 +969,16 @@ describe("Artifact Studio", () => {
     fireEvent.click(
       await screen.findByRole("button", { name: "Attach image" })
     );
-    await waitFor(() => expect(onAttachImage).toHaveBeenCalledWith(handoff));
+    await waitFor(() =>
+      expect(onAttachImage).toHaveBeenCalledWith({
+        ...handoff,
+        targetNodeId: "-1,0",
+      })
+    );
     expect(screen.queryByText("Image attached to the board.")).toBeNull();
 
     await act(async () => acceptAttachment?.());
     expect(await screen.findByText("Image attached to tile.")).toBeTruthy();
-    expect(prepare).toHaveBeenCalledWith(imageArtifact, "0,0");
+    expect(prepare).toHaveBeenCalledWith(imageArtifact, "tile:-1:0");
   });
 });

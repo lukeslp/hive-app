@@ -149,6 +149,10 @@ struct GenerationSettingsView: View {
                     LabeledContent("Availability", value: availability == .available ? "Available" : "Unavailable")
                 }
 
+                Text(model.provider.privacyDisclosure)
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+
                 if model.provider == .ollama {
                     TextField("Loopback URL", text: $model.ollamaBaseURL)
                     Text("Only localhost, 127.0.0.0/8, and ::1 are accepted. Redirects are revalidated.")
@@ -221,7 +225,7 @@ struct GenerationSettingsView: View {
             }
         }
         .formStyle(.grouped)
-        .frame(width: 520, height: 440)
+        .frame(width: 520, height: 470)
         .task { await model.load() }
     }
 

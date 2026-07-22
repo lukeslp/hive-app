@@ -11,6 +11,7 @@
 		0BF571F819EE36F106BE1E08 /* CredentialStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 330D76B8B709A62E2DE7CFFC /* CredentialStore.swift */; };
 		1FC909E581FD10B79CBDA774 /* DirectProviderClient.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6CB89740890115CE35EF00FE /* DirectProviderClient.swift */; };
 		270BD15EE913BE7EB77425A0 /* ArtifactPersistenceTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 34F611097139AA29E136FB4A /* ArtifactPersistenceTests.swift */; };
+		2800EC2ECF866DD9FA802EDD /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = A2CF5E362C661D149F07ADFD /* Assets.xcassets */; };
 		2B1A28759511FEC5BE91ED2F /* BundleResourceResolver.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7C0FED78AA66D75D984C901C /* BundleResourceResolver.swift */; };
 		342F5D26DB4EF7D2B84266FF /* GenerationSettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 573072F9CD3B445DCA8A9E53 /* GenerationSettingsView.swift */; };
 		3B5E3AD6E4F085C8E01F0326 /* BundleResourceResolverTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 57B54CF304C22CFE9CCD4883 /* BundleResourceResolverTests.swift */; };
@@ -23,6 +24,7 @@
 		6D6104CA46D6393660F4026E /* PreviewSecurityTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = AD284C727A48E38482D97D3A /* PreviewSecurityTests.swift */; };
 		6DC99EEB1CF0D8D0449FD3FC /* StaticPreviewHost.swift in Sources */ = {isa = PBXBuildFile; fileRef = A9961A4E9ED71DFDDDB34631 /* StaticPreviewHost.swift */; };
 		71D4FB47F556E6B122BF7C27 /* DreamerAccess.swift in Sources */ = {isa = PBXBuildFile; fileRef = 56CB051DB424BB44FB5AD07D /* DreamerAccess.swift */; };
+		7E9C39E8633C5DE73E0E62B5 /* PrivacyInfo.xcprivacy in Resources */ = {isa = PBXBuildFile; fileRef = CD1EF532704A1920B210E587 /* PrivacyInfo.xcprivacy */; };
 		82E3C41C27C1338A793ED0EE /* MacHostTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1CFF7077C12A3B5F46C0677F /* MacHostTests.swift */; };
 		87DA9272E656C6B149116E77 /* NativeBridgeRouter.swift in Sources */ = {isa = PBXBuildFile; fileRef = 755F109DE328663F8BF6404A /* NativeBridgeRouter.swift */; };
 		9A7DB781CB4A25C2E4D1B087 /* RPCRequestValidator.swift in Sources */ = {isa = PBXBuildFile; fileRef = B5DFDF3E64D9B10EDCDC5AA6 /* RPCRequestValidator.swift */; };
@@ -72,6 +74,7 @@
 		997316C75DD94DCFA4B81DBE /* IdeaTilesApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = IdeaTilesApp.swift; sourceTree = "<group>"; };
 		997448083B0C2287930EFADD /* AppWebView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppWebView.swift; sourceTree = "<group>"; };
 		9DCAEC30F365345E28CDB7E0 /* NativeGenerationTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NativeGenerationTests.swift; sourceTree = "<group>"; };
+		A2CF5E362C661D149F07ADFD /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		A7A218BBCBB4D4E7882BA100 /* BridgeDispatcher.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BridgeDispatcher.swift; sourceTree = "<group>"; };
 		A9961A4E9ED71DFDDDB34631 /* StaticPreviewHost.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StaticPreviewHost.swift; sourceTree = "<group>"; };
 		AD284C727A48E38482D97D3A /* PreviewSecurityTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PreviewSecurityTests.swift; sourceTree = "<group>"; };
@@ -79,6 +82,7 @@
 		B5DFDF3E64D9B10EDCDC5AA6 /* RPCRequestValidator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RPCRequestValidator.swift; sourceTree = "<group>"; };
 		B6C2A60650A679A11CAC4F53 /* IdeaTilesTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = IdeaTilesTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		B93022FE0561C8E1FDBD54F4 /* IdeaTilesPackageCodec.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = IdeaTilesPackageCodec.swift; sourceTree = "<group>"; };
+		CD1EF532704A1920B210E587 /* PrivacyInfo.xcprivacy */ = {isa = PBXFileReference; path = PrivacyInfo.xcprivacy; sourceTree = "<group>"; };
 		DCCB62035302565E2566C038 /* MacAuthenticationService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MacAuthenticationService.swift; sourceTree = "<group>"; };
 		E26CF3EA9317C621C889C110 /* IdeaTiles.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = IdeaTiles.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		F0DCFB2EFE9879EA2A4E4251 /* ArtifactContractParityTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ArtifactContractParityTests.swift; sourceTree = "<group>"; };
@@ -98,9 +102,11 @@
 		0EFC9C21153487BEEA31532D /* IdeaTiles */ = {
 			isa = PBXGroup;
 			children = (
+				A2CF5E362C661D149F07ADFD /* Assets.xcassets */,
 				6F3688AFC53854060FB89A84 /* IdeaTiles.entitlements */,
 				997316C75DD94DCFA4B81DBE /* IdeaTilesApp.swift */,
 				116DECBB13147482B1D5A679 /* Info.plist */,
+				CD1EF532704A1920B210E587 /* PrivacyInfo.xcprivacy */,
 				60CD1170007A91B15EC3565C /* Bridge */,
 				6CAC7A5360E50BF9A775A224 /* Generation */,
 				FE5748A41E2B94BDF249D3B8 /* Persistence */,
@@ -196,6 +202,7 @@
 			buildConfigurationList = 7983378DB3903D8FD64B97B0 /* Build configuration list for PBXNativeTarget "IdeaTiles" */;
 			buildPhases = (
 				79F76F40DD7A401CCB6B0378 /* Sources */,
+				C7607D2F852A5E93F643DC2D /* Resources */,
 				45A4F729CB97AB494A2BC779 /* Build Mac WebApp */,
 			);
 			buildRules = (
@@ -261,6 +268,18 @@
 			);
 		};
 /* End PBXProject section */
+
+/* Begin PBXResourcesBuildPhase section */
+		C7607D2F852A5E93F643DC2D /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				2800EC2ECF866DD9FA802EDD /* Assets.xcassets in Resources */,
+				7E9C39E8633C5DE73E0E62B5 /* PrivacyInfo.xcprivacy in Resources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXResourcesBuildPhase section */
 
 /* Begin PBXShellScriptBuildPhase section */
 		45A4F729CB97AB494A2BC779 /* Build Mac WebApp */ = {

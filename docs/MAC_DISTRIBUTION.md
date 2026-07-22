@@ -22,6 +22,21 @@ pnpm workspace:list
 
 The version check rejects drift across package, iOS, Android, generated Mac metadata, bundle identifiers, workspace references, schemes, and the Capacitor symlink.
 
+### Provider model review
+
+Provider defaults last reviewed: 2026-07-21. Before each Mac release,
+compare these IDs with the providers' official model and deprecation pages; do
+not rely on a live network test in the release suite.
+
+- Gemini: `gemini-3.6-flash`
+- Anthropic: `claude-haiku-4-5-20251001`
+- OpenAI: `gpt-5.6-luna`
+- xAI: `grok-4.5`
+- Mistral: `mistral-small-latest`
+
+Update the native defaults and hosted proxy together when a provider replaces
+or retires a model.
+
 ## Mac App Store Archive
 
 A signed archive requires a clean working tree and configured Apple distribution signing:

@@ -90,7 +90,7 @@
   <body>
     <main>
       <h1>Idea Tiles Privacy Policy</h1>
-      <p class="meta">Last updated 10 May 2026</p>
+      <p class="meta">Last updated 21 July 2026</p>
 
       <p>
         Idea Tiles is a hexagonal mind-mapping tool from Bridge City Lab LLC. It
@@ -102,9 +102,9 @@
       <h2>Summary</h2>
       <ul>
         <li>
-          <strong>We do not collect personal data.</strong> No accounts are
-          required to use Idea Tiles. No analytics SDKs, no advertising IDs, no
-          crash-reporting third parties.
+          <strong>No tracking or advertising.</strong> No account is required
+          for local use. Idea Tiles has no advertising IDs, analytics SDKs, or
+          third-party crash reporting.
         </li>
         <li>
           <strong>Your boards stay on your device.</strong> They are saved to
@@ -116,10 +116,10 @@
           device.
         </li>
         <li>
-          <strong>Web and Android can optionally use a cloud LLM</strong>
-          if you supply your own API key (Gemini, Anthropic, OpenAI, etc.). When
-          you do, your prompt is sent only to that provider. We do not relay or
-          store it.
+          <strong>The Mac app defaults to on-device generation.</strong> You can
+          instead choose a direct provider using your own key, a local Ollama
+          server, or invite-based Dreamer access. The app explains the data path
+          before you select it.
         </li>
         <li>
           <strong>Optional collaboration sessions</strong> route board changes
@@ -147,6 +147,32 @@
         don't read or transmit them.
       </p>
 
+      <h2>What the native Mac app does</h2>
+      <p>
+        The Mac app uses Apple Foundation Models on-device by default. For this
+        setting, prompts, selected board or artifact context, and generated
+        responses stay on your Mac.
+      </p>
+      <p>
+        You may choose a supported cloud provider and supply your own API key.
+        The key is stored in your Mac's Keychain. When that provider is
+        selected, the app sends the prompt and relevant board or artifact
+        context directly to that provider and receives its response directly;
+        it does not route those requests through Idea Tiles servers. The
+        provider processes that content under its own terms and privacy policy.
+        A configured Ollama option sends the same content only to the loopback
+        server on your Mac.
+      </p>
+      <p>
+        Dreamer is optional, invite-based managed access. When selected, the app
+        sends prompts and relevant board or artifact context, together with a
+        managed access token, to the Dreamer gateway. The gateway verifies the
+        access profile and quota, selects the provider and model authorized for
+        that profile, and relays the request and response. The managed token is
+        stored in Keychain. The current client and gateway contract does not
+        promise a fixed retention period for this processing, so do not use
+        Dreamer for content you are unwilling to process off-device.
+      </p>
       <h2>What the web and Android versions do</h2>
       <p>
         If you choose to use a cloud language-model provider, the app sends your
@@ -154,6 +180,18 @@
         key you supplied. We don't proxy these calls through our infrastructure
         unless you've explicitly entered our shared provider key. We don't log,
         store, or analyse the prompts or responses.
+      </p>
+
+      <h2>Artifact storage and optional sync</h2>
+      <p>
+        Mac artifacts are saved locally unless you choose cloud sync. Cloud sync
+        requires sign-in and a board already saved as a cloud session. Text
+        artifact content is included when you choose to save that artifact to
+        the cloud. An image file is uploaded only if you select it individually;
+        unselected image content remains on your Mac. Synced artifact metadata
+        and selected content are stored with your account in our database and
+        can be deleted through the artifact or session controls. You can keep an
+        artifact local by remaining signed out or not choosing cloud save.
       </p>
       <p>
         Boards are saved to your browser's local storage by default. If you sign
@@ -188,9 +226,10 @@
 
       <h2>Children</h2>
       <p>
-        Idea Tiles is rated 4+. It does not collect personal information from
-        anyone, including children under 13. We don't include third-party
-        advertising or tracking.
+        Idea Tiles is rated 4+. It is not directed to children and does not
+        include third-party advertising or tracking. Cloud providers and
+        optional account features remain subject to their respective age and
+        account requirements.
       </p>
 
       <h2>Changes to this policy</h2>
