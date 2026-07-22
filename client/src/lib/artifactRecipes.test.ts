@@ -43,6 +43,7 @@ describe("artifact recipes", () => {
     const context: ArtifactContext = {
       scope: { kind: "branch", rootNodeId: "0,1" },
       nodeIds: ["0,1", "1,1"],
+      includedNodeIds: ["0,1", "1,1"],
       nodes: [
         {
           id: "0,1",

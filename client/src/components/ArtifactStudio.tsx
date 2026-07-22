@@ -166,6 +166,16 @@ export function ArtifactStudio({
       completed: 0,
       message: "Preparing board context",
     });
+    const handleProgress = (next: ArtifactGenerationProgress) => {
+      if (
+        abortController.current !== controller ||
+        controller.signal.aborted ||
+        next.requestId !== requestId
+      ) {
+        return;
+      }
+      setProgress(next);
+    };
 
     try {
       const result = await services.generator.generate(
@@ -181,7 +191,7 @@ export function ArtifactStudio({
           context: context.text,
           instructions: instructions.trim() || undefined,
         },
-        { signal: controller.signal, onProgress: setProgress }
+        { signal: controller.signal, onProgress: handleProgress }
       );
       if (controller.signal.aborted || abortController.current !== controller) {
         return;

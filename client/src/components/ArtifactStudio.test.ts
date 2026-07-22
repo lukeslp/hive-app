@@ -253,6 +253,70 @@ describe("Artifact Studio", () => {
     expect(signals[1].aborted).toBe(true);
   });
 
+  it("ignores queued progress from a cancelled request after its replacement starts", async () => {
+    const calls: Array<{
+      requestId: string;
+      onProgress: Parameters<
+        ArtifactStudioServices["generator"]["generate"]
+      >[1]["onProgress"];
+    }> = [];
+    const generate = vi.fn<ArtifactStudioServices["generator"]["generate"]>(
+      (request, options) => {
+        calls.push({
+          requestId: request.requestId,
+          onProgress: options.onProgress,
+        });
+        return new Promise<ArtifactManifest>(() => undefined);
+      }
+    );
+    const services: ArtifactStudioServices = {
+      generator: { generate },
+      persistence: {
+        save: vi.fn(async value => value),
+        export: vi.fn(async () => undefined),
+      },
+      attachImageToBoard: vi.fn(async () => undefined),
+    };
+
+    render(
+      React.createElement(ArtifactStudio, {
+        isOpen: true,
+        onClose: vi.fn(),
+        boardId: "board:test",
+        nodes,
+        services,
+      })
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: "Review generation" }));
+    fireEvent.click(screen.getByRole("button", { name: "Generate artifact" }));
+    fireEvent.click(
+      await screen.findByRole("button", { name: "Cancel generation" })
+    );
+    fireEvent.click(screen.getByRole("button", { name: "Back to setup" }));
+    fireEvent.click(screen.getByRole("button", { name: "Review generation" }));
+    fireEvent.click(screen.getByRole("button", { name: "Generate artifact" }));
+    await screen.findByRole("button", { name: "Cancel generation" });
+
+    act(() => {
+      calls[1].onProgress({
+        requestId: calls[1].requestId,
+        phase: "generating",
+        completed: 0.4,
+        message: "Fresh progress",
+      });
+      calls[0].onProgress({
+        requestId: calls[0].requestId,
+        phase: "packaging",
+        completed: 0.9,
+        message: "Stale progress",
+      });
+    });
+
+    expect(screen.getByText("Fresh progress")).toBeTruthy();
+    expect(screen.queryByText("Stale progress")).toBeNull();
+  });
+
   it("reports the reduced included tile count", () => {
     const largeNodes: NodeMap = {
       "0,0": {
