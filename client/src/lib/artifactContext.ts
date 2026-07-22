@@ -1,0 +1,183 @@
+import type { ArtifactScope } from "@shared/macArtifacts";
+
+export const DEFAULT_ARTIFACT_CONTEXT_LIMIT = 12_000;
+
+export interface ArtifactContextSourceNode {
+  q: number;
+  r: number;
+  text: string;
+  description?: string;
+  contextInfo?: string;
+  type: string;
+  depth: number;
+  parentId?: string | null;
+  isKeyTheme?: boolean;
+}
+
+export interface ArtifactContextNode {
+  id: string;
+  text: string;
+  description?: string;
+  contextInfo?: string;
+  type: string;
+  depth: number;
+  parentId?: string | null;
+  isKeyTheme: boolean;
+}
+
+export interface ArtifactContext {
+  scope: ArtifactScope;
+  nodeIds: string[];
+  nodes: ArtifactContextNode[];
+  text: string;
+  originalNodeCount: number;
+  includedNodeCount: number;
+  truncated: boolean;
+}
+
+function compareNodeEntries(
+  [keyA, a]: [string, ArtifactContextSourceNode],
+  [keyB, b]: [string, ArtifactContextSourceNode]
+): number {
+  return (
+    a.depth - b.depth || a.q - b.q || a.r - b.r || keyA.localeCompare(keyB)
+  );
+}
+
+function selectEntries(
+  nodes: Record<string, ArtifactContextSourceNode>,
+  scope: ArtifactScope
+): Array<[string, ArtifactContextSourceNode]> {
+  const allEntries = Object.entries(nodes);
+
+  if (scope.kind === "board") {
+    return allEntries.sort(compareNodeEntries);
+  }
+
+  if (scope.kind === "selection") {
+    const selected = new Set(scope.nodeIds);
+    return allEntries
+      .filter(([key]) => selected.has(key))
+      .sort(compareNodeEntries);
+  }
+
+  if (!nodes[scope.rootNodeId]) return [];
+
+  const branchIds = new Set<string>([scope.rootNodeId]);
+  let changed = true;
+  while (changed) {
+    changed = false;
+    for (const [key, node] of allEntries) {
+      if (
+        !branchIds.has(key) &&
+        node.parentId &&
+        branchIds.has(node.parentId)
+      ) {
+        branchIds.add(key);
+        changed = true;
+      }
+    }
+  }
+
+  return allEntries
+    .filter(([key]) => branchIds.has(key))
+    .sort(compareNodeEntries);
+}
+
+function formatNode(id: string, node: ArtifactContextSourceNode): string {
+  const flags = [node.type.toUpperCase()];
+  if (node.isKeyTheme) flags.push("KEY THEME");
+  const details = [node.description, node.contextInfo]
+    .filter((value): value is string => !!value?.trim())
+    .join("\nContext: ");
+
+  return [
+    `[${flags.join(" · ")}] ${node.text.trim()}`,
+    details,
+    `Tile: ${id}; depth: ${node.depth}`,
+  ]
+    .filter(Boolean)
+    .join("\n");
+}
+
+function reduceToBudget(
+  entries: Array<[string, ArtifactContextSourceNode]>,
+  maximumCharacters: number
+): { text: string; includedNodeCount: number; truncated: boolean } {
+  const limit = Math.max(0, Math.floor(maximumCharacters));
+  if (entries.length === 0 || limit === 0) {
+    return {
+      text: "",
+      includedNodeCount: 0,
+      truncated: entries.length > 0,
+    };
+  }
+
+  const sections: string[] = [];
+  for (const [id, node] of entries) {
+    const section = formatNode(id, node);
+    const candidate = [...sections, section].join("\n\n");
+    if (candidate.length > limit) break;
+    sections.push(section);
+  }
+
+  if (sections.length === entries.length) {
+    return {
+      text: sections.join("\n\n"),
+      includedNodeCount: sections.length,
+      truncated: false,
+    };
+  }
+
+  if (sections.length === 0) {
+    const first = formatNode(entries[0][0], entries[0][1]);
+    const suffix = "…";
+    return {
+      text:
+        limit <= suffix.length
+          ? suffix.slice(0, limit)
+          : `${first.slice(0, limit - suffix.length)}${suffix}`,
+      includedNodeCount: 1,
+      truncated: true,
+    };
+  }
+
+  const omitted = entries.length - sections.length;
+  const marker = `\n\n[… ${omitted} tile${omitted === 1 ? "" : "s"} omitted]`;
+  let text = sections.join("\n\n");
+  if (text.length + marker.length <= limit) text += marker;
+
+  return {
+    text,
+    includedNodeCount: sections.length,
+    truncated: true,
+  };
+}
+
+export function extractArtifactContext(
+  nodes: Record<string, ArtifactContextSourceNode>,
+  scope: ArtifactScope,
+  maximumCharacters = DEFAULT_ARTIFACT_CONTEXT_LIMIT
+): ArtifactContext {
+  const entries = selectEntries(nodes, scope);
+  const reduced = reduceToBudget(entries, maximumCharacters);
+
+  return {
+    scope,
+    nodeIds: entries.map(([id]) => id),
+    nodes: entries.map(([id, node]) => ({
+      id,
+      text: node.text,
+      description: node.description,
+      contextInfo: node.contextInfo,
+      type: node.type,
+      depth: node.depth,
+      parentId: node.parentId,
+      isKeyTheme: !!node.isKeyTheme,
+    })),
+    text: reduced.text,
+    originalNodeCount: entries.length,
+    includedNodeCount: reduced.includedNodeCount,
+    truncated: reduced.truncated,
+  };
+}

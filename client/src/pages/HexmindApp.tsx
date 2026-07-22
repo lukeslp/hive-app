@@ -38,6 +38,7 @@ import { ContextPromptModal } from "@/components/ContextPromptModal";
 import { ShareModal } from "@/components/ShareModal";
 import { SettingsModal } from "@/components/SettingsModal";
 import { ConfirmationModal } from "@/components/ConfirmationModal";
+import { ArtifactStudio } from "@/components/ArtifactStudio";
 import {
   CollabModal,
   getCollabRoomFromUrl,
@@ -199,6 +200,7 @@ export default function HexmindApp() {
   // Collaboration
   const collab = useCollaboration(nodes, commitNodes);
   const [showCollabModal, setShowCollabModal] = useState(false);
+  const [showArtifactStudio, setShowArtifactStudio] = useState(false);
 
   // Build nodePresenceMap from collab.nodePresence for HexCanvas
   const nodePresenceMap = useMemo(() => {
@@ -1791,6 +1793,7 @@ Generate 6 diverse related ideas. Connect to key themes when relevant.`;
           );
         }}
         onShowSessions={() => sessions.setShowSessionsModal(true)}
+        onShowArtifactStudio={() => setShowArtifactStudio(true)}
         onExportSession={sessions.exportSession}
         onImportSession={sessions.importSession}
         // Cloud Share Link is web-only: it POSTs board JSON to /api/share.
@@ -2213,6 +2216,19 @@ Generate 6 diverse related ideas. Connect to key themes when relevant.`;
         onConfirm={confirmModal.onConfirm}
         title={confirmModal.title}
         message={confirmModal.message}
+      />
+
+      <ArtifactStudio
+        isOpen={showArtifactStudio}
+        onClose={() => setShowArtifactStudio(false)}
+        boardId={
+          sessions.activeCloudSessionId
+            ? `board:${sessions.activeCloudSessionId}`
+            : "board:current"
+        }
+        nodes={nodes}
+        selectedNodeIds={selectedNodeId ? [selectedNodeId] : []}
+        branchRootNodeId={selectedNodeId}
       />
 
       <SessionsModal
