@@ -4,7 +4,7 @@ set -euo pipefail
 
 IDEATILES_TEAM_ID="596T7J7FB6"
 IDEATILES_BUNDLE_ID="app.hexmind.ios"
-IDEATILES_VERSION="1.1.0"
+IDEATILES_VERSION="1.1"
 IDEATILES_BUILD="2"
 
 release_error() {

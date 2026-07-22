@@ -55,3 +55,15 @@ test("notarization is gated by an explicit Keychain profile", () => {
   assert.equal(source.includes("--apple-id"), false);
   assert.equal(source.includes("--password"), false);
 });
+
+test("release verification never launches the signed app", () => {
+  const source = fs.readFileSync(
+    path.join(root, "scripts/verify-mac-release.sh"),
+    "utf8"
+  );
+  assert.equal(source.includes("Contents/MacOS/IdeaTiles"), false);
+  assert.equal(source.includes("mktemp"), false);
+  assert.ok(source.includes("codesign --verify"));
+  assert.ok(source.includes("stapler validate"));
+  assert.ok(source.includes("spctl --assess"));
+});

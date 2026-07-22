@@ -37,14 +37,11 @@ fastlane upload_listing` pushes metadata only (Homebrew Ruby,
 
 1. ~~Uncommitted working-tree changes~~ **Resolved** (`e01924e`,
    `341d706`): splash recolor and the `withTimeout` actor-race rewrite
-   are landed and verified (cap sync + simulator build). The
-   **`App.xcodeproj` → `IdeaTiles.xcodeproj` rename was REVERTED** —
-   Capacitor CLI hardcodes `ios/App/App.xcodeproj/project.pbxproj` and
-   `cap sync` fails ENOENT with the rename in place. The pbxproj was
-   byte-identical, so nothing was lost; the scheme's
-   `queueDebuggingEnabled` tweak was ported. **Don't rename
-   `App.xcodeproj`** — rename the displayed product/scheme instead if
-   the sidebar name matters.
+   are landed and verified (cap sync + simulator build).
+   **`ios/App/IdeaTiles.xcodeproj` is now canonical.** Keep the tracked,
+   relative `ios/App/App.xcodeproj` symlink pointing to it because
+   Capacitor still expects the old path. Do not replace the canonical
+   project with a second copy or remove the compatibility symlink.
 2. **Archive 1.1** in Xcode (Any iOS Device, arm64; say no to Catalyst)
    → upload to ASC → TestFlight smoke per `docs/DEVICE_RELEASE_GATES.md`.
 3. **ASC:** add version 1.1, attach the build (What's New is already in

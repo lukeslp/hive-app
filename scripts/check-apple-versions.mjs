@@ -1,7 +1,8 @@
 import fs from "node:fs";
 import path from "node:path";
 
-const EXPECTED_VERSION = "1.1.0";
+const EXPECTED_SEMANTIC_VERSION = "1.1.0";
+const EXPECTED_APPLE_VERSION = "1.1";
 const EXPECTED_APPLE_BUILD = "2";
 const EXPECTED_ANDROID_CODE = "11000";
 const APP_BUNDLE_ID = "app.hexmind.ios";
@@ -22,13 +23,28 @@ const expectOnly = (label, values, expected) => {
   }
 };
 const count = (contents, value) => contents.split(value).length - 1;
+const normalizedVersion = version => {
+  const parts = version.split(".");
+  if (!parts.every(part => /^\d+$/.test(part)) || parts.length > 3) {
+    fail(`version ${version} is not a numeric semantic version`);
+  }
+  return [...parts, "0", "0"].slice(0, 3).join(".");
+};
+const expectEquivalentVersion = (label, version) => {
+  if (normalizedVersion(version) !== EXPECTED_SEMANTIC_VERSION) {
+    fail(
+      `${label} is ${version}; expected semantic equivalent of ${EXPECTED_SEMANTIC_VERSION}`
+    );
+  }
+};
 
 const packageJSON = JSON.parse(read("package.json"));
-if (packageJSON.version !== EXPECTED_VERSION) {
+if (packageJSON.version !== EXPECTED_SEMANTIC_VERSION) {
   fail(
-    `package.json version is ${packageJSON.version}; expected ${EXPECTED_VERSION}`
+    `package.json version is ${packageJSON.version}; expected ${EXPECTED_SEMANTIC_VERSION}`
   );
 }
+expectEquivalentVersion("package.json version", packageJSON.version);
 
 const iosProjectDirectory = path.join(root, "ios/App/IdeaTiles.xcodeproj");
 const capacitorProjectLink = path.join(root, "ios/App/App.xcodeproj");
@@ -51,7 +67,7 @@ const iosProject = read("ios/App/IdeaTiles.xcodeproj/project.pbxproj");
 expectOnly(
   "iOS marketing version",
   uniqueMatches(iosProject, /MARKETING_VERSION = ([^;]+);/g),
-  EXPECTED_VERSION
+  EXPECTED_APPLE_VERSION
 );
 expectOnly(
   "iOS build number",
@@ -63,6 +79,19 @@ expectOnly(
   uniqueMatches(iosProject, /PRODUCT_BUNDLE_IDENTIFIER = ([^;]+);/g),
   APP_BUNDLE_ID
 );
+
+const fastlane = read("ios/fastlane/Fastfile");
+const fastlaneAppVersions = [
+  ...fastlane.matchAll(/app_version:\s*["']([^"']+)["']/g),
+].map(match => match[1]);
+if (
+  fastlaneAppVersions.length !== 1 ||
+  fastlaneAppVersions[0] !== EXPECTED_APPLE_VERSION
+) {
+  fail(
+    `Fastlane app_version entries are ${JSON.stringify(fastlaneAppVersions)}; expected exactly one ${EXPECTED_APPLE_VERSION}`
+  );
+}
 
 const iosSchemeDirectory = path.join(
   root,
@@ -93,7 +122,7 @@ const macYAML = read("macos/project.yml");
 expectOnly(
   "Mac source marketing version",
   uniqueMatches(macYAML, /^\s*MARKETING_VERSION:\s*([^\s]+)\s*$/gm),
-  EXPECTED_VERSION
+  EXPECTED_APPLE_VERSION
 );
 expectOnly(
   "Mac source build number",
@@ -118,7 +147,7 @@ const macProject = read("macos/IdeaTiles.xcodeproj/project.pbxproj");
 expectOnly(
   "generated Mac marketing version",
   uniqueMatches(macProject, /MARKETING_VERSION = ([^;]+);/g),
-  EXPECTED_VERSION
+  EXPECTED_APPLE_VERSION
 );
 expectOnly(
   "generated Mac build number",
@@ -155,7 +184,7 @@ const androidGradle = read("android/app/build.gradle");
 expectOnly(
   "Android marketing version",
   uniqueMatches(androidGradle, /versionName\s+["']([^"']+)["']/g),
-  EXPECTED_VERSION
+  EXPECTED_SEMANTIC_VERSION
 );
 expectOnly(
   "Android version code",
@@ -173,8 +202,10 @@ for (const plist of ["ios/App/App/Info.plist", "macos/IdeaTiles/Info.plist"]) {
   }
 }
 
+expectEquivalentVersion("Apple marketing version", EXPECTED_APPLE_VERSION);
+
 console.log(
-  `Versions aligned: ${EXPECTED_VERSION}; Apple build ${EXPECTED_APPLE_BUILD}; Android code ${EXPECTED_ANDROID_CODE}`
+  `Versions aligned: Apple ${EXPECTED_APPLE_VERSION}; package/Android ${EXPECTED_SEMANTIC_VERSION}; Apple build ${EXPECTED_APPLE_BUILD}; Android code ${EXPECTED_ANDROID_CODE}`
 );
 console.log(
   `Projects aligned: ${APP_BUNDLE_ID}; IdeaTiles.xcworkspace; Capacitor compatibility symlink valid`
