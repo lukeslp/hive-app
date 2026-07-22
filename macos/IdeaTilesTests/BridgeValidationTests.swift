@@ -4,6 +4,48 @@ import Testing
 
 @Suite("Native RPC validation")
 struct BridgeValidationTests {
+    @Test("canvas generation strings have method-specific transport limits")
+    func validatesCanvasGenerationLimits() throws {
+        let valid: [String: Any] = [
+            "id": "rpc:text:valid",
+            "method": "generation.generateText",
+            "params": ["prompt": "Generate branches", "systemPrompt": "Return JSON only"],
+        ]
+        _ = try RPCRequestValidator().parse(JSONSerialization.data(withJSONObject: valid))
+
+        for field in ["prompt", "systemPrompt"] {
+            var oversized = valid
+            var params = oversized["params"] as! [String: Any]
+            params[field] = String(repeating: "x", count: RPCRequestValidator.maximumGenerationInputUnits + 1)
+            oversized["params"] = params
+            #expect(throws: RPCValidationError.invalidParameters) {
+                try RPCRequestValidator().parse(JSONSerialization.data(withJSONObject: oversized))
+            }
+        }
+    }
+
+    @Test("file exports require bounded canonical data and matching types")
+    func validatesFileExports() throws {
+        let valid: [String: Any] = [
+            "id": "rpc:file:valid",
+            "method": "file.save",
+            "params": ["filename": "board.json", "mimeType": "application/json", "data": "e30="],
+        ]
+        _ = try RPCRequestValidator().parse(JSONSerialization.data(withJSONObject: valid))
+
+        for mutation in [
+            ["filename": "../board.json", "mimeType": "application/json", "data": "e30="],
+            ["filename": "board.png", "mimeType": "application/json", "data": "e30="],
+            ["filename": "board.json", "mimeType": "application/json", "data": "not-base64"],
+        ] {
+            var invalid = valid
+            invalid["params"] = mutation
+            #expect(throws: RPCValidationError.invalidParameters) {
+                try RPCRequestValidator().parse(JSONSerialization.data(withJSONObject: invalid))
+            }
+        }
+    }
+
     @Test("workspace booleans require JSON booleans, not numeric zero or one")
     func validatesExactWorkspaceBooleans() throws {
         let validNode: [String: Any] = [
@@ -414,6 +456,7 @@ struct BridgeValidationTests {
 
     @Test(arguments: [
         #"{"id":"rpc:settings:get","method":"generation.settings.get","params":{}}"#,
+        #"{"id":"rpc:text","method":"generation.generateText","params":{"prompt":"Generate JSON","systemPrompt":"Return JSON only"}}"#,
         #"{"id":"rpc:settings:set","method":"generation.settings.set","params":{"settings":{"provider":"ollama","model":"gemma3:4b","ollamaBaseURL":"http://127.0.0.1:11434"}}}"#,
         #"{"id":"rpc:credentials:status","method":"credentials.status","params":{}}"#,
         #"{"id":"rpc:credentials:set","method":"credentials.set","params":{"provider":"openai","credential":"secret-value"}}"#,
@@ -779,6 +822,19 @@ struct BridgeDispatcherTests {
         ])
 
         let response = await dispatcher.dispatch(try JSONEncoder().encode(request))
+        let object = try #require(try JSONSerialization.jsonObject(with: response) as? [String: Any])
+        #expect(object["ok"] as? Bool == true)
+    }
+
+    @Test("does not apply a computation timeout while a file save panel is open")
+    func fileSaveIsNotComputationTimed() async throws {
+        let dispatcher = BridgeDispatcher(timeout: .milliseconds(10)) { _ in
+            try await Task.sleep(for: .milliseconds(30))
+            return .object(["saved": .bool(false)])
+        }
+        let data = Data(#"{"id":"rpc:file:panel","method":"file.save","params":{"filename":"board.json","mimeType":"application/json","data":"e30="}}"#.utf8)
+
+        let response = await dispatcher.dispatch(data)
         let object = try #require(try JSONSerialization.jsonObject(with: response) as? [String: Any])
         #expect(object["ok"] as? Bool == true)
     }

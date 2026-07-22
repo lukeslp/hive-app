@@ -68,21 +68,37 @@ test("release verification never launches the signed app", () => {
   assert.ok(source.includes("spctl --assess"));
 });
 
-test("Mac privacy manifest declares only the audited UserDefaults reason", () => {
-  const manifestPath = path.join(
-    root,
-    "macos/IdeaTiles/PrivacyInfo.xcprivacy"
-  );
+test("Mac privacy manifest declares optional linked cloud data and the audited defaults reason", () => {
+  const manifestPath = path.join(root, "macos/IdeaTiles/PrivacyInfo.xcprivacy");
   assert.ok(fs.existsSync(manifestPath), "missing Mac privacy manifest");
   const manifest = fs.readFileSync(manifestPath, "utf8");
   assert.match(manifest, /<key>NSPrivacyTracking<\/key>\s*<false\/>/);
-  assert.match(
-    manifest,
-    /<key>NSPrivacyTrackingDomains<\/key>\s*<array\s*\/>/
+  assert.match(manifest, /<key>NSPrivacyTrackingDomains<\/key>\s*<array\s*\/>/);
+  for (const dataType of [
+    "NSPrivacyCollectedDataTypeName",
+    "NSPrivacyCollectedDataTypeEmailAddress",
+    "NSPrivacyCollectedDataTypeUserID",
+    "NSPrivacyCollectedDataTypeOtherUserContent",
+  ]) {
+    assert.ok(manifest.includes(`<string>${dataType}</string>`), dataType);
+  }
+  assert.equal(
+    (manifest.match(/<key>NSPrivacyCollectedDataTypeLinked<\/key>/g) ?? [])
+      .length,
+    4
   );
-  assert.match(
-    manifest,
-    /<key>NSPrivacyCollectedDataTypes<\/key>\s*<array\s*\/>/
+  assert.equal(
+    (manifest.match(/<key>NSPrivacyCollectedDataTypeTracking<\/key>/g) ?? [])
+      .length,
+    4
+  );
+  assert.equal(
+    (
+      manifest.match(
+        /<string>NSPrivacyCollectedDataTypePurposeAppFunctionality<\/string>/g
+      ) ?? []
+    ).length,
+    4
   );
   assert.match(
     manifest,
@@ -107,9 +123,11 @@ test("every Mac release lane verifies the bundled privacy manifest", () => {
     path.join(root, "scripts/lib/mac-release-common.sh"),
     "utf8"
   );
-  assert.ok(common.includes('Contents/Resources/PrivacyInfo.xcprivacy'));
+  assert.ok(common.includes("Contents/Resources/PrivacyInfo.xcprivacy"));
   assert.ok(common.includes("NSPrivacyAccessedAPICategoryUserDefaults"));
   assert.ok(common.includes("CA92.1"));
+  assert.ok(common.includes("NSPrivacyCollectedDataTypeEmailAddress"));
+  assert.ok(common.includes("NSPrivacyCollectedDataTypeOtherUserContent"));
 
   for (const releaseScript of [
     "scripts/archive-mac-app-store.sh",
@@ -125,10 +143,7 @@ test("every Mac release lane verifies the bundled privacy manifest", () => {
 
 test("public privacy copy covers each native Mac data path and artifact sync control", () => {
   const privacy = fs
-    .readFileSync(
-    path.join(root, "client/public/privacy.html"),
-    "utf8"
-    )
+    .readFileSync(path.join(root, "client/public/privacy.html"), "utf8")
     .replace(/\s+/g, " ");
   assert.ok(privacy.includes("Apple Foundation Models"));
   assert.ok(privacy.includes("stored in your Mac's Keychain"));
@@ -137,6 +152,10 @@ test("public privacy copy covers each native Mac data path and artifact sync con
   assert.ok(privacy.includes("does not promise a fixed retention period"));
   assert.ok(privacy.includes("Text artifact content is included"));
   assert.ok(privacy.includes("image file is uploaded only if you select it"));
+  assert.ok(
+    privacy.includes("name, email address, and a stable account identifier")
+  );
+  assert.ok(privacy.includes("They are not used for tracking or advertising"));
 });
 
 test("Mac target compiles the existing Idea Tiles artwork as its app icon", () => {
@@ -144,7 +163,7 @@ test("Mac target compiles the existing Idea Tiles artwork as its app icon", () =
   const contents = path.join(catalog, "AppIcon.appiconset/Contents.json");
   assert.ok(fs.existsSync(contents), "missing Mac AppIcon asset catalog");
   const definition = JSON.parse(fs.readFileSync(contents, "utf8"));
-  const representations = definition.images.filter((image) => image.filename);
+  const representations = definition.images.filter(image => image.filename);
   assert.equal(representations.length, 10);
   for (const image of representations) {
     assert.ok(
@@ -160,7 +179,7 @@ test("Mac target compiles the existing Idea Tiles artwork as its app icon", () =
     path.join(root, "scripts/lib/mac-release-common.sh"),
     "utf8"
   );
-  assert.ok(common.includes('Contents/Resources/AppIcon.icns'));
+  assert.ok(common.includes("Contents/Resources/AppIcon.icns"));
 });
 
 test("cloud defaults and their release review date remain explicit", () => {
@@ -174,7 +193,9 @@ test("cloud defaults and their release review date remain explicit", () => {
     path.join(root, "docs/MAC_DISTRIBUTION.md"),
     "utf8"
   );
-  assert.ok(releaseGuide.includes("Provider defaults last reviewed: 2026-07-21"));
+  assert.ok(
+    releaseGuide.includes("Provider defaults last reviewed: 2026-07-21")
+  );
   for (const model of [
     "gemini-3.6-flash",
     "claude-haiku-4-5-20251001",
@@ -184,4 +205,83 @@ test("cloud defaults and their release review date remain explicit", () => {
   ]) {
     assert.ok(releaseGuide.includes(model));
   }
+});
+
+test("Mac ATS permits only local networking for loopback Ollama", () => {
+  const info = fs.readFileSync(
+    path.join(root, "macos/IdeaTiles/Info.plist"),
+    "utf8"
+  );
+  assert.match(
+    info,
+    /<key>NSAppTransportSecurity<\/key>\s*<dict>\s*<key>NSAllowsLocalNetworking<\/key>\s*<true\/>\s*<\/dict>/
+  );
+  assert.equal(info.includes("NSAllowsArbitraryLoads"), false);
+
+  const release = fs.readFileSync(
+    path.join(root, "scripts/lib/mac-release-common.sh"),
+    "utf8"
+  );
+  assert.ok(release.includes("NSAppTransportSecurity:NSAllowsLocalNetworking"));
+  assert.ok(release.includes("NSAppTransportSecurity:NSAllowsArbitraryLoads"));
+});
+
+test("Mac canvas generation has one native-first transport boundary", () => {
+  for (const sourcePath of [
+    "client/src/hooks/useAIGeneration.ts",
+    "client/src/hooks/useTemplates.ts",
+    "client/src/lib/synthesizeMerge.ts",
+    "client/src/pages/HexmindApp.tsx",
+  ]) {
+    const source = fs.readFileSync(path.join(root, sourcePath), "utf8");
+    assert.equal(
+      source.includes('fetch(buildApiUrl("generate")'),
+      false,
+      `${sourcePath} bypasses the platform generation transport`
+    );
+    assert.ok(
+      source.includes("generateTextForCurrentPlatform"),
+      `${sourcePath} is not using the platform generation transport`
+    );
+  }
+});
+
+test("Mac web assets omit inline source maps and local user paths", () => {
+  const config = fs.readFileSync(path.join(root, "vite.mac.config.ts"), "utf8");
+  assert.match(config, /sourcemap:\s*false/);
+
+  execFileSync(
+    "pnpm",
+    ["exec", "vite", "build", "--config", "vite.mac.config.ts"],
+    { cwd: root, stdio: "pipe" }
+  );
+  const assetRoot = path.join(root, "macos/Resources/WebApp");
+  const pending = [assetRoot];
+  while (pending.length > 0) {
+    const candidate = pending.pop();
+    const stat = fs.statSync(candidate);
+    if (stat.isDirectory()) {
+      pending.push(
+        ...fs.readdirSync(candidate).map(name => path.join(candidate, name))
+      );
+      continue;
+    }
+    const contents = fs.readFileSync(candidate, "utf8");
+    assert.equal(contents.includes("sourceMappingURL=data:"), false, candidate);
+    assert.equal(contents.includes("/Users/"), false, candidate);
+  }
+
+  const release = fs.readFileSync(
+    path.join(root, "scripts/lib/mac-release-common.sh"),
+    "utf8"
+  );
+  assert.ok(release.includes("Contents/Resources/WebApp"));
+  assert.ok(release.includes("sourceMappingURL=data:"));
+  assert.ok(release.includes("/Users/"));
+});
+
+test("native Mac startup excludes web analytics and service workers", () => {
+  const main = fs.readFileSync(path.join(root, "client/src/main.tsx"), "utf8");
+  assert.match(main, /!isCapacitor\(\)\s*&&\s*!isNativeMac\(\)/);
+  assert.ok(main.includes("if (isCapacitor() || isNativeMac()) return;"));
 });

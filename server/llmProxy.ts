@@ -96,7 +96,6 @@ async function callGemini(
   const body: any = {
     contents: [{ parts: [{ text: req.userText }] }],
     generationConfig: {
-      temperature: req.temperature,
       maxOutputTokens: req.maxTokens,
     },
   };

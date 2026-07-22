@@ -8,6 +8,6 @@ export default mergeConfig(baseConfig, {
   build: {
     outDir: path.resolve(import.meta.dirname, "macos/Resources/WebApp"),
     emptyOutDir: true,
-    sourcemap: "inline",
+    sourcemap: false,
   },
 });

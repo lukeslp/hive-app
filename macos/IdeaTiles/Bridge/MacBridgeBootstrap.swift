@@ -107,8 +107,31 @@ enum MacBridgeBootstrap {
             get: () => rpc('generation.settings.get', {}),
             set: settings => rpc('generation.settings.set', { settings })
           });
+          const settings = Object.freeze({
+            open: () => rpc('settings.open', {})
+          });
           const workspacePersistence = Object.freeze({
             saveBoard: input => rpc('workspace.saveBoard', input)
+          });
+          const fileExports = Object.freeze({
+            save: input => rpc('file.save', input, null)
+          });
+          const workspaceImportListeners = new Set();
+          const pendingWorkspaceImports = [];
+          window.addEventListener('ideatiles:nativeWorkspaceImport', event => {
+            if (workspaceImportListeners.size === 0) pendingWorkspaceImports.push(event.detail);
+            else workspaceImportListeners.forEach(listener => listener(event.detail));
+          });
+          const workspaceImports = Object.freeze({
+            subscribe: listener => {
+              if (typeof listener !== 'function') throw new TypeError('Workspace import listener must be a function.');
+              workspaceImportListeners.add(listener);
+              pendingWorkspaceImports.splice(0).forEach(envelope => listener(envelope));
+              return () => workspaceImportListeners.delete(listener);
+            }
+          });
+          const generation = Object.freeze({
+            generate: input => rpc('generation.generateText', input)
           });
           const credentials = Object.freeze({
             status: () => rpc('credentials.status', {}),
@@ -129,7 +152,7 @@ enum MacBridgeBootstrap {
             }
           });
           Object.defineProperty(window, 'ideaTilesMac', {
-            value: Object.freeze({ capabilities, artifactStudioServices: services, workspacePersistence, generationSettings, credentials, dreamer, auth }),
+            value: Object.freeze({ capabilities, artifactStudioServices: services, workspacePersistence, workspaceImports, fileExports, generation, generationSettings, settings, credentials, dreamer, auth }),
             configurable: false,
             enumerable: true,
             writable: false

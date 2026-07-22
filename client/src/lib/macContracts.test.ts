@@ -225,6 +225,78 @@ describe("Mac artifact contracts", () => {
     expect(macRpcResponseSchema.parse(failure)).toEqual(failure);
   });
 
+  it("validates native canvas generation requests and provenance responses", () => {
+    const request = {
+      id: "rpc:text:1",
+      method: "generation.generateText",
+      params: {
+        prompt: "Generate six branches as JSON.",
+        systemPrompt: "Return only the requested JSON shape.",
+      },
+    } as const;
+    const response = {
+      id: request.id,
+      method: request.method,
+      ok: true,
+      result: {
+        text: '{"branches":[]}',
+        provider: "apple",
+        model: "system-language-model",
+      },
+    } as const;
+
+    expect(macRpcRequestSchema.parse(request)).toEqual(request);
+    expect(macRpcResponseSchema.parse(response)).toEqual(response);
+  });
+
+  it("validates bounded native file-save requests", () => {
+    const request = {
+      id: "rpc:file:1",
+      method: "file.save",
+      params: {
+        filename: "board.json",
+        mimeType: "application/json",
+        data: "e30=",
+      },
+    } as const;
+    expect(macRpcRequestSchema.parse(request)).toEqual(request);
+    expect(
+      macRpcResponseSchema.parse({
+        id: request.id,
+        method: request.method,
+        ok: true,
+        result: { saved: true },
+      })
+    ).toBeTruthy();
+    expect(
+      macRpcRequestSchema.safeParse({
+        ...request,
+        params: { ...request.params, filename: "board.png" },
+      }).success
+    ).toBe(false);
+  });
+
+  it("rejects canvas generation inputs and results beyond their method limits", () => {
+    expect(
+      macRpcRequestSchema.safeParse({
+        id: "rpc:text:large",
+        method: "generation.generateText",
+        params: { prompt: "x".repeat(32_769) },
+      }).success
+    ).toBe(false);
+    expect(
+      macRpcResponseSchema.safeParse({
+        id: "rpc:text:large",
+        method: "generation.generateText",
+        ok: true,
+        result: {
+          text: "x".repeat(1_048_577),
+          provider: "apple",
+        },
+      }).success
+    ).toBe(false);
+  });
+
   it("validates generation settings RPC requests and responses", () => {
     const settings = {
       provider: "ollama",

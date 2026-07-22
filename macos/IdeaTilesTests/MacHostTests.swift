@@ -17,8 +17,13 @@ struct MacHostBootstrapTests {
         #expect(source.contains("artifact.export"))
         #expect(source.contains("artifact.attachImage"))
         #expect(source.contains("workspace.saveBoard"))
+        #expect(source.contains("file.save"))
+        #expect(source.contains("settings.open"))
         #expect(source.contains("generation.settings.get"))
         #expect(source.contains("generation.settings.set"))
+        #expect(source.contains("generation.generateText"))
+        #expect(source.contains("workspaceImports"))
+        #expect(source.contains("pendingWorkspaceImports"))
         #expect(source.contains("credentials.status"))
         #expect(source.contains("credentials.set"))
         #expect(source.contains("credentials.remove"))
@@ -29,6 +34,8 @@ struct MacHostBootstrapTests {
         #expect(source.contains("dreamer.requestAccess"))
         #expect(!source.contains("localStorage"))
         #expect(source.contains("bridgeVersion: 1"))
+        #expect(MacRuntime.workspaceImportJavaScript.contains("detail: envelope"))
+        #expect(!MacRuntime.workspaceImportJavaScript.contains("arguments.envelope"))
     }
 
     @Test("persists the canonical workspace payload for package export")
@@ -381,6 +388,102 @@ struct NativeBridgeRouterTests {
         ))
         #expect(removed.objectValue?["configured"] == .bool(false))
     }
+
+    @Test("routes canvas text through the selected native generation engine")
+    func canvasTextGeneration() async throws {
+        let repository = try ArtifactRepository(root: TestDirectory.make(), inMemory: true)
+        let engine = FixedArtifactTextGenerator(result: GeneratedText(
+            content: #"{"branches":[]}"#,
+            provider: .openAI,
+            model: "gpt-test"
+        ), expectedPrompt: "[SYSTEM INSTRUCTIONS]\nReturn JSON only\n\n[USER REQUEST]\nGenerate branches")
+        let router = NativeBridgeRouter(
+            repository: repository,
+            textGenerator: engine,
+            exporter: { _ in true }
+        )
+
+        let result = try await router.execute(ValidatedRPCRequest(
+            id: "rpc:text", method: .generateText,
+            params: [
+                "prompt": .string("Generate branches"),
+                "systemPrompt": .string("Return JSON only"),
+            ]
+        ))
+
+        #expect(result.objectValue?["text"] == .string(#"{"branches":[]}"#))
+        #expect(result.objectValue?["provider"] == .string("openai"))
+        #expect(result.objectValue?["model"] == .string("gpt-test"))
+    }
+
+    @Test("rejects oversized native generation output before bridge serialization")
+    func canvasTextGenerationOutputLimit() async throws {
+        let repository = try ArtifactRepository(root: TestDirectory.make(), inMemory: true)
+        let engine = FixedArtifactTextGenerator(result: GeneratedText(
+            content: String(repeating: "x", count: RPCRequestValidator.maximumGenerationResultUnits + 1),
+            provider: .apple,
+            model: "system-language-model"
+        ))
+        let router = NativeBridgeRouter(
+            repository: repository,
+            textGenerator: engine,
+            exporter: { _ in true }
+        )
+
+        await #expect(throws: NativeRPCError.self) {
+            try await router.execute(ValidatedRPCRequest(
+                id: "rpc:text:large",
+                method: .generateText,
+                params: ["prompt": .string("Generate branches")]
+            ))
+        }
+    }
+
+    @Test("routes bounded exports and native settings through host services")
+    func fileSaveAndSettingsServices() async throws {
+        let repository = try ArtifactRepository(root: TestDirectory.make(), inMemory: true)
+        let probe = FileSaveProbe()
+        let router = NativeBridgeRouter(
+            repository: repository,
+            fileSaver: { filename, mimeType, data in
+                await probe.record(filename: filename, mimeType: mimeType, data: data)
+                return true
+            },
+            settingsOpener: { true },
+            exporter: { _ in true }
+        )
+
+        let saved = try await router.execute(ValidatedRPCRequest(
+            id: "rpc:file",
+            method: .saveFile,
+            params: [
+                "filename": .string("board.json"),
+                "mimeType": .string("application/json"),
+                "data": .string("e30="),
+            ]
+        ))
+        let opened = try await router.execute(ValidatedRPCRequest(
+            id: "rpc:settings", method: .openSettings, params: [:]
+        ))
+
+        #expect(saved.objectValue?["saved"] == .bool(true))
+        #expect(opened.objectValue?["opened"] == .bool(true))
+        #expect(await probe.filename == "board.json")
+        #expect(await probe.mimeType == "application/json")
+        #expect(await probe.data == Data("{}".utf8))
+    }
+}
+
+private actor FileSaveProbe {
+    private(set) var filename: String?
+    private(set) var mimeType: String?
+    private(set) var data: Data?
+
+    func record(filename: String, mimeType: String, data: Data) {
+        self.filename = filename
+        self.mimeType = mimeType
+        self.data = data
+    }
 }
 
 private actor ExportProbe {
@@ -405,6 +508,23 @@ private actor TestCredentialStore: CredentialStoring {
 private struct FailingArtifactEngine: ArtifactTextGenerating {
     let error: GenerationServiceError
     func generate(prompt: String) async throws -> GeneratedText { throw error }
+}
+
+private struct FixedArtifactTextGenerator: ArtifactTextGenerating {
+    let result: GeneratedText
+    let expectedPrompt: String?
+
+    init(result: GeneratedText, expectedPrompt: String? = nil) {
+        self.result = result
+        self.expectedPrompt = expectedPrompt
+    }
+
+    func generate(prompt: String) async throws -> GeneratedText {
+        if let expectedPrompt, prompt != expectedPrompt {
+            throw GenerationServiceError.invalidResponse
+        }
+        return result
+    }
 }
 
 private func attachmentFile(

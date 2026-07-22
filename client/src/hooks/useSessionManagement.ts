@@ -14,6 +14,7 @@ import { useState, useEffect, useCallback, useRef } from "react";
 import { toast } from "sonner";
 import { trpc } from "@/lib/trpc";
 import { buildApiUrl } from "@/lib/api";
+import { subscribeToNativeWorkspaceImports } from "@/lib/macGeneration";
 import { getPublicWebAppUrl, isCapacitor } from "@/lib/platform";
 import { STORAGE_KEY, AUTOSAVE_KEY } from "@/lib/hexConstants";
 import { generateThumbnail } from "@/lib/canvasSnapshot";
@@ -133,6 +134,34 @@ export function useSessionManagement({
     workspaceRef.current = envelope.workspace;
     return workspaceToLegacyTilesSession(envelope.workspace);
   }, []);
+
+  useEffect(
+    () =>
+      subscribeToNativeWorkspaceImports(envelope => {
+        try {
+          const decoded = decodeSessionData(envelope);
+          resetHistory(decoded.nodes);
+          setViewState(decoded.viewState);
+          setCreativity(decoded.creativity);
+          setShowWelcome(false);
+          setShowSessionsModal(false);
+          setActiveCloudSessionId(null);
+          setActiveCloudSessionName("");
+          setLocalBoardId(decoded.boardId);
+          toast.success("Idea Tiles package opened");
+        } catch (error) {
+          console.error("Failed to open native workspace package:", error);
+          toast.error("The Idea Tiles package could not be opened");
+        }
+      }),
+    [
+      decodeSessionData,
+      resetHistory,
+      setCreativity,
+      setShowWelcome,
+      setViewState,
+    ]
+  );
 
   const persistNativeWorkspace = useCallback(async () => {
     const persistence = window.ideaTilesMac?.workspacePersistence;

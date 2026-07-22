@@ -2,7 +2,8 @@
  * Async helper: synthesize two hex tiles into one new tile via LLM.
  *
  * Behavior by platform:
- *   - Web: cloud /api/generate directly (no on-device model exists)
+ *   - Web: hosted /api/generate directly
+ *   - Mac: selected native local, BYOK, or Dreamer engine
  *   - iOS: Apple Foundation Models on-device only — no cloud fallback
  *   - Android: Apple Foundation Models (always returns null) → cloud /api/generate
  *
@@ -12,8 +13,8 @@
  */
 
 import { isCapacitor, isIos } from "./platform";
-import { buildApiUrl } from "./api";
 import { tryOnDeviceFirst } from "./foundationModelsPlugin";
+import { generateTextForCurrentPlatform } from "./macGeneration";
 
 export interface MergeInput {
   text: string;
@@ -104,29 +105,35 @@ async function tryCloudFallback(
   source: MergeInput,
   target: MergeInput,
   extraHeaders: Record<string, string>
-): Promise<MergeSynthesis | null> {
+): Promise<{ synth: MergeSynthesis; viaOnDevice: boolean } | null> {
+  const cloudPayload = {
+    contents: [{ parts: [{ text: buildUserPrompt(source, target) }] }],
+    systemInstruction: { parts: [{ text: MERGE_SYSTEM_PROMPT }] },
+    generationConfig: {
+      responseMimeType: "application/json",
+      temperature: 0.6,
+      maxOutputTokens: 256,
+    },
+  };
   try {
     const controller = new AbortController();
     const timer = setTimeout(() => controller.abort(), TIMEOUT_MS);
-    const response = await fetch(buildApiUrl("generate"), {
-      method: "POST",
+    const generation = await generateTextForCurrentPlatform({
+      prompt: buildUserPrompt(source, target),
+      systemPrompt: MERGE_SYSTEM_PROMPT,
+      cloudPayload,
       headers: { "Content-Type": "application/json", ...extraHeaders },
-      body: JSON.stringify({
-        contents: [{ parts: [{ text: buildUserPrompt(source, target) }] }],
-        systemInstruction: { parts: [{ text: MERGE_SYSTEM_PROMPT }] },
-        generationConfig: {
-          responseMimeType: "application/json",
-          temperature: 0.6,
-          maxOutputTokens: 256,
-        },
-      }),
       signal: controller.signal,
     });
     clearTimeout(timer);
-    if (!response.ok) return null;
-    const result = await response.json();
-    const text = result?.candidates?.[0]?.content?.parts?.[0]?.text;
-    return parseSynthJson(text ?? "");
+    const synth = parseSynthJson(generation.text);
+    return synth
+      ? {
+          synth,
+          viaOnDevice:
+            generation.viaNativeMac && generation.provider === "apple",
+        }
+      : null;
   } catch {
     return null;
   }
@@ -150,9 +157,10 @@ export async function synthesizeMerge(
   extraHeaders: Record<string, string> = {}
 ): Promise<SynthesizedMergeResult | null> {
   if (!isCapacitor()) {
-    // Web: no on-device model — go straight to the cloud proxy.
+    // Web and native Mac do not use the Capacitor model path. The shared
+    // transport selects hosted generation for web and the native engine on Mac.
     const cloud = await tryCloudFallback(source, target, extraHeaders);
-    return cloud ? { synth: cloud, viaOnDevice: false } : null;
+    return cloud;
   }
 
   const onDevice = await tryFoundationModels(source, target);
@@ -163,7 +171,7 @@ export async function synthesizeMerge(
   if (isIos()) return null;
 
   const cloud = await tryCloudFallback(source, target, extraHeaders);
-  if (cloud) return { synth: cloud, viaOnDevice: false };
+  if (cloud) return cloud;
 
   return null;
 }

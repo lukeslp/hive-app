@@ -897,6 +897,50 @@ describe("Artifact Studio", () => {
     expect(preview.getAttribute("srcdoc")).not.toContain("color: red");
   });
 
+  it("previews validated native base64 images as data URLs", async () => {
+    const imageArtifact: ArtifactManifest = {
+      ...artifact,
+      kind: "image",
+      title: "Native artwork",
+      files: [
+        {
+          ...artifact.files[0],
+          id: "file:image:preview",
+          path: "artwork.png",
+          mimeType: "image/png",
+          encoding: "base64",
+          content: "iVBORw0KGgo=",
+        },
+      ],
+    };
+    const services: ArtifactStudioServices = {
+      generator: { generate: vi.fn(async () => imageArtifact) },
+      persistence: {
+        save: vi.fn(async value => value),
+        export: vi.fn(async () => undefined),
+      },
+      attachImageToBoard: vi.fn(async () => attachment),
+    };
+    render(
+      React.createElement(ArtifactStudio, {
+        isOpen: true,
+        onClose: vi.fn(),
+        boardId: "board:test",
+        nodes,
+        services,
+      })
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: "Review generation" }));
+    fireEvent.click(screen.getByRole("button", { name: "Generate artifact" }));
+    const preview = await screen.findByRole("img", { name: "Native artwork" });
+
+    expect(preview.getAttribute("src")).toBe(
+      "data:image/png;base64,iVBORw0KGgo="
+    );
+    expect(screen.queryByText("iVBORw0KGgo=")).toBeNull();
+  });
+
   it("reports attachment only after React board state accepts the typed image handoff", async () => {
     const negativeNodes: NodeMap = {
       "-1,0": {

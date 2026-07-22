@@ -6,9 +6,12 @@ struct NativeBridgeRouter: Sendable {
     typealias Exporter = @Sendable (ArtifactManifest) async throws -> Bool
     typealias Authenticator = @Sendable (URL) async throws -> Bool
     typealias URLOpener = @Sendable (URL) async -> Bool
+    typealias FileSaver = @Sendable (String, String, Data) async throws -> Bool
+    typealias SettingsOpener = @Sendable () async -> Bool
 
     let repository: ArtifactRepository
     let generationCoordinator: ArtifactGenerationCoordinator?
+    let textGenerator: (any ArtifactTextGenerating)?
     let generationPreferences: (any GenerationPreferencesStoring)?
     let credentialStore: (any CredentialStoring)?
     let capabilities: MacRuntimeCapabilities
@@ -16,10 +19,13 @@ struct NativeBridgeRouter: Sendable {
     let authenticator: Authenticator?
     let dreamer: (any DreamerAccessProviding)?
     let urlOpener: URLOpener?
+    let fileSaver: FileSaver?
+    let settingsOpener: SettingsOpener?
 
     init(
         repository: ArtifactRepository,
         generationCoordinator: ArtifactGenerationCoordinator? = nil,
+        textGenerator: (any ArtifactTextGenerating)? = nil,
         generationPreferences: (any GenerationPreferencesStoring)? = nil,
         credentialStore: (any CredentialStoring)? = nil,
         capabilities: MacRuntimeCapabilities = .configured(
@@ -30,16 +36,21 @@ struct NativeBridgeRouter: Sendable {
         authenticator: Authenticator? = nil,
         dreamer: (any DreamerAccessProviding)? = nil,
         urlOpener: URLOpener? = nil,
+        fileSaver: FileSaver? = nil,
+        settingsOpener: SettingsOpener? = nil,
         exporter: @escaping Exporter
     ) {
         self.repository = repository
         self.generationCoordinator = generationCoordinator
+        self.textGenerator = textGenerator
         self.generationPreferences = generationPreferences
         self.credentialStore = credentialStore
         self.capabilities = capabilities
         self.authenticator = authenticator
         self.dreamer = dreamer
         self.urlOpener = urlOpener
+        self.fileSaver = fileSaver
+        self.settingsOpener = settingsOpener
         self.exporter = exporter
     }
 
@@ -64,6 +75,15 @@ struct NativeBridgeRouter: Sendable {
                 "boardId": .string(saved.id),
                 "saved": .bool(true),
             ])
+        case .saveFile:
+            guard let fileSaver,
+                  let filename = request.params["filename"]?.stringValue,
+                  let mimeType = request.params["mimeType"]?.stringValue,
+                  let encoded = request.params["data"]?.stringValue,
+                  let data = Data(base64Encoded: encoded),
+                  data.count <= RPCRequestValidator.maximumFileExportBytes
+            else { throw invalidParameters() }
+            return .object(["saved": .bool(try await fileSaver(filename, mimeType, data))])
         case .generateArtifact:
             guard let generationCoordinator else { throw NativeRPCError.notConfigured }
             do {
@@ -76,6 +96,35 @@ struct NativeBridgeRouter: Sendable {
             } catch let error as ImagePlaygroundServiceError {
                 throw imageError(error)
             }
+        case .generateText:
+            guard let textGenerator,
+                  let prompt = request.params["prompt"]?.stringValue
+            else { throw NativeRPCError.notConfigured }
+            let composedPrompt: String
+            if let systemPrompt = request.params["systemPrompt"]?.stringValue {
+                composedPrompt = "[SYSTEM INSTRUCTIONS]\n\(systemPrompt)\n\n[USER REQUEST]\n\(prompt)"
+            } else {
+                composedPrompt = prompt
+            }
+            do {
+                let generated = try await textGenerator.generate(prompt: composedPrompt)
+                guard !generated.content.isEmpty,
+                      generated.content.utf16.count <= RPCRequestValidator.maximumGenerationResultUnits,
+                      generated.content.utf8.count <= RPCRequestValidator.maximumGenerationResultUnits
+                else { throw GenerationServiceError.invalidResponse }
+                var result: [String: JSONValue] = [
+                    "text": .string(generated.content),
+                    "provider": .string(generated.provider.rawValue),
+                ]
+                if let model = generated.model { result["model"] = .string(model) }
+                return .object(result)
+            } catch let error as GenerationServiceError {
+                throw generationError(error)
+            }
+        case .openSettings:
+            guard let settingsOpener, await settingsOpener()
+            else { throw NativeRPCError.notConfigured }
+            return .object(["opened": .bool(true)])
         case .cancelArtifact:
             guard let requestID = request.params["requestId"]?.stringValue else { throw invalidParameters() }
             return .object(["cancelled": .bool(await generationCoordinator?.cancel(requestID: requestID) ?? false)])
@@ -346,6 +395,24 @@ enum FilePanelService {
         let scoped = url.startAccessingSecurityScopedResource()
         defer { if scoped { url.stopAccessingSecurityScopedResource() } }
         return try IdeaTilesPackageCodec().importContents(at: url)
+    }
+
+    static func saveExport(filename: String, mimeType: String, data: Data) async throws -> Bool {
+        let panel = NSSavePanel()
+        panel.nameFieldStringValue = filename
+        panel.canCreateDirectories = true
+        panel.allowedContentTypes = switch mimeType {
+        case "application/json": [.json]
+        case "image/png": [.png]
+        case "image/jpeg": [.jpeg]
+        case "image/svg+xml": [.svg]
+        default: []
+        }
+        guard await panel.begin() == .OK, let url = panel.url else { return false }
+        let scoped = url.startAccessingSecurityScopedResource()
+        defer { if scoped { url.stopAccessingSecurityScopedResource() } }
+        try data.write(to: url, options: .atomic)
+        return true
     }
 
     private static func sanitizedFilename(_ value: String) -> String {

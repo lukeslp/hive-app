@@ -330,6 +330,35 @@ export const generationSettingsSchema = z
   });
 export type GenerationSettings = z.infer<typeof generationSettingsSchema>;
 
+const boundedGenerationText = (maximumBytes: number) =>
+  z
+    .string()
+    .min(1)
+    .refine(
+      value => new TextEncoder().encode(value).byteLength <= maximumBytes
+    );
+
+export const nativeTextGenerationInputSchema = z
+  .object({
+    prompt: boundedGenerationText(32_768),
+    systemPrompt: boundedGenerationText(32_768).optional(),
+  })
+  .strict();
+export type NativeTextGenerationInput = z.infer<
+  typeof nativeTextGenerationInputSchema
+>;
+
+export const nativeTextGenerationResultSchema = z
+  .object({
+    text: boundedGenerationText(1_048_576),
+    provider: generationProviderSchema,
+    model: z.string().min(1).max(256).optional(),
+  })
+  .strict();
+export type NativeTextGenerationResult = z.infer<
+  typeof nativeTextGenerationResultSchema
+>;
+
 export const credentialProviderSchema = z.enum([
   "gemini",
   "anthropic",
@@ -494,6 +523,51 @@ export type NativeWorkspaceSaveResult = z.infer<
   typeof nativeWorkspaceSaveResultSchema
 >;
 
+export const nativeFileSaveInputSchema = z
+  .object({
+    filename: z
+      .string()
+      .trim()
+      .min(1)
+      .max(120)
+      .regex(/^[A-Za-z0-9][A-Za-z0-9 ._-]*\.(?:json|png|jpe?g|svg)$/i),
+    mimeType: z.enum([
+      "application/json",
+      "image/png",
+      "image/jpeg",
+      "image/svg+xml",
+    ]),
+    data: z
+      .string()
+      .min(1)
+      .max(16_000_000)
+      .regex(
+        /^(?:[A-Za-z0-9+/]{4})*(?:[A-Za-z0-9+/]{2}==|[A-Za-z0-9+/]{3}=)?$/
+      ),
+  })
+  .strict()
+  .superRefine((input, context) => {
+    const extension = input.filename.split(".").at(-1)?.toLowerCase();
+    const expected: Record<typeof input.mimeType, string[]> = {
+      "application/json": ["json"],
+      "image/png": ["png"],
+      "image/jpeg": ["jpg", "jpeg"],
+      "image/svg+xml": ["svg"],
+    };
+    if (!extension || !expected[input.mimeType].includes(extension)) {
+      context.addIssue({
+        code: "custom",
+        path: ["filename"],
+        message: "Filename extension must match its MIME type",
+      });
+    }
+  });
+export type NativeFileSaveInput = z.infer<typeof nativeFileSaveInputSchema>;
+export const nativeFileSaveResultSchema = z
+  .object({ saved: z.boolean() })
+  .strict();
+export type NativeFileSaveResult = z.infer<typeof nativeFileSaveResultSchema>;
+
 const rpcIdSchema = stableIdSchema;
 export const macRpcRequestSchema = z.discriminatedUnion("method", [
   z
@@ -501,6 +575,13 @@ export const macRpcRequestSchema = z.discriminatedUnion("method", [
       id: rpcIdSchema,
       method: z.literal("workspace.saveBoard"),
       params: nativeWorkspaceSaveInputSchema,
+    })
+    .strict(),
+  z
+    .object({
+      id: rpcIdSchema,
+      method: z.literal("file.save"),
+      params: nativeFileSaveInputSchema,
     })
     .strict(),
   z
@@ -549,6 +630,20 @@ export const macRpcRequestSchema = z.discriminatedUnion("method", [
           file: artifactFileSchema,
         })
         .strict(),
+    })
+    .strict(),
+  z
+    .object({
+      id: rpcIdSchema,
+      method: z.literal("generation.generateText"),
+      params: nativeTextGenerationInputSchema,
+    })
+    .strict(),
+  z
+    .object({
+      id: rpcIdSchema,
+      method: z.literal("settings.open"),
+      params: z.object({}).strict(),
     })
     .strict(),
   z
@@ -657,6 +752,13 @@ export const macRpcResponseSchema = z.union([
   z
     .object({
       ...rpcSuccessBase,
+      method: z.literal("file.save"),
+      result: nativeFileSaveResultSchema,
+    })
+    .strict(),
+  z
+    .object({
+      ...rpcSuccessBase,
       method: z.literal("platform.getCapabilities"),
       result: macPlatformCapabilitiesSchema,
     })
@@ -694,6 +796,20 @@ export const macRpcResponseSchema = z.union([
       ...rpcSuccessBase,
       method: z.literal("artifact.attachImage"),
       result: artifactImageAttachmentSchema,
+    })
+    .strict(),
+  z
+    .object({
+      ...rpcSuccessBase,
+      method: z.literal("generation.generateText"),
+      result: nativeTextGenerationResultSchema,
+    })
+    .strict(),
+  z
+    .object({
+      ...rpcSuccessBase,
+      method: z.literal("settings.open"),
+      result: z.object({ opened: z.literal(true) }).strict(),
     })
     .strict(),
   z
@@ -788,11 +904,14 @@ export type MacRpcMethod = MacRpcRequest["method"];
 export interface MacRpcResultMap {
   "platform.getCapabilities": MacPlatformCapabilities;
   "workspace.saveBoard": NativeWorkspaceSaveResult;
+  "file.save": NativeFileSaveResult;
   "artifact.generate": ArtifactManifest;
   "artifact.cancel": { cancelled: boolean };
   "artifact.save": ArtifactManifest;
   "artifact.export": { exported: boolean };
   "artifact.attachImage": ArtifactImageAttachment;
+  "generation.generateText": NativeTextGenerationResult;
+  "settings.open": { opened: true };
   "generation.settings.get": GenerationSettings;
   "generation.settings.set": GenerationSettings;
   "credentials.status": CredentialStatus;
@@ -832,6 +951,24 @@ export interface ArtifactStudioServices {
 export interface NativeGenerationSettingsService {
   get(): Promise<GenerationSettings>;
   set(settings: GenerationSettings): Promise<GenerationSettings>;
+}
+
+export interface NativeTextGenerationService {
+  generate(
+    input: NativeTextGenerationInput
+  ): Promise<NativeTextGenerationResult>;
+}
+
+export interface NativeWorkspaceImportService {
+  subscribe(listener: (envelope: unknown) => void): () => void;
+}
+
+export interface NativeFileSaveService {
+  save(input: NativeFileSaveInput): Promise<NativeFileSaveResult>;
+}
+
+export interface NativeMacSettingsService {
+  open(): Promise<{ opened: true }>;
 }
 
 export interface NativeWorkspacePersistenceService {

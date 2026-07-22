@@ -110,10 +110,20 @@ function ArtifactResultPreview({ artifact }: { artifact: ArtifactManifest }) {
     );
   }
 
-  if (artifact.kind === "image" && /^(?:data:|blob:)/.test(file.content)) {
+  const base64Image =
+    artifact.kind === "image" &&
+    file.encoding === "base64" &&
+    file.mimeType.startsWith("image/") &&
+    /^[A-Za-z0-9+/]+={0,2}$/.test(file.content)
+      ? `data:${file.mimeType};base64,${file.content}`
+      : null;
+  const imageSource = /^(?:data:|blob:)/.test(file.content)
+    ? file.content
+    : base64Image;
+  if (artifact.kind === "image" && imageSource) {
     return (
       <img
-        src={file.content}
+        src={imageSource}
         alt={artifact.title}
         className="max-h-80 w-full rounded-lg object-contain"
         referrerPolicy="no-referrer"
@@ -403,8 +413,9 @@ export function ArtifactStudio({
           targetNodeId
         );
         if (!isCurrentOperation()) return;
-        const attachmentRendererKey =
-          nodeIdentity.rendererKeyBySemanticId.get(attachment.targetNodeId);
+        const attachmentRendererKey = nodeIdentity.rendererKeyBySemanticId.get(
+          attachment.targetNodeId
+        );
         if (!attachmentRendererKey || !nodes[attachmentRendererKey]) {
           throw new Error("The image target is no longer on this board.");
         }

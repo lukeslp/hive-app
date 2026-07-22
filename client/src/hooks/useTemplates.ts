@@ -5,7 +5,7 @@
 
 import { useState, useCallback } from "react";
 import { toast } from "sonner";
-import { buildApiUrl } from "@/lib/api";
+import { generateTextForCurrentPlatform } from "@/lib/macGeneration";
 import { GEMINI_TEXT_MODEL } from "@/lib/hexConstants";
 import { isIos } from "@/lib/platform";
 import {
@@ -194,9 +194,8 @@ Example format:
       // Same privacy contract as every other generation path: on iOS
       // the user's template context NEVER goes to /api/generate
       // (privacy.html promises "no prompts leave your device").
-      // Web falls through to the cloud proxy as before. Android also
-      // goes to cloud — the Gemma path isn't wired here (it's stalled
-      // platform-wide), and Android makes no on-device-only promise.
+      // Web and Android continue through the hosted proxy. Native Mac uses
+      // its selected local, BYOK, or Dreamer engine through the host bridge.
       const fm = await tryOnDeviceFirst({
         prompt,
         temperature: 0.7,
@@ -232,21 +231,19 @@ Example format:
         });
       }
 
-      const response = await fetch(buildApiUrl("generate"), {
-        method: "POST",
+      const cloudPayload = {
+        model: GEMINI_TEXT_MODEL,
+        contents: [{ parts: [{ text: prompt }] }],
+        generationConfig: { responseMimeType: "application/json" },
+      };
+      const generation = await generateTextForCurrentPlatform({
+        prompt,
+        cloudPayload,
         headers: getRequestHeaders
           ? getRequestHeaders()
           : { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          model: GEMINI_TEXT_MODEL,
-          contents: [{ parts: [{ text: prompt }] }],
-          generationConfig: { responseMimeType: "application/json" },
-        }),
       });
-
-      const result = await response.json();
-      const generatedText = result.candidates?.[0]?.content?.parts?.[0]?.text;
-      const nodes = parseGeneratedTemplateNodes(generatedText ?? "");
+      const nodes = parseGeneratedTemplateNodes(generation.text);
       if (nodes) {
         applyGeneratedNodes(nodes);
       } else {

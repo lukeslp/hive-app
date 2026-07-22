@@ -24,6 +24,7 @@ const analyticsEndpoint = import.meta.env.VITE_ANALYTICS_ENDPOINT;
 const analyticsWebsiteId = import.meta.env.VITE_ANALYTICS_WEBSITE_ID;
 if (
   !isCapacitor() &&
+  !isNativeMac() &&
   typeof analyticsEndpoint === "string" &&
   analyticsEndpoint.length > 0 &&
   typeof analyticsWebsiteId === "string" &&
@@ -269,7 +270,7 @@ if (isCapacitor()) {
 function registerMinimalServiceWorker() {
   if (typeof navigator === "undefined" || !("serviceWorker" in navigator))
     return;
-  if (isCapacitor()) return;
+  if (isCapacitor() || isNativeMac()) return;
   window.addEventListener("load", () => {
     const baseRaw = import.meta.env.BASE_URL;
     const baseNorm =

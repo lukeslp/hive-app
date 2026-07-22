@@ -57,7 +57,7 @@ struct FoundationModelsTextGenerator: TextGenerating, Sendable {
         try Task.checkCancellation()
         let session = LanguageModelSession(
             model: .default,
-            instructions: "Create the requested artifact from only the supplied Idea Tiles context. Return artifact content only. Never claim that software was installed, built, or executed."
+            instructions: "Follow the supplied Idea Tiles task and context precisely. Return only the requested content. Never claim that software was installed, built, or executed."
         )
         do {
             let response = try await session.respond(to: prompt)

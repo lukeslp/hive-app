@@ -51,6 +51,20 @@ This creates an `.xcarchive` under `build/release/app-store/` and verifies its b
 pnpm mac:archive:app-store:unsigned
 ```
 
+### Mac App Privacy answers
+
+The Mac listing must disclose the optional account and cloud-sync path even
+though local-only use requires no account. In App Store Connect, mark these as
+linked to the user, not used for tracking, and collected for App Functionality:
+
+- Contact Info: Name and Email Address
+- Identifiers: User ID
+- User Content: Other User Content (cloud boards and selected artifacts)
+
+Do not select advertising, marketing, analytics, or tracking purposes. Keep
+these answers aligned with `macos/IdeaTiles/PrivacyInfo.xcprivacy` and
+`client/public/privacy.html` before every Mac submission.
+
 ## Developer ID and Notarization
 
 Run the preflight first:

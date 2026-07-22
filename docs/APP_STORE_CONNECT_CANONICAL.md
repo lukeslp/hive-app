@@ -24,3 +24,8 @@ Use **§11 Review notes** verbatim from [`docs/APP_STORE_PACK.md`](./APP_STORE_P
 ## Privacy nutrition label
 
 Match [`docs/APP_STORE_PACK.md`](./APP_STORE_PACK.md) §10 and actual binary behavior (iOS: no analytics SDK in Capacitor build).
+
+For the separate Mac listing, follow **Mac App Privacy answers** in
+[`docs/MAC_DISTRIBUTION.md`](./MAC_DISTRIBUTION.md): Name, Email Address, User
+ID, and Other User Content are linked to the user, used for App Functionality,
+and not used for tracking when optional sign-in/cloud sync is used.

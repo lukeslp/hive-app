@@ -134,7 +134,7 @@ struct ImageArtifactGenerator: ImageArtifactGenerating, Sendable {
 
     func generate(_ request: ArtifactGenerationRequest) async throws -> ArtifactManifest {
         guard await presenter.isAvailable else { throw ImagePlaygroundServiceError.unavailable }
-        let concept = NativeContextReducer.reduce(request.context)
+        let concept = ImagePlaygroundConcept.compose(request)
         let pngData = try await presenter.createImage(concept: concept)
         try Task.checkCancellation()
         guard !pngData.isEmpty,
@@ -155,5 +155,36 @@ struct ImageArtifactGenerator: ImageArtifactGenerating, Sendable {
             )
             throw CancellationError()
         }
+    }
+}
+
+enum ImagePlaygroundConcept {
+    static let maximumUTF16Units = 2_000
+    private static let maximumInstructionUnits = 700
+    private static let maximumContextUnits = 1_000
+
+    static func compose(_ request: ArtifactGenerationRequest) -> String {
+        var sections = [
+            "[RECIPE INTENT]\nCreate one original image that visually communicates the selected Idea Tiles board material.",
+        ]
+        if let instructions = request.instructions?.trimmingCharacters(in: .whitespacesAndNewlines),
+           !instructions.isEmpty {
+            sections.append("[USER INSTRUCTIONS]\n\(boundedPrefix(instructions, maximumUnits: maximumInstructionUnits))")
+        }
+        sections.append("[BOARD CONTEXT]\n\(boundedPrefix(NativeContextReducer.reduce(request.context), maximumUnits: maximumContextUnits))")
+        let concept = sections.joined(separator: "\n\n")
+        return boundedPrefix(concept, maximumUnits: maximumUTF16Units)
+    }
+
+    private static func boundedPrefix(_ value: String, maximumUnits: Int) -> String {
+        var result = ""
+        var count = 0
+        for character in value {
+            let units = String(character).utf16.count
+            guard count + units <= maximumUnits else { break }
+            result.append(character)
+            count += units
+        }
+        return result
     }
 }

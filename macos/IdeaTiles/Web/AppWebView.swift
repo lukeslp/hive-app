@@ -50,6 +50,9 @@ enum AppContentSecurityPolicy {
 @MainActor
 fileprivate final class AppNavigationDelegate: NSObject, WKNavigationDelegate {
     private let policy = AppNavigationPolicy()
+    private weak var runtime: MacRuntime?
+
+    init(runtime: MacRuntime) { self.runtime = runtime }
 
     func webView(_ webView: WKWebView, decidePolicyFor navigationAction: WKNavigationAction) async -> WKNavigationActionPolicy {
         guard let url = navigationAction.request.url else { return .cancel }
@@ -59,6 +62,10 @@ fileprivate final class AppNavigationDelegate: NSObject, WKNavigationDelegate {
             NSWorkspace.shared.open(url)
         }
         return .cancel
+    }
+
+    func webView(_ webView: WKWebView, didFinish navigation: WKNavigation!) {
+        runtime?.attach(webView: webView)
     }
 }
 
@@ -97,6 +104,7 @@ fileprivate final class MacScriptMessageHandler: NSObject, WKScriptMessageHandle
 
 @MainActor
 final class MacRuntime {
+    nonisolated static let workspaceImportJavaScript = "if (!window.ideaTilesMac?.workspaceImports) return false; window.dispatchEvent(new CustomEvent('ideatiles:nativeWorkspaceImport', { detail: envelope })); return true;"
     let repository: ArtifactRepository
     let generationPreferences: UserDefaultsGenerationPreferences
     let credentialStore: KeychainCredentialStore
@@ -105,7 +113,11 @@ final class MacRuntime {
     fileprivate let dispatcher: BridgeDispatcher
     fileprivate let messageHandler: MacScriptMessageHandler
     fileprivate let schemeHandler: BundleSchemeHandler
-    fileprivate let navigationDelegate = AppNavigationDelegate()
+    fileprivate lazy var navigationDelegate = AppNavigationDelegate(runtime: self)
+    private weak var activeWebView: WKWebView?
+    private var pendingWorkspaceImports: [Data] = []
+    private var isFlushingWorkspaceImports = false
+    private var workspaceImportFlushRequested = false
 
     init() throws {
         guard let resourceRoot = Bundle.main.url(forResource: "WebApp", withExtension: nil) else {
@@ -144,6 +156,7 @@ final class MacRuntime {
         let router = NativeBridgeRouter(
             repository: repository,
             generationCoordinator: generationCoordinator,
+            textGenerator: engine,
             generationPreferences: generationPreferences,
             credentialStore: credentialStore,
             capabilities: capabilities,
@@ -151,7 +164,15 @@ final class MacRuntime {
                 try await MacAuthenticationService.signIn(loginURL: loginURL)
             },
             dreamer: dreamerAccess,
-            urlOpener: { url in await MainActor.run { NSWorkspace.shared.open(url) } }
+            urlOpener: { url in await MainActor.run { NSWorkspace.shared.open(url) } },
+            fileSaver: { filename, mimeType, data in
+                try await FilePanelService.saveExport(filename: filename, mimeType: mimeType, data: data)
+            },
+            settingsOpener: {
+                await MainActor.run {
+                    NSApp.sendAction(Selector(("showSettingsWindow:")), to: nil, from: nil)
+                }
+            }
         ) { manifest in
             let boardPayload = try await repository.boardPayload(id: manifest.provenance.sourceBoardId)
             return try await FilePanelService.export(manifest, boardPayload: boardPayload)
@@ -167,20 +188,79 @@ final class MacRuntime {
         schemeHandler = BundleSchemeHandler(root: resourceRoot)
     }
 
+    func attach(webView: WKWebView) {
+        activeWebView = webView
+        Task { await flushPendingWorkspaceImports() }
+    }
+
     func importPackage() async {
         do {
             guard let package = try await FilePanelService.openPackage() else { return }
-            _ = try await repository.saveBoard(
-                id: package.boardID,
-                title: "Imported Idea Tiles Board",
-                payload: package.boardPayload
-            )
-            _ = try await repository.saveArtifact(package.manifest, payloads: package.payloads)
+            try await accept(package)
         } catch {
-            let alert = NSAlert(error: error)
-            alert.messageText = "The Idea Tiles package could not be imported."
-            alert.runModal()
+            showImportError(error)
         }
+    }
+
+    func importPackage(at url: URL) async {
+        let scoped = url.startAccessingSecurityScopedResource()
+        defer { if scoped { url.stopAccessingSecurityScopedResource() } }
+        do {
+            try await accept(try IdeaTilesPackageCodec().importContents(at: url))
+        } catch {
+            showImportError(error)
+        }
+    }
+
+    private func accept(_ package: ImportedIdeaTilesPackage) async throws {
+        _ = try await repository.saveBoard(
+            id: package.boardID,
+            title: "Imported Idea Tiles Board",
+            payload: package.boardPayload
+        )
+        _ = try await repository.saveArtifact(package.manifest, payloads: package.payloads)
+        pendingWorkspaceImports.append(package.boardPayload)
+        await flushPendingWorkspaceImports()
+    }
+
+    private func flushPendingWorkspaceImports() async {
+        if isFlushingWorkspaceImports {
+            workspaceImportFlushRequested = true
+            return
+        }
+        guard let activeWebView else { return }
+        isFlushingWorkspaceImports = true
+        defer {
+            isFlushingWorkspaceImports = false
+            if workspaceImportFlushRequested {
+                workspaceImportFlushRequested = false
+                Task { await flushPendingWorkspaceImports() }
+            }
+        }
+        while let payload = pendingWorkspaceImports.first {
+            guard let envelope = try? JSONSerialization.jsonObject(with: payload) else {
+                pendingWorkspaceImports.removeFirst()
+                continue
+            }
+            do {
+                let delivered = try await activeWebView.callAsyncJavaScript(
+                    Self.workspaceImportJavaScript,
+                    arguments: ["envelope": envelope],
+                    in: nil,
+                    contentWorld: .page
+                ) as? Bool
+                guard delivered == true else { return }
+                pendingWorkspaceImports.removeFirst()
+            } catch {
+                return
+            }
+        }
+    }
+
+    private func showImportError(_ error: Error) {
+        let alert = NSAlert(error: error)
+        alert.messageText = "The Idea Tiles package could not be imported."
+        alert.runModal()
     }
 }
 
@@ -207,6 +287,7 @@ struct AppWebView: NSViewRepresentable {
         configuration.userContentController = contentController
 
         let webView = WKWebView(frame: .zero, configuration: configuration)
+        runtime.attach(webView: webView)
         webView.navigationDelegate = runtime.navigationDelegate
         webView.allowsMagnification = true
 

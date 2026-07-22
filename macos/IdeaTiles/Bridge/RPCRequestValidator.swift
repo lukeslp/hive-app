@@ -3,11 +3,14 @@ import Foundation
 enum RPCMethod: String, Sendable, CaseIterable {
     case getCapabilities = "platform.getCapabilities"
     case saveWorkspace = "workspace.saveBoard"
+    case saveFile = "file.save"
     case generateArtifact = "artifact.generate"
     case cancelArtifact = "artifact.cancel"
     case saveArtifact = "artifact.save"
     case exportArtifact = "artifact.export"
     case attachImage = "artifact.attachImage"
+    case openSettings = "settings.open"
+    case generateText = "generation.generateText"
     case getGenerationSettings = "generation.settings.get"
     case setGenerationSettings = "generation.settings.set"
     case credentialStatus = "credentials.status"
@@ -39,6 +42,9 @@ enum RPCValidationError: Error, Equatable {
 struct RPCRequestValidator: Sendable {
     static let defaultMaximumBytes = 16_500_000
     static let maximumWorkspaceBytes = 16_000_000
+    static let maximumGenerationInputUnits = 32_768
+    static let maximumGenerationResultUnits = 1_048_576
+    static let maximumFileExportBytes = 12_000_000
     private static let stableID = try! NSRegularExpression(pattern: "^[A-Za-z0-9][A-Za-z0-9._:,-]{0,127}$")
     let maximumBytes: Int
 
@@ -172,7 +178,8 @@ struct RPCRequestValidator: Sendable {
     private func validateParameters(_ params: [String: Any], for method: RPCMethod) throws {
         switch method {
         case .getCapabilities, .getGenerationSettings, .credentialStatus,
-             .dreamerStatus, .dreamerProfile, .dreamerRemove, .dreamerRequestAccess:
+             .dreamerStatus, .dreamerProfile, .dreamerRemove, .dreamerRequestAccess,
+             .openSettings:
             guard params.isEmpty else { throw RPCValidationError.invalidParameters }
         case .dreamerRedeem:
             guard Set(params.keys) == ["inviteCode"],
@@ -192,6 +199,36 @@ struct RPCRequestValidator: Sendable {
                   let envelope = params["envelope"] as? [String: Any]
             else { throw RPCValidationError.invalidParameters }
             try validateWorkspaceEnvelope(envelope, boardID: boardID)
+        case .saveFile:
+            guard Set(params.keys) == ["filename", "mimeType", "data"],
+                  let filename = params["filename"] as? String,
+                  filename == filename.trimmingCharacters(in: .whitespacesAndNewlines),
+                  filename.utf16.count <= 120,
+                  filename.range(of: #"^[A-Za-z0-9][A-Za-z0-9 ._-]*\.(json|png|jpg|jpeg|svg)$"#, options: [.regularExpression, .caseInsensitive]) != nil,
+                  let mimeType = params["mimeType"] as? String,
+                  let encoded = params["data"] as? String,
+                  !encoded.isEmpty,
+                  encoded.utf8.count <= 16_000_000,
+                  let data = Data(base64Encoded: encoded),
+                  !data.isEmpty,
+                  data.count <= Self.maximumFileExportBytes,
+                  data.base64EncodedString() == encoded,
+                  Self.fileExtensionMatchesMIME(filename: filename, mimeType: mimeType)
+            else { throw RPCValidationError.invalidParameters }
+        case .generateText:
+            let required: Set<String> = ["prompt"]
+            let optional: Set<String> = ["systemPrompt"]
+            guard required.isSubset(of: params.keys),
+                  Set(params.keys).subtracting(required).isSubset(of: optional),
+                  let prompt = params["prompt"] as? String,
+                  Self.isBoundedGenerationString(prompt)
+            else { throw RPCValidationError.invalidParameters }
+            if let systemPrompt = params["systemPrompt"] as? String {
+                guard Self.isBoundedGenerationString(systemPrompt)
+                else { throw RPCValidationError.invalidParameters }
+            } else if params["systemPrompt"] != nil {
+                throw RPCValidationError.invalidParameters
+            }
         case .setGenerationSettings:
             guard Set(params.keys) == ["settings"],
                   let settings = params["settings"] as? [String: Any]
@@ -277,6 +314,23 @@ struct RPCRequestValidator: Sendable {
             else { throw RPCValidationError.invalidParameters }
             do { _ = try ArtifactFile.decode(data: JSONSerialization.data(withJSONObject: file)) }
             catch { throw RPCValidationError.invalidParameters }
+        }
+    }
+
+    private static func isBoundedGenerationString(_ value: String) -> Bool {
+        !value.isEmpty
+            && value.utf16.count <= maximumGenerationInputUnits
+            && value.utf8.count <= maximumGenerationInputUnits
+    }
+
+    private static func fileExtensionMatchesMIME(filename: String, mimeType: String) -> Bool {
+        let fileExtension = (filename as NSString).pathExtension.lowercased()
+        return switch mimeType {
+        case "application/json": fileExtension == "json"
+        case "image/png": fileExtension == "png"
+        case "image/jpeg": fileExtension == "jpg" || fileExtension == "jpeg"
+        case "image/svg+xml": fileExtension == "svg"
+        default: false
         }
     }
 

@@ -51,7 +51,7 @@ import {
 import { RemoteCursors } from "@/components/RemoteCursors";
 import { MergeSuggestionIndicator } from "@/components/MergeSuggestionIndicator";
 
-import { buildApiUrl } from "@/lib/api";
+import { generateTextForCurrentPlatform } from "@/lib/macGeneration";
 import { isCapacitor, getPlatform, isIos } from "@/lib/platform";
 import {
   tryOnDeviceFirst,
@@ -74,11 +74,6 @@ import {
   type ArtifactStudioServices,
   type ArtifactImageAttachment,
   type ArtifactManifest,
-  type NativeCredentialService,
-  type NativeDreamerAccessService,
-  type NativeGenerationSettingsService,
-  type NativeWorkspacePersistenceService,
-  type NativeAuthenticationService,
 } from "@shared/macArtifacts";
 import {
   HEX_SIZE,
@@ -97,20 +92,6 @@ import {
 } from "@/lib/hexConstants";
 import { hexToPixel, pixelToHex, hexDistance } from "@/lib/hexGrid";
 import { NODE_TYPES } from "@/lib/nodeTypes";
-
-declare global {
-  interface Window {
-    ideaTilesMac?: {
-      capabilities?: unknown;
-      artifactStudioServices?: ArtifactStudioServices;
-      workspacePersistence?: NativeWorkspacePersistenceService;
-      generationSettings?: NativeGenerationSettingsService;
-      credentials?: NativeCredentialService;
-      dreamer?: NativeDreamerAccessService;
-      auth?: NativeAuthenticationService;
-    };
-  }
-}
 
 // --- Pure helpers (no React state) ---
 
@@ -930,7 +911,8 @@ Generate 6 diverse related ideas. Connect to key themes when relevant.`;
         // FM produced text but JSON.parse failed — fall through.
       }
       if (!preFetchedBranches && !isIos()) {
-        // Web/Android still has cloud as a fallback.
+        // Other platforms continue through their configured transport; native
+        // Mac uses the provider selected in its native settings.
         toast.warning("On-device returned unparseable output — using cloud", {
           duration: 2500,
         });
@@ -963,38 +945,20 @@ Generate 6 diverse related ideas. Connect to key themes when relevant.`;
 
     try {
       let branches: any[] = [];
-      let viaOnDevice = false;
-
       if (preFetchedBranches) {
         branches = preFetchedBranches;
-        viaOnDevice = true;
         clearTimeout(timeoutId);
       } else {
-        const response = await fetch(buildApiUrl("generate"), {
-          method: "POST",
+        const generation = await generateTextForCurrentPlatform({
+          prompt: userQuery,
+          systemPrompt,
+          cloudPayload: requestPayload,
           headers: providerSettings.getRequestHeaders(),
-          body: JSON.stringify(requestPayload),
           signal: controller.signal,
         });
 
         clearTimeout(timeoutId);
-        const result = await response.json();
-
-        const apiErr =
-          typeof result?.error?.message === "string"
-            ? result.error.message
-            : "";
-        if (!response.ok || result.error) {
-          throw new Error(
-            apiErr ||
-              (response.statusText
-                ? `HTTP ${response.status}: ${response.statusText}`
-                : `HTTP ${response.status}`)
-          );
-        }
-
-        let text = result.candidates?.[0]?.content?.parts?.[0]?.text;
-        if (!text) throw new Error("API returned no content");
+        let text = generation.text;
 
         text = text
           .replace(/^```json\s*/, "")
@@ -1277,27 +1241,25 @@ Generate 6 diverse related ideas. Connect to key themes when relevant.`;
         return;
       }
 
-      const response = await fetch(buildApiUrl("generate"), {
-        method: "POST",
+      const cloudPayload = {
+        model: GEMINI_TEXT_MODEL,
+        contents: [{ parts: [{ text: userText }] }],
+        systemInstruction: { parts: [{ text: systemText }] },
+        generationConfig: {
+          responseMimeType: "application/json",
+          // Slightly higher temperature for refresh than first-pass
+          // generation, to encourage divergence from the existing tile.
+          temperature: 0.9 + aiGeneration.creativity * 0.4,
+        },
+      };
+      const generation = await generateTextForCurrentPlatform({
+        prompt: userText,
+        systemPrompt: systemText,
+        cloudPayload,
         headers: providerSettings.getRequestHeaders(),
-        body: JSON.stringify({
-          model: GEMINI_TEXT_MODEL,
-          contents: [{ parts: [{ text: userText }] }],
-          systemInstruction: { parts: [{ text: systemText }] },
-          generationConfig: {
-            responseMimeType: "application/json",
-            // Slightly higher temperature for refresh than first-pass
-            // generation, since we want divergence from the existing tile.
-            temperature: 0.9 + aiGeneration.creativity * 0.4,
-          },
-        }),
       });
 
-      const result = await response.json();
-      if (!response.ok || result.error)
-        throw new Error(result.error?.message || `HTTP ${response.status}`);
-
-      let text = result.candidates?.[0]?.content?.parts?.[0]?.text;
+      let text = generation.text;
       if (text)
         text = text
           .replace(/^```json\s*/, "")
@@ -1625,10 +1587,8 @@ Generate 6 diverse related ideas. Connect to key themes when relevant.`;
   };
 
   // ── Export ──────────────────────────────────────────────────────────────
-  // Both exports go through saveBlob, which branches on platform: browsers
-  // get the <a download> pattern, Capacitor writes the file to Documents
-  // and invokes the iOS share sheet. Before this, <a download> silently
-  // failed in WKWebView and the user saw nothing happen after tapping.
+  // All exports go through saveBlob: browsers download, Mac opens a native
+  // save panel, and Capacitor writes to Documents before showing iOS sharing.
   const exportAsImage = async () => {
     haptics.medium();
     const svgContent = document.getElementById("hex-canvas-layer")?.innerHTML;

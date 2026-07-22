@@ -30,17 +30,27 @@ verify_release_metadata() {
   local plist="$app_path/Contents/Info.plist"
   local privacy_manifest="$app_path/Contents/Resources/PrivacyInfo.xcprivacy"
   local app_icon="$app_path/Contents/Resources/AppIcon.icns"
+  local web_app="$app_path/Contents/Resources/WebApp"
   [[ -f "$plist" ]] || release_error "missing archived Info.plist: $plist"
   [[ -f "$privacy_manifest" ]] || release_error "missing bundled privacy manifest: $privacy_manifest"
   [[ -s "$app_icon" ]] || release_error "missing bundled app icon: $app_icon"
+  [[ -d "$web_app" ]] || release_error "missing bundled Mac web app: $web_app"
+  if LC_ALL=C grep -RIqE 'sourceMappingURL=data:|/Users/' "$web_app"; then
+    release_error "bundled Mac web app contains inline source maps or local user paths"
+  fi
 
-  local bundle version build
+  local bundle version build local_networking
   bundle="$(/usr/libexec/PlistBuddy -c 'Print :CFBundleIdentifier' "$plist")"
   version="$(/usr/libexec/PlistBuddy -c 'Print :CFBundleShortVersionString' "$plist")"
   build="$(/usr/libexec/PlistBuddy -c 'Print :CFBundleVersion' "$plist")"
+  local_networking="$(/usr/libexec/PlistBuddy -c 'Print :NSAppTransportSecurity:NSAllowsLocalNetworking' "$plist")"
   [[ "$bundle" == "$IDEATILES_BUNDLE_ID" ]] || release_error "archive bundle is $bundle, expected $IDEATILES_BUNDLE_ID"
   [[ "$version" == "$IDEATILES_VERSION" ]] || release_error "archive version is $version, expected $IDEATILES_VERSION"
   [[ "$build" == "$IDEATILES_BUILD" ]] || release_error "archive build is $build, expected $IDEATILES_BUILD"
+  [[ "$local_networking" == "true" ]] || release_error "NSAllowsLocalNetworking must be enabled for loopback providers"
+  if /usr/libexec/PlistBuddy -c 'Print :NSAppTransportSecurity:NSAllowsArbitraryLoads' "$plist" >/dev/null 2>&1; then
+    release_error "archive must not allow arbitrary network loads"
+  fi
 
   local tracking accessed_category reason
   tracking="$(/usr/libexec/PlistBuddy -c 'Print :NSPrivacyTracking' "$privacy_manifest")"
@@ -50,6 +60,27 @@ verify_release_metadata() {
   [[ "$accessed_category" == "NSPrivacyAccessedAPICategoryUserDefaults" ]] \
     || release_error "privacy manifest is missing the UserDefaults category"
   [[ "$reason" == "CA92.1" ]] || release_error "privacy manifest has the wrong UserDefaults reason"
+
+  local collected_types=(
+    NSPrivacyCollectedDataTypeName
+    NSPrivacyCollectedDataTypeEmailAddress
+    NSPrivacyCollectedDataTypeUserID
+    NSPrivacyCollectedDataTypeOtherUserContent
+  )
+  local index collected_type linked collected_tracking purpose
+  for index in "${!collected_types[@]}"; do
+    collected_type="$(/usr/libexec/PlistBuddy -c "Print :NSPrivacyCollectedDataTypes:$index:NSPrivacyCollectedDataType" "$privacy_manifest")"
+    linked="$(/usr/libexec/PlistBuddy -c "Print :NSPrivacyCollectedDataTypes:$index:NSPrivacyCollectedDataTypeLinked" "$privacy_manifest")"
+    collected_tracking="$(/usr/libexec/PlistBuddy -c "Print :NSPrivacyCollectedDataTypes:$index:NSPrivacyCollectedDataTypeTracking" "$privacy_manifest")"
+    purpose="$(/usr/libexec/PlistBuddy -c "Print :NSPrivacyCollectedDataTypes:$index:NSPrivacyCollectedDataTypePurposes:0" "$privacy_manifest")"
+    [[ "$collected_type" == "${collected_types[$index]}" ]] || release_error "privacy manifest collected-data types are incomplete or out of order"
+    [[ "$linked" == "true" ]] || release_error "privacy manifest collected data must be linked to the user"
+    [[ "$collected_tracking" == "false" ]] || release_error "privacy manifest collected data must not be used for tracking"
+    [[ "$purpose" == "NSPrivacyCollectedDataTypePurposeAppFunctionality" ]] || release_error "privacy manifest collected data must be limited to app functionality"
+  done
+  if /usr/libexec/PlistBuddy -c 'Print :NSPrivacyCollectedDataTypes:4' "$privacy_manifest" >/dev/null 2>&1; then
+    release_error "privacy manifest contains an unexpected collected-data declaration"
+  fi
 }
 
 find_developer_id_identity() {

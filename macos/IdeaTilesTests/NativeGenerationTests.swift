@@ -499,6 +499,50 @@ struct ImagePlaygroundArtifactTests {
         #expect(try Data(contentsOf: await repository.payloadURL(artifactID: manifest.id, path: file.path)) == imageBytes)
     }
 
+    @Test("image concepts include recipe intent, user direction, and bounded board context")
+    func imageConceptComposition() async throws {
+        let bitmap = try #require(NSBitmapImageRep(
+            bitmapDataPlanes: nil,
+            pixelsWide: 1,
+            pixelsHigh: 1,
+            bitsPerSample: 8,
+            samplesPerPixel: 4,
+            hasAlpha: true,
+            isPlanar: false,
+            colorSpaceName: .deviceRGB,
+            bytesPerRow: 4,
+            bitsPerPixel: 32
+        ))
+        let png = try #require(bitmap.representation(using: .png, properties: [:]))
+        let presenter = FakeImagePresenter(isAvailable: true, result: .success(png))
+        let generator = ImageArtifactGenerator(
+            presenter: presenter,
+            repository: try ArtifactRepository(root: TestDirectory.make(), inMemory: true)
+        )
+
+        _ = try await generator.generate(GenerationRequestFixture.request(
+            recipeID: "image-playground-artwork",
+            context: "[ROOT] Botanical research notes",
+            instructions: "Use a cyanotype collage style"
+        ))
+
+        let concept = try #require(presenter.lastConcept)
+        #expect(concept.contains("[RECIPE INTENT]"))
+        #expect(concept.contains("[USER INSTRUCTIONS]\nUse a cyanotype collage style"))
+        #expect(concept.contains("[BOARD CONTEXT]\n[ROOT] Botanical research notes"))
+        #expect(concept.utf16.count <= 2_000)
+
+        let bounded = ImagePlaygroundConcept.compose(try GenerationRequestFixture.request(
+            recipeID: "image-playground-artwork",
+            context: "BOARD-SENTINEL " + String(repeating: "context ", count: 3_000),
+            instructions: "STYLE-SENTINEL " + String(repeating: "direction ", count: 1_000)
+        ))
+        #expect(bounded.contains("[RECIPE INTENT]"))
+        #expect(bounded.contains("[USER INSTRUCTIONS]\nSTYLE-SENTINEL"))
+        #expect(bounded.contains("[BOARD CONTEXT]\nBOARD-SENTINEL"))
+        #expect(bounded.utf16.count <= 2_000)
+    }
+
     @Test("cancellation racing a committed image save removes the artifact before returning")
     func cancellationRollsBackCommittedImage() async throws {
         let root = try TestDirectory.make()
@@ -669,20 +713,25 @@ private struct FixedGenerationEngine: ArtifactTextGenerating {
 private final class FakeImagePresenter: ImagePlaygroundPresenting {
     let isAvailable: Bool
     let result: Result<Data, Error>
+    private(set) var lastConcept: String?
     init(isAvailable: Bool, result: Result<Data, Error>) {
         self.isAvailable = isAvailable
         self.result = result
     }
-    func createImage(concept: String) async throws -> Data { try result.get() }
+    func createImage(concept: String) async throws -> Data {
+        lastConcept = concept
+        return try result.get()
+    }
 }
 
 private enum GenerationRequestFixture {
     static func request(
         requestID: String = "generation:1",
         recipeID: String = "brief",
-        context: String = "[ROOT] Board context"
+        context: String = "[ROOT] Board context",
+        instructions: String? = nil
     ) throws -> ArtifactGenerationRequest {
-        try ArtifactGenerationRequest(params: [
+        var params: [String: JSONValue] = [
             "requestId": .string(requestID),
             "sourceBoardId": .string("board:1"),
             "sourceNodeIds": .array([.string("0,0")]),
@@ -692,7 +741,9 @@ private enum GenerationRequestFixture {
             "recipeId": .string(recipeID),
             "scope": .object(["kind": .string("board")]),
             "context": .string(context),
-        ])
+        ]
+        if let instructions { params["instructions"] = .string(instructions) }
+        return try ArtifactGenerationRequest(params: params)
     }
 }
 

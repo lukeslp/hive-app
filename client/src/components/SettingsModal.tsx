@@ -34,7 +34,7 @@ import type {
   ServerProviderInfo,
   ProviderConfig,
 } from "@/hooks/useProviderSettings";
-import { isIos } from "@/lib/platform";
+import { isIos, isNativeMac } from "@/lib/platform";
 import { APP_DISPLAY_NAME } from "@shared/appBrand";
 
 export interface SettingsModalProps {
@@ -73,6 +73,13 @@ export interface SettingsModalProps {
   onDeleteBoard: () => void;
 }
 
+export async function openNativeMacGenerationSettings(): Promise<boolean> {
+  const settings = window.ideaTilesMac?.settings;
+  if (!settings) return false;
+  await settings.open();
+  return true;
+}
+
 export const SettingsModal = ({
   isOpen,
   onClose,
@@ -108,10 +115,13 @@ export const SettingsModal = ({
   onDeleteBoard,
 }: SettingsModalProps) => {
   const iosOnly = isIos();
+  const nativeMac = isNativeMac();
 
-  const aiControlsAvailable = iosOnly
-    ? appleIntelligenceAvailable
-    : isProviderConfigured;
+  const generationControlsAvailable = nativeMac
+    ? true
+    : iosOnly
+      ? appleIntelligenceAvailable
+      : isProviderConfigured;
   const accessibilityFonts = [
     { id: "system", label: "System" },
     { id: "atkinson", label: "Atkinson" },
@@ -279,14 +289,32 @@ export const SettingsModal = ({
             </div>
           </section>
 
-          {/* AI setup/status */}
+          {/* Generation setup and status */}
           <section className="space-y-4 border-t border-border/60 pt-5">
             <div className="space-y-1">
-              <h3 className="text-sm font-semibold text-foreground">AI</h3>
-              <p className="text-xs text-muted-foreground">Managed AI path</p>
+              <h3 className="text-sm font-semibold text-foreground">
+                Generation
+              </h3>
+              <p className="text-xs text-muted-foreground">
+                Language model settings
+              </p>
             </div>
 
-            {iosOnly ? (
+            {nativeMac ? (
+              <div className="space-y-3 rounded-lg border border-border bg-muted/30 p-3">
+                <p className="text-xs text-muted-foreground">
+                  Provider, BYOK, and Dreamer access are managed securely in the
+                  native Mac settings window.
+                </p>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => void openNativeMacGenerationSettings()}
+                >
+                  Open Generation Settings
+                </Button>
+              </div>
+            ) : iosOnly ? (
               <div
                 className={`flex items-start gap-2 text-xs rounded-lg p-3 ${
                   appleIntelligenceAvailable
@@ -325,13 +353,13 @@ export const SettingsModal = ({
               </div>
             )}
 
-            {/* AI controls: only when AI path is actually usable on this device. */}
-            {aiControlsAvailable ? (
+            {/* Generation controls appear only when a model path is usable. */}
+            {generationControlsAvailable ? (
               <div className="space-y-5 border-t border-border/70 pt-4">
                 <div className="space-y-3">
                   <Label className="text-sm font-medium text-foreground flex items-center gap-2">
                     <Sparkles className="w-4 h-4" />
-                    AI Creativity
+                    Generation Creativity
                   </Label>
                   <div className="space-y-2">
                     <Slider
@@ -370,8 +398,8 @@ export const SettingsModal = ({
                       <span>Bridge</span>
                     </div>
                     <p className="text-xs text-muted-foreground/60">
-                      How aggressively the AI connects ideas across distant
-                      clusters
+                      How aggressively the language model connects ideas across
+                      distant clusters
                     </p>
                   </div>
                 </div>
@@ -394,8 +422,8 @@ export const SettingsModal = ({
               </div>
             ) : (
               <p className="text-xs text-muted-foreground">
-                AI controls are hidden until an AI path is available on this
-                device.
+                Generation controls are hidden until a language model path is
+                available on this device.
               </p>
             )}
           </section>

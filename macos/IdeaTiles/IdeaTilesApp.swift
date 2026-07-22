@@ -21,6 +21,9 @@ struct IdeaTilesApp: App {
             if let runtime {
                 AppWebView(runtime: runtime)
                     .frame(minWidth: 900, minHeight: 640)
+                    .onOpenURL { url in
+                        Task { await runtime.importPackage(at: url) }
+                    }
             } else {
                 ContentUnavailableView(
                     "Idea Tiles could not start",
