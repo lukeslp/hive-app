@@ -1,6 +1,6 @@
 # Mac Distribution
 
-Idea Tiles ships one native Mac target through two distribution lanes: Mac App Store and Developer ID. Both use bundle identifier `app.hexmind.ios`, marketing version `1.1.0`, build `2`, App Sandbox, and hardened runtime.
+Idea Tiles ships one native Mac target through two distribution lanes: Mac App Store and Developer ID. Both use bundle identifier `app.hexmind.ios`, Apple marketing version `1.1`, build `2`, App Sandbox, and hardened runtime. Package and Android metadata use the semantically equivalent version `1.1.0`.
 
 ## Xcode Layout
 
@@ -38,15 +38,15 @@ pnpm mac:archive:app-store:unsigned
 
 ## Developer ID and Notarization
 
-Run the network-free preflight first:
+Run the preflight first:
 
 ```bash
 pnpm mac:release:direct:preflight
 ```
 
-It checks the clean tree, workspace scheme, versions, hardened runtime, sandbox entitlement, required tools, and the installed `Developer ID Application` identity for team `596T7J7FB6`.
+It checks the clean tree, workspace scheme, versions, hardened runtime, sandbox entitlement, required tools, and the installed `Developer ID Application` identity for team `596T7J7FB6`. It performs no notarization or upload submission, although Xcode package resolution may use the network.
 
-To exercise archive, automatic Developer ID export, signature validation, hardened-runtime validation, ZIP creation, and checksum generation without contacting Apple:
+To exercise archive, automatic Developer ID export, signature validation, hardened-runtime validation, ZIP creation, and checksum generation without a notarization or upload submission:
 
 ```bash
 pnpm mac:release:direct:archive-only
@@ -61,15 +61,16 @@ export IDEATILES_NOTARY_KEYCHAIN_PROFILE="IdeaTiles-Notary"
 pnpm mac:release:direct
 ```
 
-The full command refuses to start without that environment variable. It archives, exports with Developer ID, submits the ZIP, waits for acceptance, staples and validates the ticket, runs Gatekeeper assessment, launches a staged copy as a smoke test, recreates the ZIP, and writes a SHA-256 checksum. No credential values belong in this repository.
+The full command refuses to start without that environment variable. It archives, exports with Developer ID, submits the ZIP, waits for acceptance, staples and validates the ticket, runs Gatekeeper assessment, recreates the ZIP, and writes a SHA-256 checksum. No credential values belong in this repository.
+
+After automated verification, perform first-launch testing only in a disposable macOS user account or clean virtual machine. Copying the app to a temporary directory does not isolate Application Support, defaults, or Keychain data for its bundle identity.
 
 Set `IDEATILES_ALLOW_PROVISIONING_UPDATES=1` only when Xcode must refresh signing assets. To select a non-default installed identity, set `IDEATILES_DEVELOPER_IDENTITY` to its full Keychain name.
 
 ## iOS Compatibility Check
 
-Capacitor updates the renamed project through the tracked symlink. Sync once before an iOS build; the build command suppresses recursive syncing inside Xcode:
+Capacitor updates the renamed project through the tracked symlink. The simulator build syncs first, then suppresses recursive syncing inside Xcode:
 
 ```bash
-pnpm cap:sync:ios
 pnpm ios:build:simulator
 ```

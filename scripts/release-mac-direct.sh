@@ -60,7 +60,7 @@ xcodebuild -list -workspace IdeaTiles.xcworkspace | grep -Eq '^[[:space:]]+IdeaT
 xcrun notarytool --help >/dev/null
 
 if [[ "$mode" == "preflight" ]]; then
-  echo "Direct-distribution preflight passed. No archive was built and no network submission occurred."
+  echo "Direct-distribution preflight passed. No archive, notarization, or upload submission occurred."
   exit 0
 fi
 
