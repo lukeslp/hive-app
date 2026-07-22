@@ -100,6 +100,7 @@ final class MacRuntime {
     let repository: ArtifactRepository
     let generationPreferences: UserDefaultsGenerationPreferences
     let credentialStore: KeychainCredentialStore
+    let dreamerAccess: DreamerAccessService
     let capabilities: MacRuntimeCapabilities
     fileprivate let dispatcher: BridgeDispatcher
     fileprivate let messageHandler: MacScriptMessageHandler
@@ -113,6 +114,10 @@ final class MacRuntime {
         let repository = try ArtifactRepository.applicationSupport()
         let generationPreferences = UserDefaultsGenerationPreferences()
         let credentialStore = KeychainCredentialStore()
+        let dreamerAccess = DreamerAccessService(
+            transport: URLSessionHTTPTransport(),
+            credentials: credentialStore
+        )
         let engine = GenerationEngine(
             preferences: generationPreferences,
             credentials: credentialStore,
@@ -120,7 +125,8 @@ final class MacRuntime {
                 base: FoundationModelsTextGenerator(),
                 timeout: GenerationDeadlines.foundationModels
             ),
-            cloudGenerator: DirectProviderClient(transport: URLSessionHTTPTransport())
+            cloudGenerator: DirectProviderClient(transport: URLSessionHTTPTransport()),
+            dreamer: dreamerAccess
         )
         let imageGenerator = ImageArtifactGenerator(
             presenter: AppKitImagePlaygroundPresenter(),
@@ -143,7 +149,9 @@ final class MacRuntime {
             capabilities: capabilities,
             authenticator: { loginURL in
                 try await MacAuthenticationService.signIn(loginURL: loginURL)
-            }
+            },
+            dreamer: dreamerAccess,
+            urlOpener: { url in await MainActor.run { NSWorkspace.shared.open(url) } }
         ) { manifest in
             let boardPayload = try? await repository.boardPayload(id: manifest.provenance.sourceBoardId)
             return try await FilePanelService.export(manifest, boardPayload: boardPayload)
@@ -152,6 +160,7 @@ final class MacRuntime {
         self.repository = repository
         self.generationPreferences = generationPreferences
         self.credentialStore = credentialStore
+        self.dreamerAccess = dreamerAccess
         self.capabilities = capabilities
         self.dispatcher = dispatcher
         messageHandler = MacScriptMessageHandler(dispatcher: dispatcher)

@@ -18,6 +18,11 @@ struct BridgeValidationTests {
         #"{"id":"rpc:credentials:status","method":"credentials.status","params":{}}"#,
         #"{"id":"rpc:credentials:set","method":"credentials.set","params":{"provider":"openai","credential":"secret-value"}}"#,
         #"{"id":"rpc:credentials:remove","method":"credentials.remove","params":{"provider":"openai"}}"#,
+        #"{"id":"rpc:dreamer:status","method":"dreamer.status","params":{}}"#,
+        #"{"id":"rpc:dreamer:profile","method":"dreamer.profile","params":{}}"#,
+        #"{"id":"rpc:dreamer:redeem","method":"dreamer.redeem","params":{"inviteCode":"di_privatecode"}}"#,
+        #"{"id":"rpc:dreamer:remove","method":"dreamer.remove","params":{}}"#,
+        #"{"id":"rpc:dreamer:request","method":"dreamer.requestAccess","params":{}}"#,
         #"{"id":"rpc:auth","method":"auth.signIn","params":{"loginURL":"https://ideatiles.app/api/oauth/native-start"}}"#,
     ])
     func acceptsSettingsAndCredentialRequests(_ json: String) throws {
@@ -30,6 +35,11 @@ struct BridgeValidationTests {
         #"{"id":"rpc:credentials:set","method":"credentials.set","params":{"provider":"apple","credential":"secret-value"}}"#,
         #"{"id":"rpc:credentials:set","method":"credentials.set","params":{"provider":"openai","credential":""}}"#,
         #"{"id":"rpc:credentials:remove","method":"credentials.remove","params":{"provider":"ollama"}}"#,
+        #"{"id":"rpc:credentials:set","method":"credentials.set","params":{"provider":"dreamer","credential":"dm_private"}}"#,
+        #"{"id":"rpc:credentials:remove","method":"credentials.remove","params":{"provider":"dreamer"}}"#,
+        #"{"id":"rpc:dreamer:redeem","method":"dreamer.redeem","params":{"inviteCode":""}}"#,
+        #"{"id":"rpc:dreamer:redeem","method":"dreamer.redeem","params":{"inviteCode":"invite_private"}}"#,
+        #"{"id":"rpc:dreamer:redeem","method":"dreamer.redeem","params":{"inviteCode":"invite","extra":true}}"#,
     ])
     func rejectsInvalidSettingsAndCredentialRequests(_ json: String) {
         #expect(throws: RPCValidationError.self) {

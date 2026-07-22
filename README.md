@@ -11,6 +11,7 @@
   - Web app (`pnpm dev` / `pnpm start`)
   - iOS app (Capacitor + Apple Foundation Models path)
   - Android app (Capacitor + Gemma/on-device path when available)
+  - macOS app (native SwiftUI/WebKit shell with Artifact Studio)
 
 ## Current Product State (June 2026)
 
@@ -23,6 +24,7 @@
 - Hosted/web provider behavior is locked to Anthropic in-app (no provider picker exposed), matching ideatiles.app's managed default path.
 - Settings visual treatment now uses a softer glass/card style and removes dense provider-management controls for a cleaner, on-brand surface.
 - iOS behavior is intentionally privacy-first: tile generation on iOS is on-device only (no cloud fallback).
+- The native Mac app defaults to Apple Foundation Models. Optional direct-provider keys stay in Keychain; Dreamer access is a single curated choice redeemed with a one-time invite. Request access at `https://dr.eamer.dev/code/api-access/`.
 - On iOS, neighbor-generation failures no longer synthesize placeholder tiles or fall through to cloud — empty slots stay empty and the user gets an explicit availability/parse error toast. On web/Android the cloud path may still pad to six branches when the model returns fewer; see `client/src/hooks/useAIGeneration.ts` (`buildNeighborNodes`).
 - Universal Links/AASA and server operations remain in [`NEXT_STEPS.md`](NEXT_STEPS.md).
 
@@ -50,6 +52,7 @@ pnpm build        # Vite client + esbuild server bundle
 pnpm start        # Production server
 pnpm cap:build    # Build + sync iOS
 pnpm cap:sync:android
+pnpm mac:generate # Regenerate macos/IdeaTiles.xcodeproj from macos/project.yml
 
 # App Store listing metadata (no binary; copy in ios/fastlane/metadata/)
 cd ios && bundle install && bundle exec fastlane upload_listing
@@ -71,6 +74,7 @@ cd ios && bundle install && bundle exec fastlane upload_listing
 - `shared/`: shared types/constants across client/server.
 - `drizzle/`: schema + migrations.
 - `ios/` and `android/`: Capacitor native shells and platform plugins.
+- `macos/`: native Mac host, strict typed bridge, local artifact persistence, and generation settings.
 
 The server entrypoint is `server/_core/index.ts` and mounts:
 

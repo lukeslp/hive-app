@@ -21,6 +21,11 @@ struct MacHostBootstrapTests {
         #expect(source.contains("credentials.status"))
         #expect(source.contains("credentials.set"))
         #expect(source.contains("credentials.remove"))
+        #expect(source.contains("dreamer.status"))
+        #expect(source.contains("dreamer.profile"))
+        #expect(source.contains("dreamer.redeem"))
+        #expect(source.contains("dreamer.remove"))
+        #expect(source.contains("dreamer.requestAccess"))
         #expect(!source.contains("localStorage"))
         #expect(source.contains("bridgeVersion: 1"))
     }

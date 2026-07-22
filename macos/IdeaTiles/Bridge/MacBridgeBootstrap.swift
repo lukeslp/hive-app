@@ -112,6 +112,13 @@ enum MacBridgeBootstrap {
             set: (provider, credential) => rpc('credentials.set', { provider, credential }),
             remove: provider => rpc('credentials.remove', { provider })
           });
+          const dreamer = Object.freeze({
+            status: () => rpc('dreamer.status', {}),
+            profile: () => rpc('dreamer.profile', {}),
+            redeem: inviteCode => rpc('dreamer.redeem', { inviteCode }),
+            remove: () => rpc('dreamer.remove', {}),
+            requestAccess: () => rpc('dreamer.requestAccess', {})
+          });
           const auth = Object.freeze({
             signIn: async loginURL => {
               const result = await rpc('auth.signIn', { loginURL }, null);
@@ -119,7 +126,7 @@ enum MacBridgeBootstrap {
             }
           });
           Object.defineProperty(window, 'ideaTilesMac', {
-            value: Object.freeze({ capabilities, artifactStudioServices: services, generationSettings, credentials, auth }),
+            value: Object.freeze({ capabilities, artifactStudioServices: services, generationSettings, credentials, dreamer, auth }),
             configurable: false,
             enumerable: true,
             writable: false

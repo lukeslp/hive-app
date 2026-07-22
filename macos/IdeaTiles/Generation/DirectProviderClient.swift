@@ -230,6 +230,8 @@ struct DirectProviderRequestBuilder: Sendable {
         switch provider {
         case .apple:
             throw GenerationServiceError.invalidConfiguration
+        case .dreamer:
+            throw GenerationServiceError.invalidConfiguration
         case .gemini:
             endpoint = URL(string: "https://generativelanguage.googleapis.com/v1beta/models/\(model):generateContent")!
         case .anthropic:
@@ -273,6 +275,8 @@ struct DirectProviderRequestBuilder: Sendable {
                 "options": ["num_predict": 4_096],
             ]
         case .apple:
+            throw GenerationServiceError.invalidConfiguration
+        case .dreamer:
             throw GenerationServiceError.invalidConfiguration
         }
         request.httpBody = try JSONSerialization.data(withJSONObject: body)
@@ -320,6 +324,8 @@ struct DirectProviderClient: CloudTextGenerating, Sendable {
         case .ollama:
             return (object["message"] as? [String: Any])?["content"] as? String
         case .apple:
+            return nil
+        case .dreamer:
             return nil
         }
     }

@@ -161,12 +161,40 @@ struct GenerationEngine: ArtifactTextGenerating, Sendable {
     let credentials: any CredentialStoring
     let appleGenerator: any TextGenerating
     let cloudGenerator: any CloudTextGenerating
+    let dreamer: (any DreamerAccessProviding)?
+
+    init(
+        preferences: any GenerationPreferencesStoring,
+        credentials: any CredentialStoring,
+        appleGenerator: any TextGenerating,
+        cloudGenerator: any CloudTextGenerating,
+        dreamer: (any DreamerAccessProviding)? = nil
+    ) {
+        self.preferences = preferences
+        self.credentials = credentials
+        self.appleGenerator = appleGenerator
+        self.cloudGenerator = cloudGenerator
+        self.dreamer = dreamer
+    }
 
     func generate(prompt: String) async throws -> GeneratedText {
         let settings = try await preferences.load().validated()
         if settings.provider == .apple {
             let text = try await appleGenerator.generate(prompt: prompt, model: settings.model)
             return GeneratedText(content: text, provider: .apple, model: settings.model)
+        }
+
+        if settings.provider == .dreamer {
+            guard let dreamer else { throw GenerationServiceError.dreamer(.notConfigured) }
+            do {
+                let result = try await dreamer.generate(prompt: prompt)
+                return GeneratedText(content: result.content, provider: .dreamer, model: "\(result.provider):\(result.model)")
+            } catch let error as DreamerAccessError {
+                guard case .failure(let failure) = error else {
+                    throw GenerationServiceError.dreamer(.invalidResponse)
+                }
+                throw GenerationServiceError.dreamer(failure)
+            }
         }
 
         let credential = try await credentials.credential(for: settings.provider)

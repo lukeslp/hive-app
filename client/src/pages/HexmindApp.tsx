@@ -75,6 +75,7 @@ import {
   type ArtifactImageAttachment,
   type ArtifactManifest,
   type NativeCredentialService,
+  type NativeDreamerAccessService,
   type NativeGenerationSettingsService,
   type NativeAuthenticationService,
 } from "@shared/macArtifacts";
@@ -103,6 +104,7 @@ declare global {
       artifactStudioServices?: ArtifactStudioServices;
       generationSettings?: NativeGenerationSettingsService;
       credentials?: NativeCredentialService;
+      dreamer?: NativeDreamerAccessService;
       auth?: NativeAuthenticationService;
     };
   }

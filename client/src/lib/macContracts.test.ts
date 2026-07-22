@@ -345,6 +345,57 @@ describe("Mac artifact contracts", () => {
     ).toBe(false);
   });
 
+  it("keeps Dreamer invites and managed tokens outside response contracts", () => {
+    const redeem = {
+      id: "rpc:dreamer:redeem",
+      method: "dreamer.redeem",
+      params: { inviteCode: "di_privatecode" },
+    } as const;
+    const profile = {
+      label: "Friends",
+      defaultTarget: { provider: "openai", model: "gpt-5.6-luna" },
+      policy: {
+        providers: ["openai"],
+        models: ["gpt-5.6-luna"],
+        capabilities: ["text"],
+      },
+      quota: {
+        dailyLimit: 100,
+        dailyUsed: 4,
+        dailyRemaining: 96,
+        resetAt: "2026-07-22T00:00:00Z",
+      },
+      status: "active",
+    } as const;
+    const response = {
+      id: redeem.id,
+      method: redeem.method,
+      ok: true,
+      result: { configured: true, profile },
+    } as const;
+
+    expect(macRpcRequestSchema.parse(redeem)).toEqual(redeem);
+    expect(macRpcResponseSchema.parse(response)).toEqual(response);
+    expect(
+      macRpcResponseSchema.safeParse({
+        ...response,
+        result: {
+          ...response.result,
+          profile: {
+            ...profile,
+            policy: { ...profile.policy, models: ["different-model"] },
+          },
+        },
+      }).success
+    ).toBe(false);
+    expect(
+      macRpcResponseSchema.safeParse({
+        ...response,
+        result: { ...response.result, accessToken: "dm_private" },
+      }).success
+    ).toBe(false);
+  });
+
   it("enables Artifact Studio only for a capable native Mac host", () => {
     const capableMac: MacPlatformCapabilities = {
       bridgeVersion: 1,

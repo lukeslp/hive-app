@@ -13,6 +13,11 @@ enum RPCMethod: String, Sendable, CaseIterable {
     case setCredential = "credentials.set"
     case removeCredential = "credentials.remove"
     case beginAuthentication = "auth.signIn"
+    case dreamerStatus = "dreamer.status"
+    case dreamerProfile = "dreamer.profile"
+    case dreamerRedeem = "dreamer.redeem"
+    case dreamerRemove = "dreamer.remove"
+    case dreamerRequestAccess = "dreamer.requestAccess"
 }
 
 struct ValidatedRPCRequest: Sendable, Equatable {
@@ -72,8 +77,16 @@ struct RPCRequestValidator: Sendable {
 
     private func validateParameters(_ params: [String: Any], for method: RPCMethod) throws {
         switch method {
-        case .getCapabilities, .getGenerationSettings, .credentialStatus:
+        case .getCapabilities, .getGenerationSettings, .credentialStatus,
+             .dreamerStatus, .dreamerProfile, .dreamerRemove, .dreamerRequestAccess:
             guard params.isEmpty else { throw RPCValidationError.invalidParameters }
+        case .dreamerRedeem:
+            guard Set(params.keys) == ["inviteCode"],
+                  let inviteCode = params["inviteCode"] as? String,
+                  inviteCode == inviteCode.trimmingCharacters(in: .whitespacesAndNewlines),
+                  inviteCode.utf8.count <= 256,
+                  inviteCode.range(of: #"^di_[A-Za-z0-9_-]{7,253}$"#, options: .regularExpression) != nil
+            else { throw RPCValidationError.invalidParameters }
         case .setGenerationSettings:
             guard Set(params.keys) == ["settings"],
                   let settings = params["settings"] as? [String: Any]
@@ -84,6 +97,7 @@ struct RPCRequestValidator: Sendable {
                   let providerName = params["provider"] as? String,
                   let provider = GenerationProvider(rawValue: providerName),
                   provider.requiresCredential,
+                  provider != .dreamer,
                   let credential = params["credential"] as? String,
                   !credential.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty,
                   credential.trimmingCharacters(in: .whitespacesAndNewlines).utf8.count <= 16_384
@@ -92,7 +106,8 @@ struct RPCRequestValidator: Sendable {
             guard Set(params.keys) == ["provider"],
                   let providerName = params["provider"] as? String,
                   let provider = GenerationProvider(rawValue: providerName),
-                  provider.requiresCredential
+                  provider.requiresCredential,
+                  provider != .dreamer
             else { throw RPCValidationError.invalidParameters }
         case .beginAuthentication:
             guard Set(params.keys) == ["loginURL"],

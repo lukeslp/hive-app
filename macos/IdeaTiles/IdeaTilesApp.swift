@@ -43,7 +43,8 @@ struct IdeaTilesApp: App {
             if let runtime {
                 GenerationSettingsView(
                     preferences: runtime.generationPreferences,
-                    credentials: runtime.credentialStore
+                    credentials: runtime.credentialStore,
+                    dreamer: runtime.dreamerAccess
                 )
             } else {
                 ContentUnavailableView("Settings unavailable", systemImage: "exclamationmark.triangle")

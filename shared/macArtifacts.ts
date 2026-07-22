@@ -222,6 +222,7 @@ export const generationProviderSchema = z.enum([
   "xai",
   "mistral",
   "ollama",
+  "dreamer",
 ]);
 export type GenerationProvider = z.infer<typeof generationProviderSchema>;
 
@@ -233,6 +234,8 @@ function isValidGenerationModel(
   switch (provider) {
     case "apple":
       return model === "system-language-model";
+    case "dreamer":
+      return model === "automatic";
     case "gemini":
       return /^[A-Za-z0-9][A-Za-z0-9._-]*$/.test(model);
     case "ollama": {
@@ -348,6 +351,98 @@ export const credentialStatusSchema = z
   .object({ configured: configuredCredentialSchema })
   .strict();
 export type CredentialStatus = z.infer<typeof credentialStatusSchema>;
+
+const dreamerIdentifier = (maximum: number) =>
+  z
+    .string()
+    .min(1)
+    .max(maximum)
+    .regex(/^[A-Za-z0-9][A-Za-z0-9._:/-]*$/);
+
+export const dreamerProfileSchema = z
+  .object({
+    label: z.string().min(1).max(120),
+    defaultTarget: z
+      .object({
+        provider: dreamerIdentifier(40),
+        model: dreamerIdentifier(200),
+      })
+      .strict(),
+    policy: z
+      .object({
+        providers: z.array(dreamerIdentifier(40)).min(1).max(4),
+        models: z.array(dreamerIdentifier(200)).min(1).max(64),
+        capabilities: z.array(dreamerIdentifier(80)).min(1).max(32),
+      })
+      .strict(),
+    quota: z
+      .object({
+        dailyLimit: z.number().int().nonnegative(),
+        dailyUsed: z.number().int().nonnegative(),
+        dailyRemaining: z.number().int().nonnegative(),
+        resetAt: z.string().datetime({ offset: true }),
+      })
+      .strict(),
+    status: z.literal("active"),
+  })
+  .strict()
+  .superRefine((profile, context) => {
+    if (!profile.policy.providers.includes(profile.defaultTarget.provider)) {
+      context.addIssue({
+        code: "custom",
+        path: ["defaultTarget", "provider"],
+        message: "The default provider must be allowed by policy",
+      });
+    }
+    if (
+      !profile.policy.models.includes(profile.defaultTarget.model) &&
+      !profile.policy.models.includes(
+        `${profile.defaultTarget.provider}:${profile.defaultTarget.model}`
+      )
+    ) {
+      context.addIssue({
+        code: "custom",
+        path: ["defaultTarget", "model"],
+        message: "The default model must be allowed by policy",
+      });
+    }
+    if (!profile.policy.capabilities.includes("text")) {
+      context.addIssue({
+        code: "custom",
+        path: ["policy", "capabilities"],
+        message: "Dreamer access requires text capability",
+      });
+    }
+    if (
+      profile.quota.dailyUsed > profile.quota.dailyLimit ||
+      profile.quota.dailyRemaining !==
+        Math.max(profile.quota.dailyLimit - profile.quota.dailyUsed, 0)
+    ) {
+      context.addIssue({
+        code: "custom",
+        path: ["quota"],
+        message: "Dreamer quota summary is inconsistent",
+      });
+    }
+  });
+export type DreamerProfile = z.infer<typeof dreamerProfileSchema>;
+
+export const dreamerAccessStatusSchema = z
+  .object({
+    configured: z.boolean(),
+    profile: dreamerProfileSchema.optional(),
+  })
+  .strict()
+  .superRefine((value, context) => {
+    if (!value.configured && value.profile) {
+      context.addIssue({
+        code: "custom",
+        path: ["profile"],
+        message: "Unconfigured access cannot have a profile",
+      });
+    }
+  });
+export type DreamerAccessStatus = z.infer<typeof dreamerAccessStatusSchema>;
 
 export const artifactImageAttachmentSchema = z
   .object({
@@ -477,6 +572,48 @@ export const macRpcRequestSchema = z.discriminatedUnion("method", [
       params: z.object({ provider: credentialProviderSchema }).strict(),
     })
     .strict(),
+  z
+    .object({
+      id: rpcIdSchema,
+      method: z.literal("dreamer.status"),
+      params: z.object({}).strict(),
+    })
+    .strict(),
+  z
+    .object({
+      id: rpcIdSchema,
+      method: z.literal("dreamer.profile"),
+      params: z.object({}).strict(),
+    })
+    .strict(),
+  z
+    .object({
+      id: rpcIdSchema,
+      method: z.literal("dreamer.redeem"),
+      params: z
+        .object({
+          inviteCode: z
+            .string()
+            .regex(/^di_[A-Za-z0-9_-]{7,253}$/)
+            .max(256),
+        })
+        .strict(),
+    })
+    .strict(),
+  z
+    .object({
+      id: rpcIdSchema,
+      method: z.literal("dreamer.remove"),
+      params: z.object({}).strict(),
+    })
+    .strict(),
+  z
+    .object({
+      id: rpcIdSchema,
+      method: z.literal("dreamer.requestAccess"),
+      params: z.object({}).strict(),
+    })
+    .strict(),
 ]);
 export type MacRpcRequest = z.infer<typeof macRpcRequestSchema>;
 
@@ -564,6 +701,43 @@ export const macRpcResponseSchema = z.union([
     .strict(),
   z
     .object({
+      ...rpcSuccessBase,
+      method: z.literal("dreamer.status"),
+      result: dreamerAccessStatusSchema,
+    })
+    .strict(),
+  z
+    .object({
+      ...rpcSuccessBase,
+      method: z.literal("dreamer.profile"),
+      result: dreamerProfileSchema,
+    })
+    .strict(),
+  z
+    .object({
+      ...rpcSuccessBase,
+      method: z.literal("dreamer.redeem"),
+      result: z
+        .object({ configured: z.literal(true), profile: dreamerProfileSchema })
+        .strict(),
+    })
+    .strict(),
+  z
+    .object({
+      ...rpcSuccessBase,
+      method: z.literal("dreamer.remove"),
+      result: z.object({ configured: z.literal(false) }).strict(),
+    })
+    .strict(),
+  z
+    .object({
+      ...rpcSuccessBase,
+      method: z.literal("dreamer.requestAccess"),
+      result: z.object({ opened: z.boolean() }).strict(),
+    })
+    .strict(),
+  z
+    .object({
       id: rpcIdSchema,
       ok: z.literal(false),
       error: z
@@ -591,6 +765,11 @@ export interface MacRpcResultMap {
   "credentials.status": CredentialStatus;
   "credentials.set": { provider: CredentialProvider; configured: true };
   "credentials.remove": { provider: CredentialProvider; configured: false };
+  "dreamer.status": DreamerAccessStatus;
+  "dreamer.profile": DreamerProfile;
+  "dreamer.redeem": { configured: true; profile: DreamerProfile };
+  "dreamer.remove": { configured: false };
+  "dreamer.requestAccess": { opened: boolean };
 }
 
 export interface ArtifactGenerator {
@@ -631,6 +810,16 @@ export interface NativeCredentialService {
   remove(
     provider: CredentialProvider
   ): Promise<{ provider: CredentialProvider; configured: false }>;
+}
+
+export interface NativeDreamerAccessService {
+  status(): Promise<DreamerAccessStatus>;
+  profile(): Promise<DreamerProfile>;
+  redeem(
+    inviteCode: string
+  ): Promise<{ configured: true; profile: DreamerProfile }>;
+  remove(): Promise<{ configured: false }>;
+  requestAccess(): Promise<{ opened: boolean }>;
 }
 
 export interface MacRpcBridge {

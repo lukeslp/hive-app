@@ -5,6 +5,7 @@ import UniformTypeIdentifiers
 struct NativeBridgeRouter: Sendable {
     typealias Exporter = @Sendable (ArtifactManifest) async throws -> Bool
     typealias Authenticator = @Sendable (URL) async throws -> Bool
+    typealias URLOpener = @Sendable (URL) async -> Bool
 
     let repository: ArtifactRepository
     let generationCoordinator: ArtifactGenerationCoordinator?
@@ -13,6 +14,8 @@ struct NativeBridgeRouter: Sendable {
     let capabilities: MacRuntimeCapabilities
     let exporter: Exporter
     let authenticator: Authenticator?
+    let dreamer: (any DreamerAccessProviding)?
+    let urlOpener: URLOpener?
 
     init(
         repository: ArtifactRepository,
@@ -25,6 +28,8 @@ struct NativeBridgeRouter: Sendable {
             keychain: false
         ),
         authenticator: Authenticator? = nil,
+        dreamer: (any DreamerAccessProviding)? = nil,
+        urlOpener: URLOpener? = nil,
         exporter: @escaping Exporter
     ) {
         self.repository = repository
@@ -33,6 +38,8 @@ struct NativeBridgeRouter: Sendable {
         self.credentialStore = credentialStore
         self.capabilities = capabilities
         self.authenticator = authenticator
+        self.dreamer = dreamer
+        self.urlOpener = urlOpener
         self.exporter = exporter
     }
 
@@ -152,6 +159,32 @@ struct NativeBridgeRouter: Sendable {
                     throw NativeRPCError(code: "authFailed", message: "The sign-in page could not be loaded.", retryable: true)
                 }
             }
+        case .dreamerStatus:
+            guard let dreamer else { throw NativeRPCError.notConfigured }
+            do { return try jsonValue(try await dreamer.status(refreshProfile: true)) }
+            catch let error as DreamerAccessError { throw dreamerError(error) }
+        case .dreamerProfile:
+            guard let dreamer else { throw NativeRPCError.notConfigured }
+            do { return try jsonValue(try await dreamer.profile()) }
+            catch let error as DreamerAccessError { throw dreamerError(error) }
+        case .dreamerRedeem:
+            guard let dreamer,
+                  let inviteCode = request.params["inviteCode"]?.stringValue
+            else { throw NativeRPCError.notConfigured }
+            do {
+                let profile = try await dreamer.redeem(inviteCode: inviteCode)
+                return .object(["configured": .bool(true), "profile": try jsonValue(profile)])
+            } catch let error as DreamerAccessError { throw dreamerError(error) }
+        case .dreamerRemove:
+            guard let dreamer else { throw NativeRPCError.notConfigured }
+            do {
+                try await dreamer.remove()
+                return .object(["configured": .bool(false)])
+            } catch let error as DreamerAccessError { throw dreamerError(error) }
+            catch { throw credentialError() }
+        case .dreamerRequestAccess:
+            guard let urlOpener else { throw NativeRPCError.notConfigured }
+            return .object(["opened": .bool(await urlOpener(DreamerEndpoints.requestAccess))])
         }
     }
 
@@ -181,7 +214,8 @@ struct NativeBridgeRouter: Sendable {
     ) throws -> (GenerationProvider, String?) {
         guard let providerName = params["provider"]?.stringValue,
               let provider = GenerationProvider(rawValue: providerName),
-              provider.requiresCredential
+              provider.requiresCredential,
+              provider != .dreamer
         else { throw invalidParameters() }
         if requiresValue {
             guard let rawCredential = params["credential"]?.stringValue else {
@@ -237,7 +271,21 @@ struct NativeBridgeRouter: Sendable {
             NativeRPCError(code: "unsupportedLanguage", message: error.localizedDescription, retryable: false)
         case .concurrentRequest:
             NativeRPCError(code: "modelBusy", message: error.localizedDescription, retryable: true)
+        case .dreamer(let failure):
+            dreamerError(.failure(failure))
         }
+    }
+
+    private func dreamerError(_ error: DreamerAccessError) -> NativeRPCError {
+        guard case .failure(let failure) = error else {
+            return NativeRPCError(code: "dreamerError", message: "Dreamer access failed.", retryable: false)
+        }
+        let retryable: Bool
+        switch failure {
+        case .offline, .timeout, .serverUnavailable, .throttled: retryable = true
+        default: retryable = false
+        }
+        return NativeRPCError(code: "dreamer.\(failure.rawValue)", message: error.localizedDescription, retryable: retryable)
     }
 
     private func imageError(_ error: ImagePlaygroundServiceError) -> NativeRPCError {

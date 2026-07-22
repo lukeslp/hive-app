@@ -8,6 +8,7 @@ enum GenerationProvider: String, Codable, CaseIterable, Sendable {
     case xAI = "xai"
     case mistral
     case ollama
+    case dreamer
 
     var displayName: String {
         switch self {
@@ -18,6 +19,7 @@ enum GenerationProvider: String, Codable, CaseIterable, Sendable {
         case .xAI: "xAI Grok"
         case .mistral: "Mistral"
         case .ollama: "Ollama"
+        case .dreamer: "Dreamer"
         }
     }
 
@@ -30,6 +32,7 @@ enum GenerationProvider: String, Codable, CaseIterable, Sendable {
         case .xAI: "grok-3-mini-fast"
         case .mistral: "mistral-small-latest"
         case .ollama: "gemma3:4b"
+        case .dreamer: "automatic"
         }
     }
 
@@ -72,6 +75,8 @@ enum GenerationModelValidator {
         switch provider {
         case .apple:
             return model == GenerationProvider.apple.defaultModel
+        case .dreamer:
+            return model == GenerationProvider.dreamer.defaultModel
         case .gemini:
             return matches(model, pattern: #"^[A-Za-z0-9][A-Za-z0-9._-]*$"#)
         case .ollama:
@@ -135,6 +140,7 @@ enum GenerationServiceError: Error, Equatable, LocalizedError, Sendable {
     case rateLimited
     case unsupportedLanguage
     case concurrentRequest
+    case dreamer(DreamerAccessFailure)
 
     var errorDescription: String? {
         switch self {
@@ -150,6 +156,7 @@ enum GenerationServiceError: Error, Equatable, LocalizedError, Sendable {
         case .rateLimited: "The on-device model is temporarily busy."
         case .unsupportedLanguage: "The on-device model does not support this language or locale."
         case .concurrentRequest: "The on-device model is already handling another request."
+        case .dreamer(let failure): DreamerAccessError.failure(failure).localizedDescription
         }
     }
 }
