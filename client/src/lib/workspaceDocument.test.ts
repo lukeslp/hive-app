@@ -154,6 +154,112 @@ describe("canonical workspace document", () => {
     expect(first.id).toMatch(/^board:tiles:[a-f0-9]{16}$/);
     expect(repeated.id).toBe(first.id);
     expect(changed.id).not.toBe(first.id);
+
+    const unmarkedNodes = {
+      ...withoutId.nodes,
+      "0,0": { ...withoutId.nodes["0,0"], isKeyTheme: false },
+    };
+    const withoutTheme = migrateTilesSession({
+      ...withoutId,
+      nodes: unmarkedNodes,
+      keyThemes: [],
+    });
+    const withTheme = migrateTilesSession({
+      ...withoutId,
+      nodes: unmarkedNodes,
+      keyThemes: ["0,0"],
+    });
+    expect(withTheme.graph.nodes[0].isKeyTheme).toBe(true);
+    expect(withTheme.id).not.toBe(withoutTheme.id);
+  });
+
+  it("uses locale-independent key ordering for content-derived IDs", () => {
+    const { boardId: _boardId, ...withoutId } = tilesSession;
+    const reversedNodes = Object.fromEntries(
+      Object.entries(withoutId.nodes).reverse()
+    );
+    const originalLocaleCompare = String.prototype.localeCompare;
+    String.prototype.localeCompare = () => 0;
+    try {
+      expect(
+        migrateTilesSession({ ...withoutId, nodes: reversedNodes }).id
+      ).toBe(migrateTilesSession(withoutId).id);
+    } finally {
+      String.prototype.localeCompare = originalLocaleCompare;
+    }
+  });
+
+  it("requires canonical text, names, and alignment reasons to be trimmed", () => {
+    const workspace = importBrainSphereSession(brainSphereSession);
+    expect(() =>
+      workspaceDocumentSchema.parse({
+        ...workspace,
+        graph: {
+          ...workspace.graph,
+          nodes: workspace.graph.nodes.map((node, index) =>
+            index === 0 ? { ...node, text: " padded " } : node
+          ),
+        },
+      })
+    ).toThrow();
+    expect(() =>
+      workspaceDocumentSchema.parse({
+        ...workspace,
+        graph: {
+          ...workspace.graph,
+          nodes: workspace.graph.nodes.map((node, index) =>
+            index === 0 ? { ...node, text: ` ${"x".repeat(512)} ` } : node
+          ),
+        },
+      })
+    ).toThrow();
+    expect(() =>
+      workspaceDocumentSchema.parse({
+        ...workspace,
+        metadata: { ...workspace.metadata, name: " padded " },
+      })
+    ).toThrow();
+    expect(() =>
+      workspaceDocumentSchema.parse({
+        ...workspace,
+        projections: {
+          ...workspace.projections,
+          sphere: {
+            ...workspace.projections.sphere,
+            alignments: workspace.projections.sphere.alignments.map(
+              alignment => ({ ...alignment, reason: " padded " })
+            ),
+          },
+        },
+      })
+    ).toThrow();
+  });
+
+  it("accepts only real offset datetimes in canonical metadata", () => {
+    const workspace = migrateTilesSession(tilesSession);
+    for (const createdAt of [
+      "2026-01-01T00:00Z",
+      "2026-01-01T00:00:00Z",
+      "2026-01-01T00:00:00.123+05:30",
+    ]) {
+      expect(
+        workspaceDocumentSchema.safeParse({
+          ...workspace,
+          metadata: { ...workspace.metadata, createdAt },
+        }).success
+      ).toBe(true);
+    }
+    for (const createdAt of [
+      "2026-02-30T00:00:00Z",
+      "2026-01-01T00:00:00+99:99",
+    ]) {
+      expect(
+        workspaceDocumentSchema.safeParse({
+          ...workspace,
+          metadata: { ...workspace.metadata, createdAt },
+        }).success
+      ).toBe(false);
+    }
   });
 
   it("migrates the declared Tiles SessionData shape with view and metadata", () => {

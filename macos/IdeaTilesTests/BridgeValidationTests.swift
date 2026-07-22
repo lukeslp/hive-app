@@ -4,6 +4,169 @@ import Testing
 
 @Suite("Native RPC validation")
 struct BridgeValidationTests {
+    @Test("workspace booleans require JSON booleans, not numeric zero or one")
+    func validatesExactWorkspaceBooleans() throws {
+        let validNode: [String: Any] = [
+            "id": "tile:0:0", "text": "Root", "type": "root", "depth": 0,
+            "parentId": NSNull(), "isKeyTheme": false, "pinned": true,
+            "wasInteracted": false, "isClusterRoot": true,
+            "artifactAttachments": [],
+            "compatibility": [
+                "tiles": ["shouldAskClarifyingQuestion": false, "isBridge": true],
+                "sphere": ["hasDeepDive": false],
+            ],
+        ]
+        _ = try RPCRequestValidator().parse(
+            JSONSerialization.data(withJSONObject: workspaceSaveRequest(node: validNode))
+        )
+
+        var invalidNodes: [[String: Any]] = []
+        for (key, value) in [("isKeyTheme", 0), ("pinned", 1), ("wasInteracted", 0), ("isClusterRoot", 1)] {
+            var invalid = validNode
+            invalid[key] = value
+            invalidNodes.append(invalid)
+        }
+        for (section, key, value) in [
+            ("tiles", "shouldAskClarifyingQuestion", 0),
+            ("tiles", "isBridge", 1),
+            ("sphere", "hasDeepDive", 0),
+        ] {
+            var invalid = validNode
+            var compatibility = invalid["compatibility"] as! [String: Any]
+            var mode = compatibility[section] as! [String: Any]
+            mode[key] = value
+            compatibility[section] = mode
+            invalid["compatibility"] = compatibility
+            invalidNodes.append(invalid)
+        }
+        for invalidNode in invalidNodes {
+            #expect(throws: RPCValidationError.self) {
+                try RPCRequestValidator().parse(
+                    JSONSerialization.data(withJSONObject: workspaceSaveRequest(node: invalidNode))
+                )
+            }
+        }
+    }
+
+    @Test("generation and capability booleans reject numeric aliases")
+    func validatesExactGenerationBooleans() throws {
+        let valid = artifactGenerationRequest(
+            contextTruncated: false,
+            nativeMac: true,
+            artifactGeneration: true
+        )
+        _ = try RPCRequestValidator().parse(JSONSerialization.data(withJSONObject: valid))
+        for invalid in [
+            artifactGenerationRequest(contextTruncated: 0, nativeMac: true, artifactGeneration: true),
+            artifactGenerationRequest(contextTruncated: false, nativeMac: 1, artifactGeneration: true),
+            artifactGenerationRequest(contextTruncated: false, nativeMac: true, artifactGeneration: 1),
+        ] {
+            #expect(throws: RPCValidationError.self) {
+                try RPCRequestValidator().parse(JSONSerialization.data(withJSONObject: invalid))
+            }
+        }
+    }
+
+    @Test("workspace edges cannot reference the same source and target")
+    func rejectsSelfReferentialWorkspaceEdges() throws {
+        let node: [String: Any] = [
+            "id": "tile:0:0", "text": "Root", "type": "root", "depth": 0,
+            "parentId": NSNull(), "isKeyTheme": false, "pinned": false,
+            "artifactAttachments": [],
+        ]
+        var request = workspaceSaveRequest(node: node)
+        var params = request["params"] as! [String: Any]
+        var envelope = params["envelope"] as! [String: Any]
+        var workspace = envelope["workspace"] as! [String: Any]
+        workspace["graph"] = [
+            "nodes": [node],
+            "edges": [["sourceId": "tile:0:0", "targetId": "tile:0:0", "kind": "related"]],
+        ]
+        envelope["workspace"] = workspace
+        params["envelope"] = envelope
+        request["params"] = params
+
+        #expect(throws: RPCValidationError.self) {
+            try RPCRequestValidator().parse(JSONSerialization.data(withJSONObject: request))
+        }
+    }
+
+    @Test("workspace timestamps match canonical offset datetime semantics")
+    func validatesWorkspaceTimestamps() throws {
+        for accepted in ["2026-01-01T00:00Z", "2026-01-01T00:00:00Z", "2026-01-01T00:00:00.123+05:30"] {
+            _ = try RPCRequestValidator().parse(
+                JSONSerialization.data(withJSONObject: workspaceSaveRequest(createdAt: accepted))
+            )
+        }
+        for rejected in ["2026-02-30T00:00:00Z", "2026-01-01T00:00:00+99:99"] {
+            #expect(throws: RPCValidationError.self) {
+                try RPCRequestValidator().parse(
+                    JSONSerialization.data(withJSONObject: workspaceSaveRequest(createdAt: rejected))
+                )
+            }
+        }
+    }
+
+    @Test("canonical workspace strings must already be trimmed")
+    func rejectsUntrimmedCanonicalStrings() throws {
+        var paddedNode: [String: Any] = [
+            "id": "tile:0:0", "text": " padded ", "type": "root", "depth": 0,
+            "parentId": NSNull(), "isKeyTheme": false, "pinned": false,
+            "artifactAttachments": [],
+        ]
+        #expect(throws: RPCValidationError.self) {
+            try RPCRequestValidator().parse(
+                JSONSerialization.data(withJSONObject: workspaceSaveRequest(node: paddedNode))
+            )
+        }
+        paddedNode["text"] = String(repeating: "x", count: 512)
+        _ = try RPCRequestValidator().parse(
+            JSONSerialization.data(withJSONObject: workspaceSaveRequest(node: paddedNode))
+        )
+        paddedNode["text"] = " " + String(repeating: "x", count: 512) + " "
+        #expect(throws: RPCValidationError.self) {
+            try RPCRequestValidator().parse(
+                JSONSerialization.data(withJSONObject: workspaceSaveRequest(node: paddedNode))
+            )
+        }
+        paddedNode["text"] = String(repeating: "x", count: 512)
+        #expect(throws: RPCValidationError.self) {
+            try RPCRequestValidator().parse(
+                JSONSerialization.data(withJSONObject: workspaceSaveRequest(name: " padded "))
+            )
+        }
+
+        var alignmentRequest = workspaceSaveRequest(node: paddedNode)
+        var params = alignmentRequest["params"] as! [String: Any]
+        var envelope = params["envelope"] as! [String: Any]
+        var workspace = envelope["workspace"] as! [String: Any]
+        var secondNode = paddedNode
+        secondNode["id"] = "tile:1:0"
+        workspace["graph"] = ["nodes": [paddedNode, secondNode], "edges": []]
+        var projections = workspace["projections"] as! [String: Any]
+        var tiles = projections["tiles"] as! [String: Any]
+        tiles["nodes"] = [
+            "tile:0:0": ["q": 0, "r": 0],
+            "tile:1:0": ["q": 1, "r": 0],
+        ]
+        projections["tiles"] = tiles
+        var sphere = projections["sphere"] as! [String: Any]
+        sphere["alignments"] = [[
+            "sourceId": "tile:0:0", "targetId": "tile:1:0", "score": 0.5,
+            "reason": " padded ", "category": "thematic",
+        ]]
+        projections["sphere"] = sphere
+        workspace["projections"] = projections
+        envelope["workspace"] = workspace
+        params["envelope"] = envelope
+        alignmentRequest["params"] = params
+        #expect(throws: RPCValidationError.self) {
+            try RPCRequestValidator().parse(
+                JSONSerialization.data(withJSONObject: alignmentRequest)
+            )
+        }
+    }
+
     @Test("preserves JSON numeric zero and one separately from booleans")
     func preservesJSONScalarTypes() throws {
         let raw = try #require(
@@ -352,6 +515,68 @@ private func workspaceSaveRequest() -> [String: Any] {
                     ],
                     "preferences": ["creativity": 0.5],
                     "metadata": [:],
+                ],
+            ],
+        ],
+    ]
+}
+
+private func workspaceSaveRequest(
+    node: [String: Any]? = nil,
+    name: String? = nil,
+    createdAt: String? = nil
+) -> [String: Any] {
+    var request = workspaceSaveRequest()
+    var params = request["params"] as! [String: Any]
+    var envelope = params["envelope"] as! [String: Any]
+    var workspace = envelope["workspace"] as! [String: Any]
+    if let node {
+        let id = node["id"] as! String
+        workspace["graph"] = ["nodes": [node], "edges": []]
+        var projections = workspace["projections"] as! [String: Any]
+        var tiles = projections["tiles"] as! [String: Any]
+        tiles["nodes"] = [id: ["q": 0, "r": 0]]
+        projections["tiles"] = tiles
+        workspace["projections"] = projections
+    }
+    var metadata = workspace["metadata"] as! [String: Any]
+    if let name { metadata["name"] = name }
+    if let createdAt { metadata["createdAt"] = createdAt }
+    workspace["metadata"] = metadata
+    envelope["workspace"] = workspace
+    params["envelope"] = envelope
+    request["params"] = params
+    return request
+}
+
+private func artifactGenerationRequest(
+    contextTruncated: Any,
+    nativeMac: Any,
+    artifactGeneration: Any
+) -> [String: Any] {
+    [
+        "id": "rpc:generate:boolean",
+        "method": "artifact.generate",
+        "params": [
+            "requestId": "request:boolean",
+            "sourceBoardId": "board:1",
+            "sourceNodeIds": ["0,0"],
+            "includedNodeCount": 1,
+            "originalNodeCount": 1,
+            "contextTruncated": contextTruncated,
+            "recipeId": "recipe:brief",
+            "scope": ["kind": "board"],
+            "context": "context",
+            "capabilities": [
+                "bridgeVersion": 1,
+                "nativeMac": nativeMac,
+                "features": [
+                    "artifactGeneration": artifactGeneration,
+                    "artifactPersistence": true,
+                    "artifactExport": true,
+                    "imagePlayground": false,
+                    "keychain": true,
+                    "staticPreview": true,
                 ],
             ],
         ],

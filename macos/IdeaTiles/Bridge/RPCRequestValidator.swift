@@ -184,7 +184,7 @@ struct RPCRequestValidator: Sendable {
                   nodeIDs.allSatisfy(Self.isStableID),
                   let scope = params["scope"] as? [String: Any],
                   let context = params["context"] as? String, !context.isEmpty,
-                  let truncated = params["contextTruncated"] as? Bool,
+                  let truncated = jsonBoolean(params["contextTruncated"]),
                   let included = positiveInteger(params["includedNodeCount"]),
                   let original = positiveInteger(params["originalNodeCount"]),
                   included == nodeIDs.count, included <= original,
@@ -253,7 +253,8 @@ struct RPCRequestValidator: Sendable {
         else { throw RPCValidationError.invalidParameters }
         if let name = metadata["name"] {
             guard let value = name as? String,
-                  !value.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty,
+                  value == value.trimmingCharacters(in: .whitespacesAndNewlines),
+                  !value.isEmpty,
                   value.utf16.count <= 255
             else { throw RPCValidationError.invalidParameters }
         }
@@ -294,12 +295,13 @@ struct RPCRequestValidator: Sendable {
                   Set(node.keys).subtracting(required).isSubset(of: optional),
                   let id = node["id"] as? String, Self.isStableID(id),
                   let text = node["text"] as? String,
-                  !text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty,
+                  text == text.trimmingCharacters(in: .whitespacesAndNewlines),
+                  !text.isEmpty,
                   text.utf16.count <= 512,
                   let type = node["type"] as? String, types.contains(type),
                   boundedInteger(node["depth"], minimum: 0, maximum: 512) != nil,
-                  node["isKeyTheme"] is Bool,
-                  node["pinned"] is Bool,
+                  jsonBoolean(node["isKeyTheme"]) != nil,
+                  jsonBoolean(node["pinned"]) != nil,
                   let attachments = node["artifactAttachments"] as? [Any],
                   attachments.count <= 32
             else { throw RPCValidationError.invalidParameters }
@@ -319,7 +321,7 @@ struct RPCRequestValidator: Sendable {
             if let hierarchy = node["hierarchyLevel"], boundedInteger(hierarchy, minimum: 1, maximum: 8) == nil {
                 throw RPCValidationError.invalidParameters
             }
-            for key in ["wasInteracted", "isClusterRoot"] where node[key] != nil && !(node[key] is Bool) {
+            for key in ["wasInteracted", "isClusterRoot"] where node[key] != nil && jsonBoolean(node[key]) == nil {
                 throw RPCValidationError.invalidParameters
             }
             if let cluster = node["clusterId"] as? String, !Self.isStableID(cluster) {
@@ -368,7 +370,7 @@ struct RPCRequestValidator: Sendable {
                   let target = edge["targetId"] as? String,
                   let kind = edge["kind"] as? String,
                   Self.isStableID(source), Self.isStableID(target), kinds.contains(kind),
-                  nodeIDs.contains(source), nodeIDs.contains(target),
+                  source != target, nodeIDs.contains(source), nodeIDs.contains(target),
                   seen.insert("\(kind)\u{0}\(source)\u{0}\(target)").inserted
             else { throw RPCValidationError.invalidParameters }
         }
@@ -433,7 +435,8 @@ struct RPCRequestValidator: Sendable {
                   Self.isStableID(source), Self.isStableID(target),
                   source != target, nodeIDs.contains(source), nodeIDs.contains(target),
                   alignmentKeys.insert("\(source)\u{0}\(target)\u{0}\(category)").inserted,
-                  !reason.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty,
+                  reason == reason.trimmingCharacters(in: .whitespacesAndNewlines),
+                  !reason.isEmpty,
                   reason.utf16.count <= 1_000,
                   categories.contains(category),
                   boundedNumber(alignment["score"], minimum: 0, maximum: 1) != nil
@@ -457,7 +460,7 @@ struct RPCRequestValidator: Sendable {
                     else { throw RPCValidationError.invalidParameters }
                 }
             }
-            for key in ["shouldAskClarifyingQuestion", "isBridge"] where tiles[key] != nil && !(tiles[key] is Bool) {
+            for key in ["shouldAskClarifyingQuestion", "isBridge"] where tiles[key] != nil && jsonBoolean(tiles[key]) == nil {
                 throw RPCValidationError.invalidParameters
             }
             if let answers = tiles["suggestedAnswers"] as? [String] {
@@ -495,7 +498,7 @@ struct RPCRequestValidator: Sendable {
             guard let sphere = rawSphere as? [String: Any],
                   Set(sphere.keys).isSubset(of: ["hasDeepDive", "contextPrompt", "codeSnippet", "visualization"])
             else { throw RPCValidationError.invalidParameters }
-            if sphere["hasDeepDive"] != nil && !(sphere["hasDeepDive"] is Bool) {
+            if sphere["hasDeepDive"] != nil && jsonBoolean(sphere["hasDeepDive"]) == nil {
                 throw RPCValidationError.invalidParameters
             }
             if let raw = sphere["contextPrompt"] {
@@ -534,10 +537,47 @@ struct RPCRequestValidator: Sendable {
     }
 
     private func validISO8601(_ value: String) -> Bool {
-        let formatter = ISO8601DateFormatter()
-        if formatter.date(from: value) != nil { return true }
-        formatter.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
-        return formatter.date(from: value) != nil
+        let pattern = #"^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2})(?::(\d{2})(?:\.(\d+))?)?(Z|[+-](\d{2}):?(\d{2}))$"#
+        guard let expression = try? NSRegularExpression(pattern: pattern),
+              let match = expression.firstMatch(
+                in: value,
+                range: NSRange(value.startIndex..<value.endIndex, in: value)
+              )
+        else { return false }
+        func integer(_ capture: Int) -> Int? {
+            let range = match.range(at: capture)
+            guard range.location != NSNotFound, let swiftRange = Range(range, in: value)
+            else { return nil }
+            return Int(value[swiftRange])
+        }
+        let second = integer(6) ?? 0
+        guard let year = integer(1), year > 0,
+              let month = integer(2), (1...12).contains(month),
+              let day = integer(3),
+              let hour = integer(4), (0...23).contains(hour),
+              let minute = integer(5), (0...59).contains(minute),
+              (0...59).contains(second)
+        else { return false }
+        var calendar = Calendar(identifier: .gregorian)
+        calendar.timeZone = TimeZone(secondsFromGMT: 0)!
+        guard let firstOfMonth = calendar.date(
+            from: DateComponents(year: year, month: month, day: 1)
+        ), let days = calendar.range(of: .day, in: .month, for: firstOfMonth),
+           days.contains(day)
+        else { return false }
+        if value.last != "Z" {
+            guard let offsetHour = integer(9), (0...23).contains(offsetHour),
+                  let offsetMinute = integer(10), (0...59).contains(offsetMinute)
+            else { return false }
+        }
+        return true
+    }
+
+    private func jsonBoolean(_ value: Any?) -> Bool? {
+        guard let number = value as? NSNumber,
+              CFGetTypeID(number) == CFBooleanGetTypeID()
+        else { return nil }
+        return number.boolValue
     }
 
     private func validVector(_ value: Any?) -> Bool {
@@ -586,13 +626,13 @@ struct RPCRequestValidator: Sendable {
     private func validateCapabilities(_ capabilities: [String: Any]) throws {
         guard Set(capabilities.keys) == ["bridgeVersion", "nativeMac", "features"],
               positiveInteger(capabilities["bridgeVersion"]) == 1,
-              capabilities["nativeMac"] is Bool,
+              jsonBoolean(capabilities["nativeMac"]) != nil,
               let features = capabilities["features"] as? [String: Any],
               Set(features.keys) == [
                 "artifactGeneration", "artifactPersistence", "artifactExport",
                 "imagePlayground", "keychain", "staticPreview",
               ],
-              features.values.allSatisfy({ $0 is Bool })
+              features.values.allSatisfy({ jsonBoolean($0) != nil })
         else { throw RPCValidationError.invalidParameters }
     }
 

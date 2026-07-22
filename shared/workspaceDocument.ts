@@ -68,6 +68,14 @@ const boundedIntegerSchema = z
   .min(-MAX_COORDINATE)
   .max(MAX_COORDINATE);
 const timestampSchema = z.string().datetime({ offset: true });
+const canonicalTrimmedString = (maximum: number) =>
+  z
+    .string()
+    .min(1)
+    .max(maximum)
+    .refine(value => value === value.trim(), {
+      message: "Canonical workspace strings must already be trimmed",
+    });
 
 const checksumSchema = z
   .object({
@@ -145,7 +153,7 @@ export const artifactAttachmentMetadataSchema = z
 export const semanticNodeSchema = z
   .object({
     id: stableIdSchema,
-    text: z.string().trim().min(1).max(MAX_TEXT),
+    text: canonicalTrimmedString(MAX_TEXT),
     description: z.string().max(MAX_DESCRIPTION).optional(),
     contextInfo: z.string().max(MAX_DESCRIPTION).optional(),
     type: nodeTypeSchema,
@@ -269,7 +277,7 @@ const topicalAlignmentSchema = z
     sourceId: stableIdSchema,
     targetId: stableIdSchema,
     score: z.number().finite().min(0).max(1),
-    reason: z.string().trim().min(1).max(1_000),
+    reason: canonicalTrimmedString(1_000),
     category: z.enum([
       "thematic",
       "causal",
@@ -351,7 +359,7 @@ export const workspaceDocumentSchema = z
       .strict(),
     metadata: z
       .object({
-        name: z.string().trim().min(1).max(255).optional(),
+        name: canonicalTrimmedString(255).optional(),
         createdAt: timestampSchema.optional(),
         source: z.enum(["ideaTiles", "brainSphere"]).optional(),
       })
@@ -741,13 +749,16 @@ function stableTilesBoardId(session: {
   nodes: Record<string, unknown>;
   viewState: unknown;
   creativity: unknown;
+  keyThemes?: string[];
 }): string {
+  const compareCodeUnits = (left: string, right: string) =>
+    left < right ? -1 : left > right ? 1 : 0;
   const canonicalize = (value: unknown): unknown => {
     if (Array.isArray(value)) return value.map(canonicalize);
     if (value && typeof value === "object") {
       return Object.fromEntries(
         Object.entries(value)
-          .sort(([left], [right]) => left.localeCompare(right))
+          .sort(([left], [right]) => compareCodeUnits(left, right))
           .map(([key, nested]) => [key, canonicalize(nested)])
       );
     }
@@ -758,6 +769,9 @@ function stableTilesBoardId(session: {
       nodes: session.nodes,
       viewState: session.viewState,
       creativity: session.creativity,
+      keyThemes: Array.from(new Set(session.keyThemes ?? [])).sort(
+        compareCodeUnits
+      ),
     })
   );
   let first = 2_166_136_261;
