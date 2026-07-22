@@ -233,11 +233,41 @@ describe("canonical workspace document", () => {
         },
       })
     ).toThrow();
+
+    for (const text of ["\uFEFFRoot", "Root\uFEFF"]) {
+      expect(
+        workspaceDocumentSchema.safeParse({
+          ...workspace,
+          graph: {
+            ...workspace.graph,
+            nodes: workspace.graph.nodes.map((node, index) =>
+              index === 0 ? { ...node, text } : node
+            ),
+          },
+        }).success
+      ).toBe(false);
+    }
+    for (const edgeCharacter of ["\u0085", "\u200B"]) {
+      expect(
+        workspaceDocumentSchema.safeParse({
+          ...workspace,
+          graph: {
+            ...workspace.graph,
+            nodes: workspace.graph.nodes.map((node, index) =>
+              index === 0
+                ? { ...node, text: `${edgeCharacter}Root${edgeCharacter}` }
+                : node
+            ),
+          },
+        }).success
+      ).toBe(true);
+    }
   });
 
   it("accepts only real offset datetimes in canonical metadata", () => {
     const workspace = migrateTilesSession(tilesSession);
     for (const createdAt of [
+      "0000-01-01T00:00Z",
       "2026-01-01T00:00Z",
       "2026-01-01T00:00:00Z",
       "2026-01-01T00:00:00.123+05:30",
@@ -251,6 +281,7 @@ describe("canonical workspace document", () => {
     }
     for (const createdAt of [
       "2026-02-30T00:00:00Z",
+      "2026-01-01T00:00+0100",
       "2026-01-01T00:00:00+99:99",
     ]) {
       expect(
@@ -260,6 +291,38 @@ describe("canonical workspace document", () => {
         }).success
       ).toBe(false);
     }
+  });
+
+  it("normalizes legacy strings before canonical validation", () => {
+    const tiles = migrateTilesSession({
+      ...tilesSession,
+      nodes: {
+        ...tilesSession.nodes,
+        "0,0": { ...tilesSession.nodes["0,0"], text: "  Board root  " },
+      },
+    });
+    expect(tiles.graph.nodes[0].text).toBe("Board root");
+
+    const sphere = importBrainSphereSession({
+      ...brainSphereSession,
+      nodes: {
+        ...brainSphereSession.nodes,
+        "0": { ...brainSphereSession.nodes["0"], text: "  Sphere root  " },
+      },
+      alignments: brainSphereSession.alignments.map(alignment => ({
+        ...alignment,
+        reason: "  Shared system boundary  ",
+      })),
+      metadata: {
+        ...brainSphereSession.metadata,
+        name: "  Imported sphere  ",
+      },
+    });
+    expect(sphere.graph.nodes[0].text).toBe("Sphere root");
+    expect(sphere.projections.sphere.alignments[0].reason).toBe(
+      "Shared system boundary"
+    );
+    expect(sphere.metadata.name).toBe("Imported sphere");
   });
 
   it("migrates the declared Tiles SessionData shape with view and metadata", () => {

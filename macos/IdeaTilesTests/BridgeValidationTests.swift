@@ -93,12 +93,12 @@ struct BridgeValidationTests {
 
     @Test("workspace timestamps match canonical offset datetime semantics")
     func validatesWorkspaceTimestamps() throws {
-        for accepted in ["2026-01-01T00:00Z", "2026-01-01T00:00:00Z", "2026-01-01T00:00:00.123+05:30"] {
+        for accepted in ["0000-01-01T00:00Z", "2026-01-01T00:00Z", "2026-01-01T00:00:00Z", "2026-01-01T00:00:00.123+05:30"] {
             _ = try RPCRequestValidator().parse(
                 JSONSerialization.data(withJSONObject: workspaceSaveRequest(createdAt: accepted))
             )
         }
-        for rejected in ["2026-02-30T00:00:00Z", "2026-01-01T00:00:00+99:99"] {
+        for rejected in ["2026-02-30T00:00:00Z", "2026-01-01T00:00+0100", "2026-01-01T00:00:00+99:99"] {
             #expect(throws: RPCValidationError.self) {
                 try RPCRequestValidator().parse(
                     JSONSerialization.data(withJSONObject: workspaceSaveRequest(createdAt: rejected))
@@ -123,6 +123,20 @@ struct BridgeValidationTests {
         _ = try RPCRequestValidator().parse(
             JSONSerialization.data(withJSONObject: workspaceSaveRequest(node: paddedNode))
         )
+        for text in ["\u{FEFF}Root", "Root\u{FEFF}"] {
+            paddedNode["text"] = text
+            #expect(throws: RPCValidationError.self) {
+                try RPCRequestValidator().parse(
+                    JSONSerialization.data(withJSONObject: workspaceSaveRequest(node: paddedNode))
+                )
+            }
+        }
+        for edgeCharacter in ["\u{0085}", "\u{200B}"] {
+            paddedNode["text"] = edgeCharacter + "Root" + edgeCharacter
+            _ = try RPCRequestValidator().parse(
+                JSONSerialization.data(withJSONObject: workspaceSaveRequest(node: paddedNode))
+            )
+        }
         paddedNode["text"] = " " + String(repeating: "x", count: 512) + " "
         #expect(throws: RPCValidationError.self) {
             try RPCRequestValidator().parse(
