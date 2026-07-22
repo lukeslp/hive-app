@@ -71,7 +71,7 @@ cd ios && bundle install && bundle exec fastlane upload_listing
 - Package/application ID: `app.ideatiles.android`
 - SDK: compile/target API 36; minimum API 26 (required by the AICore-first ML Kit Prompt API)
 - Toolchain: JDK 21, Gradle 8.14.3, and Kotlin Gradle plugin 2.3.0
-- Local runtime: LiteRT-LM Android (`com.google.ai.edge.litertlm:litertlm-android:latest.release`)
+- Local runtime: LiteRT-LM Android (`com.google.ai.edge.litertlm:litertlm-android:0.14.0`)
 - Model: Gemma 3n E2B instruction-tuned int4-compatible `.litertlm` artifact
 - Preferred local runtime: ML Kit Prompt API `1.0.0-beta2` through Android AICore
 

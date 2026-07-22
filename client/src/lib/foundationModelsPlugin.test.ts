@@ -3,7 +3,7 @@
  * Primary Components: Gemma prompt building and AICore-to-Gemma routing tests.
  * I/O: Supplies generation options and asserts native bridge invocation order.
  */
-import { describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 
 vi.mock("sonner", () => ({
   toast: { info: vi.fn(), warning: vi.fn(), error: vi.fn() },
@@ -32,10 +32,7 @@ vi.mock("./gemmaPlugin", () => ({
   },
 }));
 
-import {
-  buildGemmaPrompt,
-  tryOnDeviceFirst,
-} from "./foundationModelsPlugin";
+import { buildGemmaPrompt, tryOnDeviceFirst } from "./foundationModelsPlugin";
 import { AICore } from "./aicorePlugin";
 import { Gemma } from "./gemmaPlugin";
 
@@ -48,9 +45,7 @@ describe("buildGemmaPrompt", () => {
         temperature: 0.7,
         maxTokens: 512,
       })
-    ).toBe(
-      "Instructions:\nReturn JSON only.\n\nRequest:\nGenerate six ideas."
-    );
+    ).toBe("Instructions:\nReturn JSON only.\n\nRequest:\nGenerate six ideas.");
   });
 
   it("uses the trimmed user prompt when no system prompt exists", () => {
@@ -72,6 +67,10 @@ describe("Android local generation dispatch", () => {
     maxTokens: 512,
     silentDiagnostics: true,
   };
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
 
   it("uses AICore before Gemma when Gemini Nano is available", async () => {
     vi.mocked(AICore.getStatus).mockResolvedValue({
@@ -115,5 +114,51 @@ describe("Android local generation dispatch", () => {
     });
     expect(Gemma.isModelReady).toHaveBeenCalledOnce();
     expect(Gemma.generate).toHaveBeenCalledOnce();
+  });
+
+  it("falls back to verified Gemma when AICore generation fails", async () => {
+    vi.mocked(AICore.getStatus).mockResolvedValue({
+      state: "available",
+      available: true,
+      downloadable: false,
+      downloading: false,
+      model: "Gemini Nano via Android AICore",
+    });
+    vi.mocked(AICore.generate).mockRejectedValue(new Error("AICore failed"));
+    vi.mocked(Gemma.isModelReady).mockResolvedValue({
+      ready: true,
+      verified: true,
+      model: "gemma-3n-e2b-it-int4",
+      downloadAvailable: false,
+      cloudFallback: false,
+    });
+    vi.mocked(Gemma.generate).mockResolvedValue({ text: "Gemma fallback" });
+
+    await expect(tryOnDeviceFirst(options)).resolves.toEqual({
+      text: "Gemma fallback",
+    });
+    expect(AICore.generate).toHaveBeenCalledOnce();
+    expect(Gemma.generate).toHaveBeenCalledOnce();
+  });
+
+  it("returns null when neither Android local runtime is usable", async () => {
+    vi.mocked(AICore.getStatus).mockResolvedValue({
+      state: "unavailable",
+      available: false,
+      downloadable: false,
+      downloading: false,
+      model: "Gemini Nano via Android AICore",
+    });
+    vi.mocked(Gemma.isModelReady).mockResolvedValue({
+      ready: true,
+      verified: false,
+      model: "gemma-3n-e2b-it-int4",
+      downloadAvailable: false,
+      cloudFallback: true,
+    });
+
+    await expect(tryOnDeviceFirst(options)).resolves.toBeNull();
+    expect(AICore.generate).not.toHaveBeenCalled();
+    expect(Gemma.generate).not.toHaveBeenCalled();
   });
 });

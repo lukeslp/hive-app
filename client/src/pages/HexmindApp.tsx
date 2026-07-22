@@ -75,7 +75,6 @@ import { getNodeKey } from "@/types/hexmind";
 import { APP_DISPLAY_NAME, APP_EXPORT_FILE_PREFIX } from "@shared/appBrand";
 import {
   hasMacArtifactStudioCapability,
-  type ArtifactStudioServices,
   type ArtifactImageAttachment,
   type ArtifactManifest,
 } from "@shared/macArtifacts";
