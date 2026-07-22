@@ -1,0 +1,159 @@
+import Foundation
+import Testing
+@testable import IdeaTiles
+
+@Suite("Native RPC validation")
+struct BridgeValidationTests {
+    @Test("accepts a strictly shaped capabilities request")
+    func acceptsCapabilities() throws {
+        let request = try RPCRequestValidator().parse(Data(#"{"id":"rpc:1","method":"platform.getCapabilities","params":{}}"#.utf8))
+
+        #expect(request.id == "rpc:1")
+        #expect(request.method == .getCapabilities)
+    }
+
+    @Test(arguments: [
+        #"{"id":"rpc:1","method":"unknown","params":{}}"#,
+        #"{"id":"../bad","method":"platform.getCapabilities","params":{}}"#,
+        #"{"id":"rpc:1","method":"platform.getCapabilities","params":{},"extra":true}"#,
+        #"{"id":"rpc:1","method":"artifact.cancel","params":{}}"#,
+        #"{"id":"rpc:1","method":"artifact.cancel","params":{"requestId":"request:1","extra":true}}"#,
+    ])
+    func rejectsInvalidRequests(_ json: String) {
+        #expect(throws: RPCValidationError.self) {
+            try RPCRequestValidator().parse(Data(json.utf8))
+        }
+    }
+
+    @Test("rejects messages over the byte cap before decoding")
+    func rejectsOversize() {
+        let validator = RPCRequestValidator(maximumBytes: 32)
+        let data = Data(#"{"id":"rpc:1","method":"platform.getCapabilities","params":{}}"#.utf8)
+
+        #expect(throws: RPCValidationError.self) {
+            try validator.parse(data)
+        }
+    }
+
+    @Test("rejects inconsistent generation provenance before dispatch")
+    func rejectsInconsistentGeneration() throws {
+        let request: [String: Any] = [
+            "id": "rpc:generate",
+            "method": "artifact.generate",
+            "params": [
+                "requestId": "request:1",
+                "sourceBoardId": "board:1",
+                "sourceNodeIds": ["0,0"],
+                "includedNodeCount": 2,
+                "originalNodeCount": 1,
+                "contextTruncated": false,
+                "recipeId": "recipe:brief",
+                "scope": ["kind": "board", "extra": true],
+                "context": "context",
+            ],
+        ]
+
+        #expect(throws: RPCValidationError.self) {
+            try RPCRequestValidator().parse(JSONSerialization.data(withJSONObject: request))
+        }
+    }
+
+    @Test("rejects unknown nested artifact manifest fields before dispatch")
+    func rejectsLooseManifest() throws {
+        let manifest = try ArtifactFixture.manifest(content: "strict")
+        var rawManifest = try #require(try JSONSerialization.jsonObject(with: manifest.encoded()) as? [String: Any])
+        rawManifest["unexpected"] = true
+        let request: [String: Any] = [
+            "id": "rpc:save",
+            "method": "artifact.save",
+            "params": ["manifest": rawManifest],
+        ]
+
+        #expect(throws: RPCValidationError.self) {
+            try RPCRequestValidator().parse(JSONSerialization.data(withJSONObject: request))
+        }
+    }
+}
+
+@Suite("Native RPC dispatcher")
+struct BridgeDispatcherTests {
+    @Test("returns exactly one method-tagged success envelope")
+    func successEnvelope() async throws {
+        let dispatcher = BridgeDispatcher { request in
+            #expect(request.method == .getCapabilities)
+            return .object(["bridgeVersion": .number(1)])
+        }
+
+        let response = await dispatcher.dispatch(Data(#"{"id":"rpc:1","method":"platform.getCapabilities","params":{}}"#.utf8))
+        let object = try #require(try JSONSerialization.jsonObject(with: response) as? [String: Any])
+
+        #expect(object["id"] as? String == "rpc:1")
+        #expect(object["method"] as? String == "platform.getCapabilities")
+        #expect(object["ok"] as? Bool == true)
+    }
+
+    @Test("rejects a duplicate ID while the original request is in flight")
+    func rejectsDuplicate() async throws {
+        let gate = AsyncGate()
+        let dispatcher = BridgeDispatcher(timeout: .seconds(2)) { _ in
+            await gate.wait()
+            return .object([:])
+        }
+        let data = Data(#"{"id":"rpc:duplicate","method":"platform.getCapabilities","params":{}}"#.utf8)
+
+        async let first = dispatcher.dispatch(data)
+        await gate.waitUntilEntered()
+        let duplicate = await dispatcher.dispatch(data)
+        await gate.open()
+        _ = await first
+
+        #expect(try responseErrorCode(duplicate) == "duplicateRequest")
+    }
+
+    @Test("cancels timed-out work and returns a structured timeout")
+    func timesOut() async throws {
+        let cancellation = CancellationProbe()
+        let dispatcher = BridgeDispatcher(timeout: .milliseconds(20)) { _ in
+            do {
+                try await Task.sleep(for: .seconds(5))
+                return .object([:])
+            } catch is CancellationError {
+                await cancellation.markCancelled()
+                throw CancellationError()
+            }
+        }
+        let data = Data(#"{"id":"rpc:timeout","method":"platform.getCapabilities","params":{}}"#.utf8)
+
+        let response = await dispatcher.dispatch(data)
+
+        #expect(try responseErrorCode(response) == "timeout")
+        #expect(await cancellation.wasCancelled)
+    }
+}
+
+private func responseErrorCode(_ data: Data) throws -> String? {
+    let object = try #require(try JSONSerialization.jsonObject(with: data) as? [String: Any])
+    let error = try #require(object["error"] as? [String: Any])
+    return error["code"] as? String
+}
+
+private actor AsyncGate {
+    private var entered = false
+    private var isOpen = false
+
+    func wait() async {
+        entered = true
+        while !isOpen { await Task.yield() }
+    }
+
+    func waitUntilEntered() async {
+        while !entered { await Task.yield() }
+    }
+
+    func open() { isOpen = true }
+}
+
+private actor CancellationProbe {
+    private(set) var wasCancelled = false
+    func markCancelled() { wasCancelled = true }
+}

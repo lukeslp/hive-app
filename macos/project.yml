@@ -1,0 +1,65 @@
+name: IdeaTiles
+options:
+  bundleIdPrefix: app.ideatiles
+  deploymentTarget:
+    macOS: "26.0"
+  xcodeVersion: "26.0"
+settings:
+  base:
+    ARCHS: arm64
+    ONLY_ACTIVE_ARCH: true
+    SWIFT_VERSION: "6.0"
+    SWIFT_STRICT_CONCURRENCY: complete
+    MACOSX_DEPLOYMENT_TARGET: "26.0"
+    MARKETING_VERSION: 1.1.0
+    CURRENT_PROJECT_VERSION: 1
+    ENABLE_USER_SCRIPT_SANDBOXING: true
+targets:
+  IdeaTiles:
+    type: application
+    platform: macOS
+    deploymentTarget: "26.0"
+    sources:
+      - path: IdeaTiles
+      - path: Resources/WebApp
+        type: folder
+        buildPhase: resources
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: app.ideatiles.macos
+        PRODUCT_NAME: IdeaTiles
+        PRODUCT_MODULE_NAME: IdeaTiles
+        GENERATE_INFOPLIST_FILE: false
+        INFOPLIST_FILE: IdeaTiles/Info.plist
+        CODE_SIGN_ENTITLEMENTS: IdeaTiles/IdeaTiles.entitlements
+        CODE_SIGN_STYLE: Automatic
+        DEVELOPMENT_TEAM: 596T7J7FB6
+        ENABLE_APP_SANDBOX: true
+    entitlements:
+      path: IdeaTiles/IdeaTiles.entitlements
+      properties:
+        com.apple.security.app-sandbox: true
+        com.apple.security.network.client: true
+        com.apple.security.files.user-selected.read-write: true
+  IdeaTilesTests:
+    type: bundle.unit-test
+    platform: macOS
+    deploymentTarget: "26.0"
+    sources:
+      - path: IdeaTilesTests
+    dependencies:
+      - target: IdeaTiles
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: app.ideatiles.macos.tests
+        GENERATE_INFOPLIST_FILE: true
+        CODE_SIGNING_ALLOWED: false
+schemes:
+  IdeaTiles:
+    build:
+      targets:
+        IdeaTiles: all
+        IdeaTilesTests: [test]
+    test:
+      targets:
+        - IdeaTilesTests

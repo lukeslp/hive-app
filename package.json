@@ -1,6 +1,6 @@
 {
   "name": "hexmind-app",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "type": "module",
   "license": "MIT",
   "scripts": {
@@ -16,6 +16,11 @@
     "cap:open": "npx cap open ios",
     "cap:sync:android": "pnpm build && npx cap sync android",
     "cap:sync:ios": "pnpm build && npx cap sync ios",
+    "mac:build": "vite build --config vite.mac.config.ts",
+    "mac:generate": "pnpm mac:build && xcodegen generate --spec macos/project.yml",
+    "mac:open": "pnpm mac:generate && open macos/IdeaTiles.xcodeproj",
+    "mac:test": "pnpm mac:generate && xcodebuild test -project macos/IdeaTiles.xcodeproj -scheme IdeaTiles -destination 'platform=macOS,arch=arm64' CODE_SIGNING_ALLOWED=NO",
+    "versions:check": "node scripts/check-apple-versions.mjs",
     "verify:canonical": "bash scripts/check-aasa.sh && bash scripts/verify-canonical-endpoints.sh"
   },
   "dependencies": {
