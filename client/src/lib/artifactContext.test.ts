@@ -61,6 +61,7 @@ describe("artifact context extraction", () => {
     const context = extractArtifactContext(nodes, { kind: "board" });
 
     expect(context.nodeIds).toEqual(["0,0", "-1,0", "0,1", "1,0", "2,0"]);
+    expect(context.includedNodeIds).toEqual(context.nodeIds);
     expect(context.text.indexOf("Board root")).toBeLessThan(
       context.text.indexOf("Chosen branch")
     );
@@ -91,6 +92,19 @@ describe("artifact context extraction", () => {
 
     expect(context.text.length).toBeLessThanOrEqual(160);
     expect(context.includedNodeCount).toBeLessThan(context.originalNodeCount);
+    expect(context.includedNodeIds).toEqual(
+      context.nodeIds.slice(0, context.includedNodeCount)
+    );
+    expect(context.truncated).toBe(true);
+  });
+
+  it("attributes a partially included first tile to that tile only", () => {
+    const context = extractArtifactContext(nodes, { kind: "board" }, 10);
+
+    expect(context.text.length).toBeLessThanOrEqual(10);
+    expect(context.includedNodeIds).toEqual(["0,0"]);
+    expect(context.includedNodeCount).toBe(1);
+    expect(context.originalNodeCount).toBe(5);
     expect(context.truncated).toBe(true);
   });
 });

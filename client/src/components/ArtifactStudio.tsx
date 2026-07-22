@@ -43,6 +43,19 @@ function createRequestId(): string {
 }
 
 function previewFile(artifact: ArtifactManifest) {
+  if (artifact.kind === "staticWeb") {
+    const contentFiles = artifact.files.filter(
+      file => typeof file.content === "string"
+    );
+    return (
+      contentFiles.find(file => /(^|\/)index\.html?$/i.test(file.path)) ??
+      contentFiles.find(
+        file =>
+          file.mimeType.toLowerCase().split(";", 1)[0] === "text/html" ||
+          /\.html?$/i.test(file.path)
+      )
+    );
+  }
   return artifact.files.find(file => typeof file.content === "string");
 }
 
@@ -128,6 +141,13 @@ export function ArtifactStudio({
   const suggestions = useMemo(() => suggestArtifactRecipes(context), [context]);
   const recipe = getArtifactRecipe(recipeId) ?? ARTIFACT_RECIPES[0];
 
+  const closeStudio = () => {
+    const controller = abortController.current;
+    controller?.abort();
+    if (abortController.current === controller) abortController.current = null;
+    onClose();
+  };
+
   const beginGeneration = async () => {
     if (!services) {
       setMessage("Artifact generation is available in the Idea Tiles Mac app.");
@@ -152,6 +172,10 @@ export function ArtifactStudio({
         {
           requestId,
           sourceBoardId: boardId,
+          sourceNodeIds: context.includedNodeIds,
+          includedNodeCount: context.includedNodeCount,
+          originalNodeCount: context.originalNodeCount,
+          contextTruncated: context.truncated,
           recipeId: recipe.id,
           scope,
           context: context.text,
@@ -159,11 +183,14 @@ export function ArtifactStudio({
         },
         { signal: controller.signal, onProgress: setProgress }
       );
-      if (controller.signal.aborted) return;
+      if (controller.signal.aborted || abortController.current !== controller) {
+        return;
+      }
       setArtifact(result);
       setProgress(null);
       setStage("result");
     } catch (error) {
+      if (abortController.current !== controller) return;
       if (controller.signal.aborted) {
         setMessage("Generation cancelled. Nothing was saved.");
         setStage("cancelled");
@@ -174,7 +201,9 @@ export function ArtifactStudio({
         setStage("error");
       }
     } finally {
-      abortController.current = null;
+      if (abortController.current === controller) {
+        abortController.current = null;
+      }
     }
   };
 
@@ -208,7 +237,7 @@ export function ArtifactStudio({
   return (
     <Modal
       isOpen={isOpen}
-      onClose={onClose}
+      onClose={closeStudio}
       title="Artifact Studio"
       description="Turn board context into a reviewable artifact. Generation begins only after confirmation."
       maxWidth="max-w-4xl"
@@ -241,9 +270,9 @@ export function ArtifactStudio({
                 </option>
               </select>
               <p className="text-xs text-muted-foreground">
-                {context.originalNodeCount} tile
-                {context.originalNodeCount === 1 ? "" : "s"} included
-                {context.truncated ? " within the context limit" : ""}.
+                {context.truncated
+                  ? `${context.includedNodeCount} of ${context.originalNodeCount} tile${context.originalNodeCount === 1 ? "" : "s"} included within the context limit.`
+                  : `${context.originalNodeCount} tile${context.originalNodeCount === 1 ? "" : "s"} included.`}
               </p>
             </section>
 
@@ -322,7 +351,7 @@ export function ArtifactStudio({
             </section>
 
             <div className="flex justify-end gap-2">
-              <Button variant="outline" onClick={onClose}>
+              <Button variant="outline" onClick={closeStudio}>
                 Cancel
               </Button>
               <Button
@@ -340,8 +369,8 @@ export function ArtifactStudio({
             <div>
               <h3 className="font-semibold">Confirm generation</h3>
               <p className="mt-1 text-sm text-muted-foreground">
-                Generate {recipe.label} from {context.originalNodeCount} tile
-                {context.originalNodeCount === 1 ? "" : "s"} in the {scope.kind}{" "}
+                Generate {recipe.label} from {context.includedNodeCount} tile
+                {context.includedNodeCount === 1 ? "" : "s"} in the {scope.kind}{" "}
                 scope? Review the result before saving or exporting it.
               </p>
             </div>

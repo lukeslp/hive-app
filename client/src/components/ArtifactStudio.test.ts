@@ -2,6 +2,7 @@
 
 import React from "react";
 import {
+  act,
   cleanup,
   fireEvent,
   render,
@@ -116,6 +117,13 @@ describe("Artifact Studio", () => {
       expect(screen.getByText("Prototype brief")).toBeTruthy()
     );
     expect(generate).toHaveBeenCalledTimes(1);
+    expect(generate.mock.calls[0][0]).toMatchObject({
+      sourceBoardId: "board:test",
+      sourceNodeIds: ["0,0"],
+      includedNodeCount: 1,
+      originalNodeCount: 1,
+      contextTruncated: false,
+    });
     expect(screen.getByText("# Brief")).toBeTruthy();
 
     fireEvent.click(screen.getByRole("button", { name: "Save" }));
@@ -154,5 +162,173 @@ describe("Artifact Studio", () => {
     expect(
       screen.getByText("Generation cancelled. Nothing was saved.")
     ).toBeTruthy();
+  });
+
+  it("aborts active generation when the modal closes", async () => {
+    let generationSignal: AbortSignal | undefined;
+    const onClose = vi.fn();
+    const services: ArtifactStudioServices = {
+      generator: {
+        generate: vi.fn((_request, options) => {
+          generationSignal = options.signal;
+          return new Promise<ArtifactManifest>(() => undefined);
+        }),
+      },
+      persistence: {
+        save: vi.fn(async value => value),
+        export: vi.fn(async () => undefined),
+      },
+      attachImageToBoard: vi.fn(async () => undefined),
+    };
+
+    render(
+      React.createElement(ArtifactStudio, {
+        isOpen: true,
+        onClose,
+        boardId: "board:test",
+        nodes,
+        services,
+      })
+    );
+    fireEvent.click(screen.getByRole("button", { name: "Review generation" }));
+    fireEvent.click(screen.getByRole("button", { name: "Generate artifact" }));
+    await screen.findByRole("button", { name: "Cancel generation" });
+
+    fireEvent.click(screen.getByRole("button", { name: "Close" }));
+
+    expect(generationSignal?.aborted).toBe(true);
+    expect(onClose).toHaveBeenCalled();
+  });
+
+  it("does not let an older request clear the active request controller", async () => {
+    let resolveFirst: ((value: ArtifactManifest) => void) | undefined;
+    const first = new Promise<ArtifactManifest>(resolve => {
+      resolveFirst = resolve;
+    });
+    const second = new Promise<ArtifactManifest>(() => undefined);
+    const signals: AbortSignal[] = [];
+    const generate = vi
+      .fn<ArtifactStudioServices["generator"]["generate"]>()
+      .mockImplementationOnce((_request, options) => {
+        signals.push(options.signal);
+        return first;
+      })
+      .mockImplementationOnce((_request, options) => {
+        signals.push(options.signal);
+        return second;
+      });
+    const services: ArtifactStudioServices = {
+      generator: { generate },
+      persistence: {
+        save: vi.fn(async value => value),
+        export: vi.fn(async () => undefined),
+      },
+      attachImageToBoard: vi.fn(async () => undefined),
+    };
+
+    render(
+      React.createElement(ArtifactStudio, {
+        isOpen: true,
+        onClose: vi.fn(),
+        boardId: "board:test",
+        nodes,
+        services,
+      })
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: "Review generation" }));
+    fireEvent.click(screen.getByRole("button", { name: "Generate artifact" }));
+    fireEvent.click(
+      await screen.findByRole("button", { name: "Cancel generation" })
+    );
+    fireEvent.click(screen.getByRole("button", { name: "Back to setup" }));
+    fireEvent.click(screen.getByRole("button", { name: "Review generation" }));
+    fireEvent.click(screen.getByRole("button", { name: "Generate artifact" }));
+    await screen.findByRole("button", { name: "Cancel generation" });
+
+    await act(async () => resolveFirst?.(artifact));
+    fireEvent.click(screen.getByRole("button", { name: "Cancel generation" }));
+
+    expect(signals).toHaveLength(2);
+    expect(signals[1].aborted).toBe(true);
+  });
+
+  it("reports the reduced included tile count", () => {
+    const largeNodes: NodeMap = {
+      "0,0": {
+        ...nodes["0,0"],
+        description: "x".repeat(13_000),
+      },
+      "1,0": {
+        q: 1,
+        r: 0,
+        text: "Second tile",
+        type: "concept",
+        depth: 1,
+        parentId: "0,0",
+        pinned: false,
+      },
+    };
+
+    render(
+      React.createElement(ArtifactStudio, {
+        isOpen: true,
+        onClose: vi.fn(),
+        boardId: "board:test",
+        nodes: largeNodes,
+      })
+    );
+
+    expect(
+      screen.getByText("1 of 2 tiles included within the context limit.")
+    ).toBeTruthy();
+  });
+
+  it("previews the HTML entry file for a static web artifact", async () => {
+    const staticArtifact: ArtifactManifest = {
+      ...artifact,
+      kind: "staticWeb",
+      title: "Web prototype",
+      files: [
+        {
+          ...artifact.files[0],
+          id: "file:test:css",
+          path: "styles.css",
+          mimeType: "text/css",
+          content: "body { color: red; }",
+        },
+        {
+          ...artifact.files[0],
+          id: "file:test:html",
+          path: "index.html",
+          mimeType: "text/html",
+          content: "<main><h1>HTML entry</h1></main>",
+        },
+      ],
+    };
+    const services: ArtifactStudioServices = {
+      generator: { generate: vi.fn(async () => staticArtifact) },
+      persistence: {
+        save: vi.fn(async value => value),
+        export: vi.fn(async () => undefined),
+      },
+      attachImageToBoard: vi.fn(async () => undefined),
+    };
+    render(
+      React.createElement(ArtifactStudio, {
+        isOpen: true,
+        onClose: vi.fn(),
+        boardId: "board:test",
+        nodes,
+        services,
+      })
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: "Review generation" }));
+    fireEvent.click(screen.getByRole("button", { name: "Generate artifact" }));
+    const preview = await screen.findByTitle("Web prototype preview");
+
+    expect(preview.getAttribute("srcdoc")).toContain("HTML entry");
+    expect(preview.getAttribute("srcdoc")).not.toContain("color: red");
   });
 });

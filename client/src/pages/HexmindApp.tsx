@@ -66,6 +66,10 @@ import type { HexNode, ViewState, ConfirmModalState } from "@/types/hivemind";
 import { getNodeKey } from "@/types/hexmind";
 import { APP_DISPLAY_NAME, APP_EXPORT_FILE_PREFIX } from "@shared/appBrand";
 import {
+  hasMacArtifactStudioCapability,
+  type ArtifactStudioServices,
+} from "@shared/macArtifacts";
+import {
   HEX_SIZE,
   HEX_WIDTH,
   HEX_HEIGHT,
@@ -82,6 +86,15 @@ import {
 } from "@/lib/hexConstants";
 import { hexToPixel, pixelToHex, hexDistance } from "@/lib/hexGrid";
 import { NODE_TYPES } from "@/lib/nodeTypes";
+
+declare global {
+  interface Window {
+    ideaTilesMac?: {
+      capabilities?: unknown;
+      artifactStudioServices?: ArtifactStudioServices;
+    };
+  }
+}
 
 // --- Pure helpers (no React state) ---
 
@@ -127,6 +140,11 @@ const getNearestNodes = (
 // ─────────────────────────────────────────────────────────────────────────────
 
 export default function HexmindApp() {
+  const macArtifactHost =
+    typeof window !== "undefined" ? window.ideaTilesMac : undefined;
+  const macArtifactStudioAvailable = hasMacArtifactStudioCapability(
+    macArtifactHost?.capabilities
+  );
   // ── Core state ──────────────────────────────────────────────────────────
   const [loadingNodes, setLoadingNodes] = useState<Set<string>>(new Set());
   const [generatingNeighbors, setGeneratingNeighbors] = useState<Set<string>>(
@@ -573,12 +591,13 @@ export default function HexmindApp() {
   }, [enableHighContrast]);
 
   const resetBoard = useCallback(() => {
+    sessions.beginNewBoard();
     resetHistory({});
     setSelectedNodeId(null);
     setInspectedNodeId(null);
     setRootInput("");
     resetTour();
-  }, [resetHistory, resetTour]);
+  }, [resetHistory, resetTour, sessions.beginNewBoard]);
 
   const requestDeleteBoard = useCallback(() => {
     setConfirmModal({
@@ -1793,7 +1812,11 @@ Generate 6 diverse related ideas. Connect to key themes when relevant.`;
           );
         }}
         onShowSessions={() => sessions.setShowSessionsModal(true)}
-        onShowArtifactStudio={() => setShowArtifactStudio(true)}
+        onShowArtifactStudio={
+          macArtifactStudioAvailable
+            ? () => setShowArtifactStudio(true)
+            : undefined
+        }
         onExportSession={sessions.exportSession}
         onImportSession={sessions.importSession}
         // Cloud Share Link is web-only: it POSTs board JSON to /api/share.
@@ -2218,18 +2241,17 @@ Generate 6 diverse related ideas. Connect to key themes when relevant.`;
         message={confirmModal.message}
       />
 
-      <ArtifactStudio
-        isOpen={showArtifactStudio}
-        onClose={() => setShowArtifactStudio(false)}
-        boardId={
-          sessions.activeCloudSessionId
-            ? `board:${sessions.activeCloudSessionId}`
-            : "board:current"
-        }
-        nodes={nodes}
-        selectedNodeIds={selectedNodeId ? [selectedNodeId] : []}
-        branchRootNodeId={selectedNodeId}
-      />
+      {macArtifactStudioAvailable && (
+        <ArtifactStudio
+          isOpen={showArtifactStudio}
+          onClose={() => setShowArtifactStudio(false)}
+          boardId={sessions.artifactBoardId}
+          nodes={nodes}
+          selectedNodeIds={selectedNodeId ? [selectedNodeId] : []}
+          branchRootNodeId={selectedNodeId}
+          services={macArtifactHost?.artifactStudioServices}
+        />
+      )}
 
       <SessionsModal
         isOpen={sessions.showSessionsModal}

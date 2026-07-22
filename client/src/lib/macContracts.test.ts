@@ -1,9 +1,11 @@
 import { describe, expect, it } from "vitest";
 import {
   ARTIFACT_SCHEMA_VERSION,
+  artifactGenerationRequestSchema,
   artifactManifestSchema,
   macRpcRequestSchema,
   macRpcResponseSchema,
+  hasMacArtifactStudioCapability,
   type ArtifactManifest,
   type MacPlatformCapabilities,
 } from "@shared/macArtifacts";
@@ -69,6 +71,34 @@ describe("Mac artifact contracts", () => {
     expect(result.success).toBe(false);
   });
 
+  it.each([
+    "/index.html",
+    "../index.html",
+    "assets/./app.js",
+    "assets/../app.js",
+    "assets//app.js",
+    "assets/",
+    "C:/index.html",
+    "assets\\app.js",
+    "assets/\u0000app.js",
+  ])("rejects unsafe artifact file path %s", path => {
+    const result = artifactManifestSchema.safeParse({
+      ...manifest,
+      files: [{ ...manifest.files[0], path }],
+    });
+
+    expect(result.success).toBe(false);
+  });
+
+  it("accepts a normalized relative artifact file path", () => {
+    const result = artifactManifestSchema.safeParse({
+      ...manifest,
+      files: [{ ...manifest.files[0], path: "assets/styles/app.css" }],
+    });
+
+    expect(result.success).toBe(true);
+  });
+
   it("validates a typed artifact generation RPC envelope", () => {
     const capabilities: MacPlatformCapabilities = {
       bridgeVersion: 1,
@@ -89,6 +119,10 @@ describe("Mac artifact contracts", () => {
       params: {
         requestId: "generation:1",
         sourceBoardId: "board-1",
+        sourceNodeIds: ["0,0", "1,0"],
+        includedNodeCount: 2,
+        originalNodeCount: 3,
+        contextTruncated: true,
         recipeId: "brief",
         scope: { kind: "board" },
         context: "[ROOT] Launch plan",
@@ -97,6 +131,22 @@ describe("Mac artifact contracts", () => {
     };
 
     expect(macRpcRequestSchema.parse(request)).toEqual(request);
+  });
+
+  it("rejects generation provenance whose included count disagrees with its node IDs", () => {
+    const result = artifactGenerationRequestSchema.safeParse({
+      requestId: "generation:2",
+      sourceBoardId: "board-1",
+      sourceNodeIds: ["0,0"],
+      includedNodeCount: 2,
+      originalNodeCount: 2,
+      contextTruncated: false,
+      recipeId: "brief",
+      scope: { kind: "board" },
+      context: "Board context",
+    });
+
+    expect(result.success).toBe(false);
   });
 
   it("validates method-specific success and structured error responses", () => {
@@ -129,5 +179,32 @@ describe("Mac artifact contracts", () => {
 
     expect(macRpcResponseSchema.parse(success)).toEqual(success);
     expect(macRpcResponseSchema.parse(failure)).toEqual(failure);
+  });
+
+  it("enables Artifact Studio only for a capable native Mac host", () => {
+    const capableMac: MacPlatformCapabilities = {
+      bridgeVersion: 1,
+      nativeMac: true,
+      features: {
+        artifactGeneration: true,
+        artifactPersistence: true,
+        artifactExport: true,
+        imagePlayground: false,
+        keychain: true,
+        staticPreview: true,
+      },
+    };
+
+    expect(hasMacArtifactStudioCapability(capableMac)).toBe(true);
+    expect(
+      hasMacArtifactStudioCapability({ ...capableMac, nativeMac: false })
+    ).toBe(false);
+    expect(
+      hasMacArtifactStudioCapability({
+        ...capableMac,
+        features: { ...capableMac.features, artifactGeneration: false },
+      })
+    ).toBe(false);
+    expect(hasMacArtifactStudioCapability({ nativeMac: true })).toBe(false);
   });
 });

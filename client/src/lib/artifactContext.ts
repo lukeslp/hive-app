@@ -28,6 +28,7 @@ export interface ArtifactContextNode {
 export interface ArtifactContext {
   scope: ArtifactScope;
   nodeIds: string[];
+  includedNodeIds: string[];
   nodes: ArtifactContextNode[];
   text: string;
   originalNodeCount: number;
@@ -165,6 +166,9 @@ export function extractArtifactContext(
   return {
     scope,
     nodeIds: entries.map(([id]) => id),
+    includedNodeIds: entries
+      .slice(0, reduced.includedNodeCount)
+      .map(([id]) => id),
     nodes: entries.map(([id, node]) => ({
       id,
       text: node.text,

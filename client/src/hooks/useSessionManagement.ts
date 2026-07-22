@@ -18,6 +18,11 @@ import { getPublicWebAppOrigin, isCapacitor } from "@/lib/platform";
 import { STORAGE_KEY, AUTOSAVE_KEY } from "@/lib/hexConstants";
 import { generateThumbnail } from "@/lib/canvasSnapshot";
 import { saveBlob } from "@/lib/saveBlob";
+import {
+  boardIdForLocalSession,
+  createLocalBoardId,
+  readAutosaveBoardId,
+} from "@/lib/boardIdentity";
 import type { HexNode, ViewState } from "@/types/hivemind";
 import {
   APP_DISPLAY_NAME,
@@ -69,6 +74,13 @@ export function useSessionManagement({
   const [shareUrl, setShareUrl] = useState("");
   const [iosShareUrl, setIosShareUrl] = useState("");
   const [copied, setCopied] = useState(false);
+  const [localBoardId, setLocalBoardId] = useState(() =>
+    readAutosaveBoardId(
+      typeof localStorage === "undefined"
+        ? null
+        : localStorage.getItem(AUTOSAVE_KEY)
+    )
+  );
 
   /** The cloud session currently being worked on (for auto-save & overwrite) */
   const [activeCloudSessionId, setActiveCloudSessionId] = useState<
@@ -134,6 +146,7 @@ export function useSessionManagement({
     if (Object.keys(nodes).length > 0 && enableAutoSave) {
       try {
         const autosave = {
+          boardId: localBoardId,
           nodes,
           viewState,
           creativity,
@@ -144,7 +157,7 @@ export function useSessionManagement({
         // ignore
       }
     }
-  }, [nodes, viewState, creativity, enableAutoSave]);
+  }, [nodes, viewState, creativity, enableAutoSave, localBoardId]);
 
   // ── Auto-save to cloud (debounced) ────────────────────────────────────
   useEffect(() => {
@@ -163,6 +176,7 @@ export function useSessionManagement({
         return;
 
       const sessionData = {
+        boardId: localBoardId,
         nodes,
         viewState,
         creativity,
@@ -198,12 +212,14 @@ export function useSessionManagement({
     isAuthenticated,
     enableAutoSave,
     activeCloudSessionId,
+    localBoardId,
   ]);
 
   // ── Save (create new or overwrite existing) ───────────────────────────
   const saveSession = useCallback(
     async (name: string, overwriteId?: number) => {
       const sessionData = {
+        boardId: localBoardId,
         nodes,
         viewState,
         creativity,
@@ -292,6 +308,7 @@ export function useSessionManagement({
       isAuthenticated,
       createMutation,
       updateMutation,
+      localBoardId,
     ]
   );
 
@@ -344,6 +361,7 @@ export function useSessionManagement({
           // Clear active cloud session when loading a local session
           setActiveCloudSessionId(null);
           setActiveCloudSessionName("");
+          setLocalBoardId(boardIdForLocalSession(String(sessionId), parsed));
         }
       } catch (e) {
         console.error("Failed to load session:", e);
@@ -367,6 +385,9 @@ export function useSessionManagement({
           // Not a cloud session
           setActiveCloudSessionId(null);
           setActiveCloudSessionName("");
+          setLocalBoardId(
+            readAutosaveBoardId(JSON.stringify(data), createLocalBoardId)
+          );
         }
       }
     } catch {
@@ -407,6 +428,7 @@ export function useSessionManagement({
   // ── Export / Import ────────────────────────────────────────────────────
   const exportSession = useCallback(async () => {
     const data = {
+      boardId: localBoardId,
       nodes,
       viewState,
       creativity,
@@ -424,7 +446,7 @@ export function useSessionManagement({
         `Session export failed: ${err instanceof Error ? err.message : "unknown error"}`
       );
     }
-  }, [nodes, viewState, creativity]);
+  }, [nodes, viewState, creativity, localBoardId]);
 
   const importSession = useCallback(
     (file: File) => {
@@ -433,6 +455,11 @@ export function useSessionManagement({
         try {
           const data = JSON.parse(e.target?.result as string);
           if (data.nodes) {
+            setLocalBoardId(
+              typeof data.boardId === "string"
+                ? boardIdForLocalSession("imported", data)
+                : createLocalBoardId()
+            );
             resetHistory(data.nodes);
             setViewState(data.viewState || { x: 0, y: 0, zoom: 0.8 });
             setCreativity(data.creativity || 0.5);
@@ -519,6 +546,7 @@ export function useSessionManagement({
         if (!res.ok) throw new Error("Share not found");
         const decoded = await res.json();
         if (decoded.nodes && Object.keys(decoded.nodes).length > 0) {
+          setLocalBoardId(createLocalBoardId());
           resetHistory(decoded.nodes);
           if (decoded.viewState) setViewState(decoded.viewState);
           if (decoded.creativity !== undefined)
@@ -536,6 +564,7 @@ export function useSessionManagement({
       try {
         const decoded = JSON.parse(atob(decodeURIComponent(shareData)));
         if (decoded.nodes && Object.keys(decoded.nodes).length > 0) {
+          setLocalBoardId(createLocalBoardId());
           resetHistory(decoded.nodes);
           if (decoded.viewState) setViewState(decoded.viewState);
           if (decoded.creativity !== undefined)
@@ -547,6 +576,16 @@ export function useSessionManagement({
       }
     }
   }, [resetHistory, setViewState, setCreativity, setShowWelcome]);
+
+  const beginNewBoard = useCallback(() => {
+    setActiveCloudSessionId(null);
+    setActiveCloudSessionName("");
+    setLocalBoardId(createLocalBoardId());
+  }, []);
+
+  const artifactBoardId = activeCloudSessionId
+    ? `board:cloud:${activeCloudSessionId}`
+    : localBoardId;
 
   return {
     savedSessions,
@@ -574,5 +613,7 @@ export function useSessionManagement({
     isDeleting: deleteMutation.isPending,
     activeCloudSessionId,
     activeCloudSessionName,
+    artifactBoardId,
+    beginNewBoard,
   };
 }

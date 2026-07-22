@@ -10,6 +10,22 @@ const stableIdSchema = z
   .regex(/^[A-Za-z0-9][A-Za-z0-9._:,-]*$/);
 const timestampSchema = z.string().datetime({ offset: true });
 
+export const artifactFilePathSchema = z
+  .string()
+  .min(1)
+  .max(512)
+  .refine(path => {
+    if (path.startsWith("/") || /^[A-Za-z]:\//.test(path)) return false;
+    if (path.includes("\\") || /[\u0000-\u001f\u007f]/.test(path)) {
+      return false;
+    }
+    return path
+      .split("/")
+      .every(
+        segment => segment.length > 0 && segment !== "." && segment !== ".."
+      );
+  }, "Artifact paths must be normalized relative paths");
+
 export const artifactKindSchema = z.enum([
   "markdown",
   "codeBundle",
@@ -35,7 +51,7 @@ export type ArtifactScope = z.infer<typeof artifactScopeSchema>;
 export const artifactFileSchema = z
   .object({
     id: stableIdSchema,
-    path: z.string().min(1).max(512),
+    path: artifactFilePathSchema,
     mimeType: z.string().min(1).max(128),
     sizeBytes: z.number().int().nonnegative(),
     checksum: z
@@ -122,17 +138,61 @@ export type MacPlatformCapabilities = z.infer<
   typeof macPlatformCapabilitiesSchema
 >;
 
+export function hasMacArtifactStudioCapability(
+  candidate: unknown
+): candidate is MacPlatformCapabilities {
+  const parsed = macPlatformCapabilitiesSchema.safeParse(candidate);
+  if (!parsed.success) return false;
+  const { nativeMac, features } = parsed.data;
+  return (
+    nativeMac &&
+    features.artifactGeneration &&
+    features.artifactPersistence &&
+    features.artifactExport
+  );
+}
+
 export const artifactGenerationRequestSchema = z
   .object({
     requestId: stableIdSchema,
     sourceBoardId: stableIdSchema,
+    sourceNodeIds: z.array(stableIdSchema).min(1),
+    includedNodeCount: z.number().int().positive(),
+    originalNodeCount: z.number().int().positive(),
+    contextTruncated: z.boolean(),
     recipeId: stableIdSchema,
     scope: artifactScopeSchema,
     context: z.string().min(1),
     instructions: z.string().max(8_000).optional(),
     capabilities: macPlatformCapabilitiesSchema.optional(),
   })
-  .strict();
+  .strict()
+  .superRefine((request, context) => {
+    if (request.includedNodeCount !== request.sourceNodeIds.length) {
+      context.addIssue({
+        code: "custom",
+        path: ["includedNodeCount"],
+        message: "Included node count must match source node IDs",
+      });
+    }
+    if (request.includedNodeCount > request.originalNodeCount) {
+      context.addIssue({
+        code: "custom",
+        path: ["originalNodeCount"],
+        message: "Original node count cannot be smaller than included count",
+      });
+    }
+    if (
+      !request.contextTruncated &&
+      request.includedNodeCount !== request.originalNodeCount
+    ) {
+      context.addIssue({
+        code: "custom",
+        path: ["contextTruncated"],
+        message: "A reduced node set must be marked as truncated",
+      });
+    }
+  });
 export type ArtifactGenerationRequest = z.infer<
   typeof artifactGenerationRequestSchema
 >;
