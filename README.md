@@ -10,11 +10,12 @@
 - Runs as:
   - Web app (`pnpm dev` / `pnpm start`)
   - iOS app (Capacitor + Apple Foundation Models path)
-  - Android app (Capacitor + Gemma/on-device path when available)
+  - Android app (AICore Gemini Nano, then checksum-verified Gemma, then cloud)
 
 ## Current Product State (June 2026)
 
 - **App Store:** 1.0 live; the **1.1 release train is open** (availability fixes, JPG export, on-device template customization). Listing metadata is managed as code in `ios/fastlane/` (`bundle exec fastlane upload_listing`).
+- **Android:** release in testing; no signed Android artifact is published.
 - Brand display name is **Idea Tiles** while legacy storage keys intentionally remain `hexpand_*` for data continuity.
 - **Sharing MVP:** iOS sharing is **local exports only** — PNG / JPG / SVG / JSON through the native share sheet (AirDrop, Messages, Files). **Share-link creation and live collaboration are web-only**; iOS still opens web-created `?s=` links via Universal Links. See [`docs/SHARING_MVP_POLICY.md`](docs/SHARING_MVP_POLICY.md).
 - Share modal includes a dedicated **Bring to iOS** action that prefers the canonical universal-link origin (`APP_PUBLIC_WEB_ORIGIN`) so boards can be handed off to the iOS app flow more reliably.
@@ -55,12 +56,59 @@ pnpm cap:sync:android
 cd ios && bundle install && bundle exec fastlane upload_listing
 ```
 
-## Native build env (iOS)
+## Native build environment
 
 | Variable                      | Purpose                                                                                                                                                                       |
 | ----------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `VITE_CAPACITOR_API_BASE_URL` | Hosted `/api` root (required for device API calls). If unset, native fallback is `${APP_PUBLIC_WEB_ORIGIN}/api` (currently `https://ideatiles.app/api`).                      |
 | `VITE_PUBLIC_WEB_APP_URL`     | Optional. Origin for **Share link** URLs on native; defaults to `https://ideatiles.app` (`APP_PUBLIC_WEB_ORIGIN` in `shared/appBrand.ts`) when unset so links open in Safari. |
+
+### Android release milestone
+
+- Package/application ID: `app.ideatiles.android`
+- SDK: compile/target API 36; minimum API 26 (required by the AICore-first ML Kit Prompt API)
+- Toolchain: JDK 21, Gradle 8.14.3, and Kotlin Gradle plugin 2.3.0
+- Local runtime: LiteRT-LM Android (`com.google.ai.edge.litertlm:litertlm-android:latest.release`)
+- Model: Gemma 3n E2B instruction-tuned int4-compatible `.litertlm` artifact
+- Preferred local runtime: ML Kit Prompt API `1.0.0-beta2` through Android AICore
+
+Gemma weights are license-gated and are not bundled or fetched anonymously from
+Hugging Face. An operator who has accepted the Gemma terms can host the exact
+LiteRT-LM-compatible `.litertlm` artifact over HTTPS and provide both values at
+build time:
+
+```bash
+export IDEA_TILES_GEMMA_MODEL_URL="https://models.example.com/gemma-3n-e2b-it-int4.litertlm"
+export IDEA_TILES_GEMMA_MODEL_SHA256="<64 lowercase hex characters>"
+pnpm cap:sync:android
+```
+
+Android checks the ML Kit Prompt API and installed Gemini Nano through Android
+AICore first. When AICore reports a downloadable model, the user can explicitly
+start the AICore download in Settings. The app then tries its separately
+configured Gemma model, which writes to app-private, no-backup storage,
+verifies SHA-256, and atomically activates the file. LiteRT-LM loads that
+verified file using its CPU backend and a private cache directory. If neither
+local model can run, the app uses `https://ideatiles.app/api` instead. Settings
+states that prompts leave the device only for that cloud fallback.
+
+Release signing reads credentials from the environment; no key or password is
+stored in the repository:
+
+```bash
+export IDEA_TILES_KEYSTORE_FILE="/absolute/path/to/release.jks"
+export IDEA_TILES_KEYSTORE_PASSWORD="..."
+export IDEA_TILES_KEY_ALIAS="..."
+export IDEA_TILES_KEY_PASSWORD="..."
+pnpm android:release
+pnpm android:stage
+```
+
+`pnpm android:stage` verifies APK/AAB signatures and writes versioned copies plus
+`SHA256SUMS` under ignored `artifacts/android/v<name>-<code>/`. For local build
+verification without release credentials, set
+`IDEA_TILES_ALLOW_DEBUG_RELEASE_SIGNING=true`; those artifacts are explicitly
+development-signed and must not be published.
 
 **Canonical domain rollout:** [`docs/infra/IDEATILES_DOMAIN.md`](docs/infra/IDEATILES_DOMAIN.md) (DNS + Caddy). After deploy, run `pnpm verify:canonical` (AASA + `/privacy` / `/terms` on all brand hosts).
 
@@ -89,7 +137,10 @@ In production the server binds a fixed loopback address and port. Unknown
 Client generation paths use on-device-first logic with platform-specific behavior:
 
 - iOS: Apple Foundation Models first; if unavailable/unparseable, returns an error (no cloud fallback by design).
-- Web/Android: on-device attempt when available, otherwise cloud `/api/generate` fallback.
+- Android: AICore Gemini Nano first when available, then checksum-verified
+  Gemma when installed, otherwise cloud `/api/generate`. Settings discloses the
+  ordered fallback.
+- Web: cloud `/api/generate`.
 
 See `client/src/hooks/useAIGeneration.ts` and `client/src/lib/foundationModelsPlugin.ts`.
 

@@ -115,6 +115,10 @@ android/.gradle/
 android/build/
 android/local.properties
 android/app/src/main/assets/public/
+artifacts/android/
+android/signing.properties
+android/*.jks
+android/*.keystore
 
 # Capacitor iOS build artifacts + Xcode user state
 ios/App/build/

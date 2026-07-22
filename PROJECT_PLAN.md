@@ -1,6 +1,6 @@
 # PROJECT_PLAN
 
-Last updated: 2026-07-10
+Last updated: 2026-07-14
 
 ## Objectives
 
@@ -21,6 +21,12 @@ Last updated: 2026-07-10
 - Mobile readability pass: improved in-hex label wrapping behavior (balanced wrap, non-forced uppercase, reduced hard word-splitting) to avoid fragmented words in constrained tile geometry.
 - Provider regression containment: non-iOS builds now lock app-level provider selection to Anthropic and suppress provider-management UI in Settings to align with hosted product behavior.
 - Settings visual cohesion pass: shifted modal styling away from dense "admin panel" controls toward cleaner card/glass presentation aligned with the main canvas tone.
+- Android local generation now dispatches in order: ML Kit Prompt API through
+  AICore Gemini Nano, checksum-verified LiteRT-LM Gemma, then the existing
+  managed cloud fallback. The app-managed `.litertlm` artifact retains its
+  verified download, private no-backup storage, and atomic activation lifecycle;
+  AICore status and user-initiated model download are exposed through the
+  Capacitor bridge and Settings.
 - Production restoration: Node now binds a fixed loopback port, unknown API
   routes return JSON 404 responses, and client-supplied Ollama routing and
   credentials are ignored to close the public SSRF boundary.

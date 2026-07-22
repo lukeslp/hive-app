@@ -1,13 +1,19 @@
 <?xml version="1.0" encoding="utf-8"?>
+<!--
+  File Purpose: Declare the Idea Tiles Android application and minimal capabilities.
+  Primary Components: Capacitor activity, private file provider, internet permission.
+  I/O: Receives launcher intents; permits HTTPS model/cloud traffic and secure sharing.
+-->
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
 
     <application
-        android:allowBackup="true"
+        android:allowBackup="false"
         android:icon="@mipmap/ic_launcher"
         android:label="@string/app_name"
         android:roundIcon="@mipmap/ic_launcher_round"
         android:supportsRtl="true"
-        android:theme="@style/AppTheme">
+        android:theme="@style/AppTheme"
+        android:usesCleartextTraffic="false">
 
         <activity
             android:configChanges="orientation|keyboardHidden|keyboard|screenSize|locale|smallestScreenSize|screenLayout|uiMode|navigation|density"

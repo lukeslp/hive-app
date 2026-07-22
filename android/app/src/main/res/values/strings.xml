@@ -1,7 +1,12 @@
 <?xml version='1.0' encoding='utf-8'?>
+<!--
+  File Purpose: Define Android-visible Idea Tiles identity strings.
+  Primary Components: App label, activity title, package and URL scheme.
+  I/O: Supplies localized values to Android resources and Capacitor.
+-->
 <resources>
     <string name="app_name">Idea Tiles</string>
     <string name="title_activity_main">Idea Tiles</string>
-    <string name="package_name">dev.dreamer.hexpand</string>
-    <string name="custom_url_scheme">dev.dreamer.hexpand</string>
+    <string name="package_name">app.ideatiles.android</string>
+    <string name="custom_url_scheme">app.ideatiles.android</string>
 </resources>

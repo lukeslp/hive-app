@@ -1,9 +1,11 @@
 /**
- * Capacitor bridge to Apple's on-device LLM (FoundationModels, iOS 26+).
+ * File Purpose: Dispatch native generation to Apple Foundation Models, Android AICore, or Gemma.
+ * Primary Components: Availability checks, timeout envelope, platform bridge routing.
+ * I/O: Accepts prompts and returns local text or null so callers can apply policy.
  *
- * Mirrors the Android GemmaPlugin shape so the AI generation hook can branch
- * by platform and fall back to the cloud LLM proxy when the device or OS
- * doesn't support on-device inference.
+ * Android only reports local success after the native layer confirms a
+ * checksum-verified Gemma model. A missing model returns null, and Android
+ * callers explicitly continue to the existing cloud proxy.
  *
  * On non-iOS platforms (including web) these methods exist as no-ops that
  * always report unavailable — the caller should guard with `getPlatform()`.
@@ -12,6 +14,8 @@
 import { registerPlugin } from "@capacitor/core";
 import { toast } from "sonner";
 import { getPlatform } from "./platform";
+import { AICore } from "./aicorePlugin";
+import { Gemma } from "./gemmaPlugin";
 
 export interface FMGenerateOptions {
   /** User prompt. */
@@ -179,6 +183,10 @@ async function runWithBridge(
     payload: FMGenerateOptions
   ) => Promise<FMResponse>
 ): Promise<{ text: string } | null> {
+  if (getPlatform() === "android") {
+    return runAndroidOnDevice(opts);
+  }
+
   const available = await isFoundationModelsAvailable();
   if (!available) return null;
 
@@ -219,6 +227,132 @@ async function runWithBridge(
     // call re-probes instead of trusting stale state.
     if (msg.startsWith("FM timeout") || msg.includes("unavailable")) {
       invalidateFoundationModelsCache();
+    }
+    return null;
+  } finally {
+    if (timeoutHandle !== undefined) clearTimeout(timeoutHandle);
+  }
+}
+
+/** Build a single text prompt for the Android local runtime, which has no separate system field. */
+export function buildGemmaPrompt(opts: FMGenerateOptions): string {
+  return opts.systemPrompt?.trim()
+    ? `Instructions:\n${opts.systemPrompt.trim()}\n\nRequest:\n${opts.prompt.trim()}`
+    : opts.prompt.trim();
+}
+
+/**
+ * Android has an explicit ordered local path: AICore (Gemini Nano) first,
+ * then the separately configured checksum-verified Gemma runtime. Returning
+ * null deliberately leaves the existing caller-owned cloud fallback unchanged.
+ */
+async function runAndroidOnDevice(
+  opts: OnDeviceFirstOptions
+): Promise<{ text: string } | null> {
+  const aicore = await runAndroidAICore(opts);
+  return aicore ?? runAndroidGemma(opts);
+}
+
+/**
+ * Prefer ML Kit Prompt API when Android AICore has a downloaded Gemini Nano
+ * model. A timeout explicitly signals the native bridge to cancel its coroutine
+ * so a stale request cannot later resolve after cloud fallback has begun.
+ */
+async function runAndroidAICore(
+  opts: OnDeviceFirstOptions
+): Promise<{ text: string } | null> {
+  try {
+    const status = await AICore.getStatus();
+    if (!status.available) {
+      console.info(`[AICore] ${status.reason || status.state}; trying Gemma.`);
+      return null;
+    }
+  } catch (error) {
+    console.warn("[AICore] Status probe failed; trying Gemma:", error);
+    return null;
+  }
+
+  const requestId =
+    typeof crypto !== "undefined" && typeof crypto.randomUUID === "function"
+      ? crypto.randomUUID()
+      : `aicore-${Date.now()}-${Math.random().toString(36).slice(2)}`;
+  const timeoutMs = opts.timeoutMs ?? 30000;
+  let timeoutHandle: ReturnType<typeof setTimeout> | undefined;
+  const timeoutPromise = new Promise<never>((_, reject) => {
+    timeoutHandle = setTimeout(() => {
+      void AICore.cancel({ requestId }).catch(() => undefined);
+      reject(new Error(`AICore timeout after ${timeoutMs}ms`));
+    }, timeoutMs);
+  });
+
+  if (!opts.silentDiagnostics) {
+    toast.info("✦ Trying Gemini Nano on-device…", { duration: 800 });
+  }
+
+  try {
+    const result = await Promise.race([
+      AICore.generate({ prompt: buildGemmaPrompt(opts), requestId }),
+      timeoutPromise,
+    ]);
+    return result.text.trim() ? { text: result.text } : null;
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    console.warn("[AICore] Local inference failed; trying Gemma:", message);
+    return null;
+  } finally {
+    if (timeoutHandle !== undefined) clearTimeout(timeoutHandle);
+  }
+}
+
+/**
+ * Run Android Gemma only when the native plugin confirms the expected model
+ * was checksum-verified in private storage. Absence is normal: return null so
+ * Android callers use cloud, without claiming on-device processing occurred.
+ */
+async function runAndroidGemma(
+  opts: OnDeviceFirstOptions
+): Promise<{ text: string } | null> {
+  try {
+    const status = await Gemma.isModelReady();
+    if (!status.ready || !status.verified) {
+      console.info(
+        `[Gemma] ${status.reason || "Verified model absent"} Using cloud fallback.`
+      );
+      return null;
+    }
+  } catch (error) {
+    console.warn("[Gemma] Status probe failed; using cloud fallback:", error);
+    return null;
+  }
+
+  const timeoutMs = opts.timeoutMs ?? 60000;
+  let timeoutHandle: ReturnType<typeof setTimeout> | undefined;
+  const timeoutPromise = new Promise<never>((_, reject) => {
+    timeoutHandle = setTimeout(
+      () => reject(new Error(`Gemma timeout after ${timeoutMs}ms`)),
+      timeoutMs
+    );
+  });
+
+  if (!opts.silentDiagnostics) {
+    toast.info("✦ Trying verified on-device model…", { duration: 800 });
+  }
+
+  try {
+    const result = await Promise.race([
+      Gemma.generate({
+        prompt: buildGemmaPrompt(opts),
+        temperature: opts.temperature,
+        maxTokens: opts.maxTokens,
+      }),
+      timeoutPromise,
+    ]);
+    return result.text.trim() ? { text: result.text } : null;
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    console.warn("[Gemma] Local inference failed; using cloud fallback:", message);
+    if (!opts.silentDiagnostics) {
+      toast.warning("On-device unavailable — using cloud", { duration: 2500 });
     }
     return null;
   } finally {

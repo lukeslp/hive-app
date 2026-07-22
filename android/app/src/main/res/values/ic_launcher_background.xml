@@ -1,5 +1,10 @@
 <?xml version="1.0" encoding="utf-8"?>
+<!--
+  File Purpose: Define the adaptive launcher icon background color.
+  Primary Components: ic_launcher_background color resource.
+  I/O: Supplies the generated launcher icon background to Android.
+-->
 <resources>
-    <!-- Synced via assets/sync_app_icon_from_master.py (--splash-bg or inferred edges). -->
+    <!-- Synced from the master icon using the splash background setting or inferred edges. -->
     <color name="ic_launcher_background">#c2cfe8</color>
 </resources>

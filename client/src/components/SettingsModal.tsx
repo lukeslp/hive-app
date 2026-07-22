@@ -1,6 +1,7 @@
 /**
- * SettingsModal - User preferences and API key management
- * Extracted from HiveMindApp.tsx monolith, extended with provider settings
+ * File Purpose: Render Idea Tiles preferences and generation-path status.
+ * Primary Components: Accessibility controls, local model delivery, privacy copy.
+ * I/O: Receives settings state/callbacks and emits accessible user actions.
  */
 
 import { useState } from "react";
@@ -33,7 +34,12 @@ import type {
   ServerProviderInfo,
   ProviderConfig,
 } from "@/hooks/useProviderSettings";
-import { isIos } from "@/lib/platform";
+import type {
+  GemmaDownloadResult,
+  GemmaModelStatus,
+} from "@/lib/gemmaPlugin";
+import type { AICoreStatus } from "@/lib/aicorePlugin";
+import { getPlatform, isCapacitor, isIos } from "@/lib/platform";
 import { APP_DISPLAY_NAME } from "@shared/appBrand";
 
 export interface SettingsModalProps {
@@ -67,6 +73,11 @@ export interface SettingsModalProps {
   serverProviders: ServerProviderInfo | null;
   appleIntelligenceAvailable: boolean;
   visibleProviders: ProviderConfig[];
+  androidGemmaStatus: GemmaModelStatus | null;
+  androidAICoreStatus: AICoreStatus | null;
+  androidGemmaDownload: GemmaDownloadResult | null;
+  isDownloadingAndroidModel: boolean;
+  downloadAndroidModel: () => Promise<void>;
   onDeleteBoard: () => void;
 }
 
@@ -100,9 +111,15 @@ export const SettingsModal = ({
   serverProviders,
   appleIntelligenceAvailable,
   visibleProviders,
+  androidGemmaStatus,
+  androidAICoreStatus,
+  androidGemmaDownload,
+  isDownloadingAndroidModel,
+  downloadAndroidModel,
   onDeleteBoard,
 }: SettingsModalProps) => {
   const iosOnly = isIos();
+  const androidNative = isCapacitor() && getPlatform() === "android";
 
   const aiControlsAvailable = iosOnly
     ? appleIntelligenceAvailable
@@ -250,6 +267,49 @@ export const SettingsModal = ({
               <h3 className="text-sm font-semibold text-foreground">AI</h3>
               <p className="text-xs text-muted-foreground">Managed AI path</p>
             </div>
+
+            {androidNative && (androidAICoreStatus || androidGemmaStatus) && (
+              <div
+                className={`space-y-3 rounded-lg border p-3 text-xs ${
+                  androidAICoreStatus?.available || androidGemmaStatus?.ready
+                    ? "border-emerald-500/20 bg-emerald-500/5"
+                    : "border-amber-500/20 bg-amber-500/5"
+                }`}
+                role="status"
+                aria-live="polite"
+              >
+                <p className="text-muted-foreground">
+                  {androidAICoreStatus?.available
+                    ? "Gemini Nano is ready through Android AICore. Generation tries it first, then the verified Gemma model when installed, before the managed cloud service."
+                    : androidGemmaStatus?.ready
+                      ? "The verified Gemma model is installed in private device storage. Gemini Nano through Android AICore is checked first; if neither local path can run, the request uses the managed cloud service."
+                      : `${androidAICoreStatus?.reason || androidGemmaStatus?.reason || "No local Android model is ready."} Generation tries AICore, then Gemma, then the managed cloud service. Prompts leave the device only for the cloud fallback.`}
+                </p>
+                {!androidAICoreStatus?.available &&
+                  !androidGemmaStatus?.ready &&
+                  (androidAICoreStatus?.downloadable ||
+                    androidGemmaStatus?.downloadAvailable) && (
+                    <Button
+                      type="button"
+                      size="sm"
+                      className="h-11"
+                      disabled={isDownloadingAndroidModel}
+                      onClick={() => void downloadAndroidModel()}
+                    >
+                      {isDownloadingAndroidModel
+                        ? "Downloading…"
+                        : androidAICoreStatus?.downloadable
+                          ? "Download Gemini Nano"
+                          : "Download local Gemma model"}
+                    </Button>
+                  )}
+                {androidGemmaDownload?.reason && (
+                  <p className="text-muted-foreground">
+                    {androidGemmaDownload.reason}
+                  </p>
+                )}
+              </div>
+            )}
 
             {iosOnly ? (
               <div

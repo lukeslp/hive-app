@@ -1,4 +1,9 @@
-package com.getcapacitor.myapp;
+/*
+ * File Purpose: Verify the installed Android application identity.
+ * Primary Components: Instrumented package-name assertion.
+ * I/O: Reads the target app context and asserts its finalized package ID.
+ */
+package app.ideatiles.android;
 
 import static org.junit.Assert.*;
 
@@ -21,6 +26,6 @@ public class ExampleInstrumentedTest {
         // Context of the app under test.
         Context appContext = InstrumentationRegistry.getInstrumentation().getTargetContext();
 
-        assertEquals("com.getcapacitor.app", appContext.getPackageName());
+        assertEquals("app.ideatiles.android", appContext.getPackageName());
     }
 }

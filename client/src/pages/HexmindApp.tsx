@@ -1,4 +1,8 @@
-/** Idea Tiles app shell: wires canvas, modals, AI, collab, and session state. */
+/**
+ * File Purpose: Compose the Idea Tiles canvas, workflows, and platform services.
+ * Primary Components: Canvas interaction, generation, sessions, sharing, settings.
+ * I/O: Handles user gestures/native services and renders the complete application.
+ */
 
 import { useState, useRef, useEffect, useCallback, useMemo } from "react";
 import { flushSync } from "react-dom";
@@ -2331,6 +2335,13 @@ Generate 6 diverse related ideas. Connect to key themes when relevant.`;
         serverProviders={providerSettings.serverProviders}
         appleIntelligenceAvailable={providerSettings.appleIntelligenceAvailable}
         visibleProviders={providerSettings.visibleProviders}
+        androidGemmaStatus={providerSettings.androidGemmaStatus}
+        androidAICoreStatus={providerSettings.androidAICoreStatus}
+        androidGemmaDownload={providerSettings.androidGemmaDownload}
+        isDownloadingAndroidModel={
+          providerSettings.isDownloadingAndroidModel
+        }
+        downloadAndroidModel={providerSettings.downloadAndroidModel}
         onDeleteBoard={requestDeleteBoard}
       />
 

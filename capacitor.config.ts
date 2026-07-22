@@ -1,7 +1,12 @@
+/**
+ * File Purpose: Configure the shared Capacitor shells for Idea Tiles.
+ * Primary Components: Platform identity, native HTTP, and splash behavior.
+ * I/O: Reads CAPACITOR_APP_ID during sync and emits native platform config.
+ */
 import type { CapacitorConfig } from "@capacitor/cli";
 
 const config: CapacitorConfig = {
-  appId: "app.hexmind.ios",
+  appId: process.env.CAPACITOR_APP_ID?.trim() || "app.hexmind.ios",
   appName: "Idea Tiles",
   webDir: "dist/public",
   // Production: ship info/warn/error to the native log but suppress the

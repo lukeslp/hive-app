@@ -1,26 +1,88 @@
+// File Purpose: Configure the Idea Tiles Android application, release identity,
+// LiteRT-LM runtime, JDK 21 compilation, and secret-free release signing inputs.
+// Primary Components: Android application plugin, build variants, dependencies.
+// I/O: Reads optional environment/local signing properties; emits APK/AAB files.
+
 apply plugin: 'com.android.application'
 apply plugin: 'kotlin-android'
 
+def envOrProperty = { String name ->
+    def value = System.getenv(name) ?: project.findProperty(name)
+    value?.toString()?.trim()
+}
+
+def releaseStoreFile = envOrProperty('IDEA_TILES_KEYSTORE_FILE')
+def releaseStorePassword = envOrProperty('IDEA_TILES_KEYSTORE_PASSWORD')
+def releaseKeyAlias = envOrProperty('IDEA_TILES_KEY_ALIAS')
+def releaseKeyPassword = envOrProperty('IDEA_TILES_KEY_PASSWORD')
+def hasReleaseSigning = [
+    releaseStoreFile,
+    releaseStorePassword,
+    releaseKeyAlias,
+    releaseKeyPassword,
+].every { it }
+
+def modelUrl = envOrProperty('IDEA_TILES_GEMMA_MODEL_URL') ?: ''
+def modelSha256 = envOrProperty('IDEA_TILES_GEMMA_MODEL_SHA256') ?: ''
+
 android {
-    namespace = "dev.dreamer.hexpand"
+    namespace = "app.ideatiles.android"
     compileSdk = rootProject.ext.compileSdkVersion
+    buildFeatures {
+        buildConfig = true
+    }
     defaultConfig {
-        applicationId "dev.dreamer.hexpand"
+        applicationId "app.ideatiles.android"
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
-        versionCode 1
-        versionName "1.0"
+        versionCode 10000
+        versionName "1.0.0"
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
+        buildConfigField "String", "GEMMA_MODEL_URL", groovy.json.JsonOutput.toJson(modelUrl)
+        buildConfigField "String", "GEMMA_MODEL_SHA256", groovy.json.JsonOutput.toJson(modelSha256)
         aaptOptions {
              // Files and dirs to omit from the packaged assets dir, modified to accommodate modern web apps.
              // Default: https://android.googlesource.com/platform/frameworks/base/+/282e181b58cf72b6ca770dc7ca5f91f135444502/tools/aapt/AaptAssets.cpp#61
             ignoreAssetsPattern = '!.svn:!.git:!.ds_store:!*.scc:.*:!CVS:!thumbs.db:!picasa.ini:!*~'
         }
     }
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_21
+        targetCompatibility JavaVersion.VERSION_21
+    }
+    kotlinOptions {
+        jvmTarget = "21"
+    }
+    signingConfigs {
+        if (hasReleaseSigning) {
+            release {
+                storeFile file(releaseStoreFile)
+                storePassword releaseStorePassword
+                keyAlias releaseKeyAlias
+                keyPassword releaseKeyPassword
+                enableV1Signing true
+                enableV2Signing true
+                enableV3Signing true
+                enableV4Signing true
+            }
+        }
+    }
     buildTypes {
+        debug {
+            buildConfigField "boolean", "ALLOW_MODEL_DOWNLOAD", "true"
+        }
         release {
             minifyEnabled false
             proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-rules.pro'
+            buildConfigField "boolean", "ALLOW_MODEL_DOWNLOAD", "true"
+            if (hasReleaseSigning) {
+                signingConfig signingConfigs.release
+            } else if ((envOrProperty('IDEA_TILES_ALLOW_DEBUG_RELEASE_SIGNING') ?: 'false').toBoolean()) {
+                logger.warn("Building a locally staged release with the debug key; do not publish this artifact.")
+                signingConfig signingConfigs.debug
+            } else {
+                logger.warn("Release signing is not configured; release artifacts will be unsigned.")
+            }
         }
     }
 }
@@ -37,6 +99,8 @@ dependencies {
     implementation "androidx.coordinatorlayout:coordinatorlayout:$androidxCoordinatorLayoutVersion"
     implementation "androidx.core:core-splashscreen:$coreSplashScreenVersion"
     implementation project(':capacitor-android')
+    implementation "com.google.mlkit:genai-prompt:1.0.0-beta2"
+    implementation "com.google.ai.edge.litertlm:litertlm-android:latest.release"
     testImplementation "junit:junit:$junitVersion"
     androidTestImplementation "androidx.test.ext:junit:$androidxJunitVersion"
     androidTestImplementation "androidx.test.espresso:espresso-core:$androidxEspressoCoreVersion"

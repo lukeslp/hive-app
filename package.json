@@ -14,7 +14,10 @@
     "cap:add:ios": "npx cap add ios",
     "cap:build": "pnpm build && npx cap sync ios",
     "cap:open": "npx cap open ios",
-    "cap:sync:android": "pnpm build && npx cap sync android",
+    "cap:sync:android": "pnpm build && CAPACITOR_APP_ID=app.ideatiles.android npx cap sync android",
+    "android:test": "cd android && ANDROID_HOME=${ANDROID_HOME:-$HOME/Library/Android/sdk} JAVA_HOME=$(/usr/libexec/java_home -v 21) ./gradlew test",
+    "android:release": "pnpm cap:sync:android && cd android && ANDROID_HOME=${ANDROID_HOME:-$HOME/Library/Android/sdk} JAVA_HOME=$(/usr/libexec/java_home -v 21) ./gradlew clean assembleRelease bundleRelease",
+    "android:stage": "bash scripts/stage-android-release.sh",
     "cap:sync:ios": "pnpm build && npx cap sync ios",
     "verify:canonical": "bash scripts/check-aasa.sh && bash scripts/verify-canonical-endpoints.sh"
   },

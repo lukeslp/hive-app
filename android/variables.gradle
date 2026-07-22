@@ -1,5 +1,10 @@
+// File Purpose: Define shared Android SDK, AndroidX, test, and Cordova versions.
+// Primary Components: Platform API levels and dependency version constants.
+// I/O: Supplies version values consumed by Android Gradle modules.
+
 ext {
-    minSdkVersion = 24
+    // ML Kit Prompt API, the first Android fallback, supports API 26 and newer.
+    minSdkVersion = 26
     compileSdkVersion = 36
     targetSdkVersion = 36
     androidxActivityVersion = '1.11.0'
