@@ -13,6 +13,7 @@ settings:
     MACOSX_DEPLOYMENT_TARGET: "26.0"
     MARKETING_VERSION: 1.1.0
     CURRENT_PROJECT_VERSION: 1
+    ENABLE_HARDENED_RUNTIME: true
     ENABLE_USER_SCRIPT_SANDBOXING: true
 targets:
   IdeaTiles:
@@ -21,9 +22,30 @@ targets:
     deploymentTarget: "26.0"
     sources:
       - path: IdeaTiles
-      - path: Resources/WebApp
-        type: folder
-        buildPhase: resources
+    postBuildScripts:
+      - name: Build Mac WebApp
+        basedOnDependencyAnalysis: false
+        inputFiles:
+          - $(SRCROOT)/../client
+          - $(SRCROOT)/../shared
+          - $(SRCROOT)/../package.json
+          - $(SRCROOT)/../pnpm-lock.yaml
+          - $(SRCROOT)/../vite.mac.config.ts
+          - $(SRCROOT)/../vite.config.ts
+          - $(SRCROOT)/../tsconfig.json
+        outputFiles:
+          - $(DERIVED_FILE_DIR)/IdeaTilesWebApp
+          - $(DERIVED_FILE_DIR)/IdeaTilesWebApp/index.html
+          - $(TARGET_BUILD_DIR)/$(UNLOCALIZED_RESOURCES_FOLDER_PATH)/WebApp
+          - $(TARGET_BUILD_DIR)/$(UNLOCALIZED_RESOURCES_FOLDER_PATH)/WebApp/index.html
+        script: |
+          set -euo pipefail
+          cd "$SRCROOT/.."
+          web_output="$DERIVED_FILE_DIR/IdeaTilesWebApp"
+          resource_destination="$TARGET_BUILD_DIR/$UNLOCALIZED_RESOURCES_FOLDER_PATH/WebApp"
+          pnpm exec vite build --config vite.mac.config.ts --outDir "$web_output"
+          mkdir -p "$resource_destination"
+          /usr/bin/rsync -a --delete "$web_output/" "$resource_destination/"
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: app.ideatiles.macos
@@ -35,6 +57,7 @@ targets:
         CODE_SIGN_STYLE: Automatic
         DEVELOPMENT_TEAM: 596T7J7FB6
         ENABLE_APP_SANDBOX: true
+        ENABLE_USER_SCRIPT_SANDBOXING: false
     entitlements:
       path: IdeaTiles/IdeaTiles.entitlements
       properties:

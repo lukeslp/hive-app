@@ -91,6 +91,27 @@ struct ArtifactManifest: Codable, Sendable, Equatable {
         encoder.outputFormatting = [.sortedKeys, .withoutEscapingSlashes]
         return try encoder.encode(self)
     }
+
+    func withoutInlineContent() -> ArtifactManifest {
+        var copy = self
+        for index in copy.files.indices { copy.files[index].content = nil }
+        return copy
+    }
+
+    func hydratingPayloads(_ payloads: [String: Data]) throws -> ArtifactManifest {
+        var copy = self
+        for index in copy.files.indices {
+            guard let data = payloads[copy.files[index].path] else { throw ArtifactPersistenceError.missingContent }
+            switch copy.files[index].encoding ?? "utf8" {
+            case "utf8":
+                guard let value = String(data: data, encoding: .utf8) else { throw ArtifactContractError.invalidContent }
+                copy.files[index].content = value
+            case "base64": copy.files[index].content = data.base64EncodedString()
+            default: throw ArtifactContractError.invalidContent
+            }
+        }
+        return copy
+    }
 }
 
 enum RelativeArtifactPath {
@@ -117,7 +138,7 @@ private enum ArtifactShapeValidator {
             "schemaVersion", "id", "title", "kind", "recipeId", "scope", "files",
             "provenance", "sync", "createdAt", "updatedAt",
         ])
-        guard (object["schemaVersion"] as? NSNumber)?.intValue == 1,
+        guard safeInteger(object["schemaVersion"], minimum: 1) == 1,
               let id = object["id"] as? String,
               let title = object["title"] as? String, !title.isEmpty, title.count <= 256,
               let kind = object["kind"] as? String, kinds.contains(kind),
@@ -145,7 +166,7 @@ private enum ArtifactShapeValidator {
         guard let id = file["id"] as? String, validID(id),
               let path = file["path"] as? String,
               let mime = file["mimeType"] as? String, !mime.isEmpty, mime.count <= 128,
-              let size = file["sizeBytes"] as? NSNumber, size.intValue >= 0,
+              safeInteger(file["sizeBytes"], minimum: 0) != nil,
               let checksum = file["checksum"] as? [String: Any],
               let createdAt = file["createdAt"] as? String,
               let updatedAt = file["updatedAt"] as? String
@@ -158,8 +179,10 @@ private enum ArtifactShapeValidator {
               let value = checksum["value"] as? String,
               regexMatches(checksumPattern, value)
         else { throw ArtifactContractError.invalidManifest }
-        if let encoding = file["encoding"] as? String, encoding != "utf8" && encoding != "base64" {
-            throw ArtifactContractError.invalidManifest
+        if let encodingValue = file["encoding"] {
+            guard let encoding = encodingValue as? String, encoding == "utf8" || encoding == "base64" else {
+                throw ArtifactContractError.invalidManifest
+            }
         }
         if file["content"] != nil, !(file["content"] is String) { throw ArtifactContractError.invalidManifest }
     }
@@ -191,9 +214,13 @@ private enum ArtifactShapeValidator {
         try validateTimestamp(generatedAt)
         try exactKeys(generator, required: ["kind", "name"], optional: ["model"])
         guard let kind = generator["kind"] as? String, generatorKinds.contains(kind),
-              let name = generator["name"] as? String, !name.isEmpty, name.count <= 128,
-              generator["model"] == nil || generator["model"] is String
+              let name = generator["name"] as? String, !name.isEmpty, name.count <= 128
         else { throw ArtifactContractError.invalidManifest }
+        if let modelValue = generator["model"] {
+            guard let model = modelValue as? String, !model.isEmpty, model.count <= 128 else {
+                throw ArtifactContractError.invalidManifest
+            }
+        }
     }
 
     private static func validateSync(_ sync: [String: Any]) throws {
@@ -203,8 +230,12 @@ private enum ArtifactShapeValidator {
               let updatedAt = sync["updatedAt"] as? String
         else { throw ArtifactContractError.invalidManifest }
         try validateTimestamp(updatedAt)
-        if let remote = sync["remoteId"] as? String, !validID(remote) { throw ArtifactContractError.invalidManifest }
-        if let error = sync["error"] as? String, error.count > 1_000 { throw ArtifactContractError.invalidManifest }
+        if let remoteValue = sync["remoteId"] {
+            guard let remote = remoteValue as? String, validID(remote) else { throw ArtifactContractError.invalidManifest }
+        }
+        if let errorValue = sync["error"] {
+            guard let error = errorValue as? String, error.count <= 1_000 else { throw ArtifactContractError.invalidManifest }
+        }
     }
 
     private static func exactKeys(_ object: [String: Any], required: Set<String>, optional: Set<String> = []) throws {
@@ -214,6 +245,17 @@ private enum ArtifactShapeValidator {
     }
 
     private static func validID(_ value: String) -> Bool { RPCRequestValidator.isStableID(value) }
+
+    private static func safeInteger(_ value: Any?, minimum: Int) -> Int? {
+        guard let number = value as? NSNumber,
+              CFGetTypeID(number) != CFBooleanGetTypeID(),
+              number.doubleValue.isFinite,
+              number.doubleValue.rounded() == number.doubleValue,
+              number.doubleValue >= Double(minimum),
+              number.doubleValue <= 9_007_199_254_740_991
+        else { return nil }
+        return Int(number.doubleValue)
+    }
 
     private static func validateTimestamp(_ value: String) throws {
         guard ISO8601DateFormatter().date(from: value) != nil else { throw ArtifactContractError.invalidTimestamp }

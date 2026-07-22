@@ -60,7 +60,16 @@ actor ArtifactRepository {
         self.root = root.standardizedFileURL
         try FileManager.default.createDirectory(at: root, withIntermediateDirectories: true)
         let schema = Schema([BoardMetadataRecord.self, ArtifactMetadataRecord.self])
-        let configuration = ModelConfiguration(schema: schema, isStoredInMemoryOnly: inMemory)
+        let configuration: ModelConfiguration
+        if inMemory {
+            configuration = ModelConfiguration(schema: schema, isStoredInMemoryOnly: true)
+        } else {
+            configuration = ModelConfiguration(
+                "IdeaTilesMetadata",
+                schema: schema,
+                url: self.root.appending(path: "Metadata.store")
+            )
+        }
         container = try ModelContainer(for: schema, configurations: [configuration])
     }
 
@@ -105,16 +114,18 @@ actor ArtifactRepository {
         return try Data(contentsOf: root.appending(path: record.payloadRelativePath))
     }
 
-    func saveArtifact(_ manifest: ArtifactManifest) throws -> ArtifactManifest {
+    func saveArtifact(_ manifest: ArtifactManifest, payloads suppliedPayloads: [String: Data] = [:]) throws -> ArtifactManifest {
         guard RPCRequestValidator.isStableID(manifest.id), RPCRequestValidator.isStableID(manifest.provenance.sourceBoardId) else {
             throw ArtifactPersistenceError.invalidIdentifier
         }
         let artifactRoot = root.appending(path: "Boards/\(manifest.provenance.sourceBoardId)/Artifacts/\(manifest.id)")
-        try FileManager.default.createDirectory(at: artifactRoot, withIntermediateDirectories: true)
+        var payloads: [String: Data] = [:]
         for file in manifest.files {
             try RelativeArtifactPath.validate(file.path)
             let data: Data
-            if file.content != nil {
+            if let supplied = suppliedPayloads[file.path] {
+                data = supplied
+            } else if file.content != nil {
                 data = try file.payloadData()
             } else {
                 let existing = artifactRoot.appending(path: "files/\(file.path)")
@@ -122,12 +133,26 @@ actor ArtifactRepository {
                 data = try Data(contentsOf: existing)
             }
             try ArtifactIntegrity.validate(file, data: data)
-            let destination = artifactRoot.appending(path: "files/\(file.path)")
+            payloads[file.path] = data
+        }
+
+        let artifactsRoot = artifactRoot.deletingLastPathComponent()
+        try FileManager.default.createDirectory(at: artifactsRoot, withIntermediateDirectories: true)
+        let staging = artifactsRoot.appending(path: ".\(manifest.id).\(UUID().uuidString).staging", directoryHint: .isDirectory)
+        try FileManager.default.createDirectory(at: staging, withIntermediateDirectories: true)
+        var stagingCommitted = false
+        defer { if !stagingCommitted { try? FileManager.default.removeItem(at: staging) } }
+        for file in manifest.files {
+            guard let data = payloads[file.path] else { throw ArtifactPersistenceError.missingContent }
+            let destination = staging.appending(path: "files/\(file.path)")
             try FileManager.default.createDirectory(at: destination.deletingLastPathComponent(), withIntermediateDirectories: true)
             try data.write(to: destination, options: [.atomic, .completeFileProtection])
         }
         let manifestURL = artifactRoot.appending(path: "manifest.json")
-        try manifest.encoded().write(to: manifestURL, options: [.atomic, .completeFileProtection])
+        try manifest.withoutInlineContent().encoded().write(
+            to: staging.appending(path: "manifest.json"),
+            options: [.atomic, .completeFileProtection]
+        )
 
         let context = ModelContext(container)
         let boardID = manifest.provenance.sourceBoardId
@@ -156,7 +181,31 @@ actor ArtifactRepository {
                 manifestRelativePath: relativeManifest, now: now
             ))
         }
-        try context.save()
+        let backup = artifactsRoot.appending(path: ".\(manifest.id).\(UUID().uuidString).backup", directoryHint: .isDirectory)
+        let hadExisting = FileManager.default.fileExists(atPath: artifactRoot.path)
+        var didSwap = false
+        do {
+            if hadExisting {
+                _ = try FileManager.default.replaceItemAt(
+                    artifactRoot,
+                    withItemAt: staging,
+                    backupItemName: backup.lastPathComponent,
+                    options: .withoutDeletingBackupItem
+                )
+            } else {
+                try FileManager.default.moveItem(at: staging, to: artifactRoot)
+            }
+            stagingCommitted = true
+            didSwap = true
+            try context.save()
+        } catch {
+            if didSwap {
+                try? FileManager.default.removeItem(at: artifactRoot)
+                if hadExisting { try? FileManager.default.moveItem(at: backup, to: artifactRoot) }
+            }
+            throw error
+        }
+        if hadExisting { try? FileManager.default.removeItem(at: backup) }
         return manifest
     }
 
@@ -166,11 +215,13 @@ actor ArtifactRepository {
         let descriptor = FetchDescriptor<ArtifactMetadataRecord>(predicate: #Predicate { $0.id == matchingID })
         guard let record = try context.fetch(descriptor).first else { throw ArtifactPersistenceError.missingArtifact }
         let manifest = try ArtifactManifest.decode(data: Data(contentsOf: root.appending(path: record.manifestRelativePath)))
+        var payloads: [String: Data] = [:]
         for file in manifest.files {
             let data = try Data(contentsOf: payloadURL(artifactID: id, boardID: record.boardID, path: file.path))
             try ArtifactIntegrity.validate(file, data: data)
+            payloads[file.path] = data
         }
-        return manifest
+        return try manifest.hydratingPayloads(payloads)
     }
 
     func attachImage(artifactID: String, file: ArtifactFile) throws -> ArtifactManifest {

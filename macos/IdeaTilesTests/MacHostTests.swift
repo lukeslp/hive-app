@@ -27,6 +27,27 @@ struct MacHostBootstrapTests {
         #expect(!policy.allows(URL(string: "https://ideatiles.app")!))
         #expect(!policy.allows(URL(filePath: "/tmp/index.html")))
     }
+
+    @Test("accepts bridge messages only from the main private app frame")
+    func messageOriginPolicy() {
+        let policy = BridgeMessageOriginPolicy()
+
+        #expect(policy.allows(isMainFrame: true, sourceURL: URL(string: "ideatiles://app/index.html")))
+        #expect(!policy.allows(isMainFrame: false, sourceURL: URL(string: "ideatiles://app/index.html")))
+        #expect(!policy.allows(isMainFrame: true, sourceURL: URL(string: "https://ideatiles.app")))
+        #expect(!policy.allows(isMainFrame: true, sourceURL: URL(string: "ideatiles://other/index.html")))
+    }
+
+    @Test("main-app subresources allow only the canonical Idea Tiles API")
+    func subresourcePolicy() throws {
+        let rules = try #require(try JSONSerialization.jsonObject(with: Data(AppContentSecurityPolicy.contentBlockerRules.utf8)) as? [[String: Any]])
+        #expect(rules.contains { rule in
+            guard let trigger = rule["trigger"] as? [String: Any],
+                  let excluded = trigger["unless-domain"] as? [String]
+            else { return false }
+            return excluded.contains("ideatiles.app")
+        })
+    }
 }
 
 @Suite("Native bridge routing")

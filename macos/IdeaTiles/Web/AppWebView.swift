@@ -9,6 +9,35 @@ struct AppNavigationPolicy: Sendable {
     }
 }
 
+struct BridgeMessageOriginPolicy: Sendable {
+    func allows(isMainFrame: Bool, sourceURL: URL?) -> Bool {
+        isMainFrame && sourceURL.map(AppNavigationPolicy().allows) == true
+    }
+}
+
+enum AppContentSecurityPolicy {
+    static let contentSecurityPolicy = [
+        "default-src 'self'",
+        "base-uri 'self'",
+        "connect-src 'self' https://ideatiles.app wss://ideatiles.app",
+        "form-action 'self'",
+        "frame-src 'none'",
+        "object-src 'none'",
+        "script-src 'self'",
+        "style-src 'self' 'unsafe-inline'",
+        "img-src 'self' https://ideatiles.app data: blob:",
+        "font-src 'self' data:",
+        "worker-src 'self' blob:",
+    ].joined(separator: "; ")
+
+    static let contentBlockerRules = #"""
+    [
+      {"trigger":{"url-filter":"^https?://.*","unless-domain":["ideatiles.app"]},"action":{"type":"block"}},
+      {"trigger":{"url-filter":"^wss?://.*","unless-domain":["ideatiles.app"]},"action":{"type":"block"}}
+    ]
+    """#
+}
+
 @MainActor
 fileprivate final class AppNavigationDelegate: NSObject, WKNavigationDelegate {
     private let policy = AppNavigationPolicy()
@@ -35,6 +64,13 @@ fileprivate final class MacScriptMessageHandler: NSObject, WKScriptMessageHandle
         didReceive message: WKScriptMessage,
         replyHandler: @escaping @MainActor @Sendable (Any?, String?) -> Void
     ) {
+        guard BridgeMessageOriginPolicy().allows(
+            isMainFrame: message.frameInfo.isMainFrame,
+            sourceURL: message.frameInfo.request.url
+        ) else {
+            replyHandler(nil, "Native bridge messages are accepted only from the Idea Tiles main frame.")
+            return
+        }
         let data: Data
         if JSONSerialization.isValidJSONObject(message.body),
            let encoded = try? JSONSerialization.data(withJSONObject: message.body) {
@@ -82,7 +118,7 @@ final class MacRuntime {
                 title: "Imported Idea Tiles Board",
                 payload: package.boardPayload
             )
-            _ = try await repository.saveArtifact(package.manifest)
+            _ = try await repository.saveArtifact(package.manifest, payloads: package.payloads)
         } catch {
             let alert = NSAlert(error: error)
             alert.messageText = "The Idea Tiles package could not be imported."
@@ -112,6 +148,13 @@ struct AppWebView: NSViewRepresentable {
             name: "ideaTilesBridge"
         )
         configuration.userContentController = contentController
+
+        WKContentRuleListStore.default().compileContentRuleList(
+            forIdentifier: "app.ideatiles.main.network-allowlist-v1",
+            encodedContentRuleList: AppContentSecurityPolicy.contentBlockerRules
+        ) { ruleList, _ in
+            if let ruleList { contentController.add(ruleList) }
+        }
 
         let webView = WKWebView(frame: .zero, configuration: configuration)
         webView.navigationDelegate = runtime.navigationDelegate

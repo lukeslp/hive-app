@@ -1,5 +1,5 @@
-import Foundation
 import CryptoKit
+import Foundation
 
 enum IdeaTilesPackageError: Error, Equatable {
     case invalidExtension
@@ -7,6 +7,7 @@ enum IdeaTilesPackageError: Error, Equatable {
     case unsafePath
     case symbolicLink
     case sizeLimitExceeded
+    case entryLimitExceeded
     case checksumMismatch
 }
 
@@ -23,34 +24,40 @@ struct ImportedIdeaTilesPackage: Sendable, Equatable {
     let boardID: String
     let boardPayload: Data
     let manifest: ArtifactManifest
+    let payloads: [String: Data]
 }
 
 struct IdeaTilesPackageCodec: Sendable {
     let maximumTotalBytes: Int
     let maximumEntryBytes: Int
+    let maximumEntries: Int
+    private let directoryCommitter: @Sendable (URL, URL) throws -> Void
 
-    init(maximumTotalBytes: Int = 100 * 1_024 * 1_024, maximumEntryBytes: Int = 25 * 1_024 * 1_024) {
+    init(
+        maximumTotalBytes: Int = 100 * 1_024 * 1_024,
+        maximumEntryBytes: Int = 25 * 1_024 * 1_024,
+        maximumEntries: Int = 2_048,
+        directoryCommitter: @escaping @Sendable (URL, URL) throws -> Void = Self.atomicReplace
+    ) {
         self.maximumTotalBytes = maximumTotalBytes
         self.maximumEntryBytes = maximumEntryBytes
+        self.maximumEntries = maximumEntries
+        self.directoryCommitter = directoryCommitter
     }
 
-    func export(manifest: ArtifactManifest, boardPayload: Data? = nil, to destination: URL) throws {
+    func export(
+        manifest: ArtifactManifest,
+        boardPayload: Data? = nil,
+        payloads suppliedPayloads: [String: Data] = [:],
+        to destination: URL
+    ) throws {
         guard destination.pathExtension.lowercased() == "ideatiles" else { throw IdeaTilesPackageError.invalidExtension }
-        for file in manifest.files {
-            let data = try file.payloadData()
-            try ArtifactIntegrity.validate(file, data: data)
-            guard data.count <= maximumEntryBytes else { throw IdeaTilesPackageError.sizeLimitExceeded }
-        }
-        let parent = destination.deletingLastPathComponent()
-        let staging = parent.appending(path: ".\(destination.lastPathComponent).\(UUID().uuidString).partial", directoryHint: .isDirectory)
-        try FileManager.default.createDirectory(at: staging, withIntermediateDirectories: true)
-        var completed = false
-        defer { if !completed { try? FileManager.default.removeItem(at: staging) } }
 
         let artifactBase = "artifacts/\(manifest.id)"
         let manifestPath = "\(artifactBase)/manifest.json"
         let boardPath = "boards/\(manifest.provenance.sourceBoardId)/board.json"
         let resolvedBoardPayload = boardPayload ?? Data(#"{"schemaVersion":1,"id":"\#(manifest.provenance.sourceBoardId)"}"#.utf8)
+        let persistedManifest = manifest.withoutInlineContent()
         let index = PackageIndex(
             schemaVersion: 1,
             boardId: manifest.provenance.sourceBoardId,
@@ -59,18 +66,23 @@ struct IdeaTilesPackageCodec: Sendable {
             artifactId: manifest.id,
             artifactManifestPath: manifestPath
         )
-        try write(try JSONEncoder().encode(index), relativePath: "package.json", root: staging)
-        try write(resolvedBoardPayload, relativePath: boardPath, root: staging)
-        try write(try manifest.encoded(), relativePath: manifestPath, root: staging)
-        for file in manifest.files {
-            try write(try file.payloadData(), relativePath: "\(artifactBase)/files/\(file.path)", root: staging)
-        }
-        try write(Data(Self.readme(title: manifest.title).utf8), relativePath: "README.html", root: staging)
+        let entries = try packageEntries(
+            manifest: manifest,
+            persistedManifest: persistedManifest,
+            index: index,
+            boardPayload: resolvedBoardPayload,
+            suppliedPayloads: suppliedPayloads
+        )
+        try validateEntryBudget(entries)
 
-        if FileManager.default.fileExists(atPath: destination.path) {
-            try FileManager.default.removeItem(at: destination)
-        }
-        try FileManager.default.moveItem(at: staging, to: destination)
+        let parent = destination.deletingLastPathComponent()
+        let staging = parent.appending(path: ".\(destination.lastPathComponent).\(UUID().uuidString).partial", directoryHint: .isDirectory)
+        try FileManager.default.createDirectory(at: staging, withIntermediateDirectories: true)
+        var completed = false
+        defer { if !completed { try? FileManager.default.removeItem(at: staging) } }
+        for (path, data) in entries { try write(data, relativePath: path, root: staging) }
+
+        try directoryCommitter(staging, destination)
         completed = true
     }
 
@@ -81,10 +93,12 @@ struct IdeaTilesPackageCodec: Sendable {
     func importContents(at packageURL: URL) throws -> ImportedIdeaTilesPackage {
         guard packageURL.pathExtension.lowercased() == "ideatiles" else { throw IdeaTilesPackageError.invalidExtension }
         try validateTree(at: packageURL)
-        let indexData = try safeData(relativePath: "package.json", root: packageURL)
+        var totalRead = 0
+        let indexData = try safeData(relativePath: "package.json", root: packageURL, totalRead: &totalRead)
         guard let rawIndex = try JSONSerialization.jsonObject(with: indexData) as? [String: Any],
               Set(rawIndex.keys) == ["schemaVersion", "boardId", "boardPath", "boardChecksum", "artifactId", "artifactManifestPath"],
-              (rawIndex["schemaVersion"] as? NSNumber)?.intValue == 1
+              let version = rawIndex["schemaVersion"] as? NSNumber,
+              CFGetTypeID(version) != CFBooleanGetTypeID(), version.doubleValue == 1
         else { throw IdeaTilesPackageError.invalidPackage }
         let index = try JSONDecoder().decode(PackageIndex.self, from: indexData)
         guard RPCRequestValidator.isStableID(index.boardId), RPCRequestValidator.isStableID(index.artifactId) else {
@@ -92,56 +106,122 @@ struct IdeaTilesPackageCodec: Sendable {
         }
         try validatePackagePath(index.boardPath)
         try validatePackagePath(index.artifactManifestPath)
-        let expectedBoardPath = "boards/\(index.boardId)/board.json"
-        guard index.boardPath == expectedBoardPath,
+        guard index.boardPath == "boards/\(index.boardId)/board.json",
+              index.artifactManifestPath == "artifacts/\(index.artifactId)/manifest.json",
               index.boardChecksum.range(of: "^[a-f0-9]{64}$", options: .regularExpression) != nil
         else { throw IdeaTilesPackageError.invalidPackage }
-        let boardPayload = try safeData(relativePath: index.boardPath, root: packageURL)
+
+        let boardPayload = try safeData(relativePath: index.boardPath, root: packageURL, totalRead: &totalRead)
         guard sha256(boardPayload) == index.boardChecksum else { throw IdeaTilesPackageError.checksumMismatch }
-        let manifest = try ArtifactManifest.decode(data: safeData(relativePath: index.artifactManifestPath, root: packageURL))
-        guard manifest.id == index.artifactId, manifest.provenance.sourceBoardId == index.boardId else {
-            throw IdeaTilesPackageError.invalidPackage
-        }
+        let manifest = try ArtifactManifest.decode(
+            data: safeData(relativePath: index.artifactManifestPath, root: packageURL, totalRead: &totalRead)
+        )
+        guard manifest == manifest.withoutInlineContent(),
+              manifest.id == index.artifactId,
+              manifest.provenance.sourceBoardId == index.boardId
+        else { throw IdeaTilesPackageError.invalidPackage }
+        var payloads: [String: Data] = [:]
         for file in manifest.files {
-            let data = try safeData(relativePath: "artifacts/\(manifest.id)/files/\(file.path)", root: packageURL)
+            let data = try safeData(
+                relativePath: "artifacts/\(manifest.id)/files/\(file.path)",
+                root: packageURL,
+                totalRead: &totalRead
+            )
             do { try ArtifactIntegrity.validate(file, data: data) }
             catch { throw IdeaTilesPackageError.checksumMismatch }
+            payloads[file.path] = data
         }
-        return ImportedIdeaTilesPackage(boardID: index.boardId, boardPayload: boardPayload, manifest: manifest)
+        return ImportedIdeaTilesPackage(boardID: index.boardId, boardPayload: boardPayload, manifest: manifest, payloads: payloads)
+    }
+
+    private func packageEntries(
+        manifest: ArtifactManifest,
+        persistedManifest: ArtifactManifest,
+        index: PackageIndex,
+        boardPayload: Data,
+        suppliedPayloads: [String: Data]
+    ) throws -> [String: Data] {
+        var entries: [String: Data] = [
+            "package.json": try JSONEncoder().encode(index),
+            index.boardPath: boardPayload,
+            index.artifactManifestPath: try persistedManifest.encoded(),
+            "README.html": Data(Self.readme(title: manifest.title).utf8),
+        ]
+        for file in manifest.files {
+            let data: Data
+            if let supplied = suppliedPayloads[file.path] { data = supplied }
+            else { data = try file.payloadData() }
+            try ArtifactIntegrity.validate(file, data: data)
+            entries["artifacts/\(manifest.id)/files/\(file.path)"] = data
+        }
+        return entries
     }
 
     private func validateTree(at root: URL) throws {
-        let keys: [URLResourceKey] = [.isSymbolicLinkKey, .isRegularFileKey, .fileSizeKey]
-        guard let enumerator = FileManager.default.enumerator(at: root, includingPropertiesForKeys: keys) else {
+        let rootValues = try root.resourceValues(forKeys: [.isSymbolicLinkKey, .isDirectoryKey])
+        guard rootValues.isSymbolicLink != true, rootValues.isDirectory == true else {
+            throw rootValues.isSymbolicLink == true ? IdeaTilesPackageError.symbolicLink : .invalidPackage
+        }
+        let keys: Set<URLResourceKey> = [.isSymbolicLinkKey, .isRegularFileKey]
+        guard let enumerator = FileManager.default.enumerator(at: root, includingPropertiesForKeys: Array(keys)) else {
             throw IdeaTilesPackageError.invalidPackage
         }
+        var entryCount = 0
         var total = 0
         for case let url as URL in enumerator {
-            let values = try url.resourceValues(forKeys: Set(keys))
+            entryCount += 1
+            guard entryCount <= maximumEntries else { throw IdeaTilesPackageError.entryLimitExceeded }
+            let values = try url.resourceValues(forKeys: keys)
             if values.isSymbolicLink == true { throw IdeaTilesPackageError.symbolicLink }
             if values.isRegularFile == true {
-                let size = values.fileSize ?? 0
-                guard size <= maximumEntryBytes else { throw IdeaTilesPackageError.sizeLimitExceeded }
-                total += size
-                guard total <= maximumTotalBytes else { throw IdeaTilesPackageError.sizeLimitExceeded }
+                let data = try Data(contentsOf: url, options: .mappedIfSafe)
+                guard data.count <= maximumEntryBytes else { throw IdeaTilesPackageError.sizeLimitExceeded }
+                total = try checkedTotal(total, adding: data.count)
             }
         }
     }
 
-    private func safeData(relativePath: String, root: URL) throws -> Data {
+    private func safeData(relativePath: String, root: URL, totalRead: inout Int) throws -> Data {
         try validatePackagePath(relativePath)
         let resolvedRoot = root.standardizedFileURL.resolvingSymlinksInPath()
-        let url = root.appending(path: relativePath).standardizedFileURL.resolvingSymlinksInPath()
+        let url = root.appending(path: relativePath).standardizedFileURL
+        let values = try url.resourceValues(forKeys: [.isSymbolicLinkKey, .isRegularFileKey])
+        guard values.isSymbolicLink != true else { throw IdeaTilesPackageError.symbolicLink }
+        let resolvedURL = url.resolvingSymlinksInPath()
         let prefix = resolvedRoot.path.hasSuffix("/") ? resolvedRoot.path : resolvedRoot.path + "/"
-        guard url.path.hasPrefix(prefix) else { throw IdeaTilesPackageError.unsafePath }
-        let values = try url.resourceValues(forKeys: [.isSymbolicLinkKey, .isRegularFileKey, .fileSizeKey])
-        guard values.isSymbolicLink != true, values.isRegularFile == true else { throw IdeaTilesPackageError.symbolicLink }
-        guard (values.fileSize ?? 0) <= maximumEntryBytes else { throw IdeaTilesPackageError.sizeLimitExceeded }
-        return try Data(contentsOf: url, options: .mappedIfSafe)
+        guard resolvedURL.path.hasPrefix(prefix) else { throw IdeaTilesPackageError.unsafePath }
+        guard values.isRegularFile == true else { throw IdeaTilesPackageError.invalidPackage }
+        let data = try Data(contentsOf: resolvedURL, options: .mappedIfSafe)
+        guard data.count <= maximumEntryBytes else { throw IdeaTilesPackageError.sizeLimitExceeded }
+        totalRead = try checkedTotal(totalRead, adding: data.count)
+        return data
+    }
+
+    private func validateEntryBudget(_ entries: [String: Data]) throws {
+        var directories: Set<String> = []
+        for path in entries.keys {
+            var parent = (path as NSString).deletingLastPathComponent
+            while !parent.isEmpty {
+                directories.insert(parent)
+                parent = (parent as NSString).deletingLastPathComponent
+            }
+        }
+        guard entries.count + directories.count <= maximumEntries else { throw IdeaTilesPackageError.entryLimitExceeded }
+        var total = 0
+        for data in entries.values {
+            guard data.count <= maximumEntryBytes else { throw IdeaTilesPackageError.sizeLimitExceeded }
+            total = try checkedTotal(total, adding: data.count)
+        }
+    }
+
+    private func checkedTotal(_ current: Int, adding count: Int) throws -> Int {
+        let (total, overflow) = current.addingReportingOverflow(count)
+        guard !overflow, total <= maximumTotalBytes else { throw IdeaTilesPackageError.sizeLimitExceeded }
+        return total
     }
 
     private func write(_ data: Data, relativePath: String, root: URL) throws {
-        try RelativeArtifactPath.validate(relativePath)
+        try validatePackagePath(relativePath)
         let destination = root.appending(path: relativePath)
         try FileManager.default.createDirectory(at: destination.deletingLastPathComponent(), withIntermediateDirectories: true)
         try data.write(to: destination, options: [.atomic, .completeFileProtection])
@@ -154,6 +234,22 @@ struct IdeaTilesPackageCodec: Sendable {
     private func validatePackagePath(_ path: String) throws {
         do { try RelativeArtifactPath.validate(path) }
         catch { throw IdeaTilesPackageError.unsafePath }
+    }
+
+    private static func atomicReplace(_ staging: URL, _ destination: URL) throws {
+        let fileManager = FileManager.default
+        guard fileManager.fileExists(atPath: destination.path) else {
+            try fileManager.moveItem(at: staging, to: destination)
+            return
+        }
+        let backupName = ".\(destination.lastPathComponent).\(UUID().uuidString).backup"
+        _ = try fileManager.replaceItemAt(
+            destination,
+            withItemAt: staging,
+            backupItemName: backupName,
+            options: .withoutDeletingBackupItem
+        )
+        try? fileManager.removeItem(at: destination.deletingLastPathComponent().appending(path: backupName))
     }
 
     private static func readme(title: String) -> String {

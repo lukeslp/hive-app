@@ -129,6 +129,43 @@ struct BridgeDispatcherTests {
         #expect(try responseErrorCode(response) == "timeout")
         #expect(await cancellation.wasCancelled)
     }
+
+    @Test("returns a timeout without awaiting noncooperative work")
+    func noncooperativeTimeoutReturnsPromptly() async throws {
+        let gate = AsyncGate()
+        let dispatcher = BridgeDispatcher(timeout: .milliseconds(20)) { _ in
+            await gate.wait()
+            return .object([:])
+        }
+        let data = Data(#"{"id":"rpc:stuck","method":"platform.getCapabilities","params":{}}"#.utf8)
+        let clock = ContinuousClock()
+        let started = clock.now
+
+        let response = await dispatcher.dispatch(data)
+        let elapsed = started.duration(to: clock.now)
+        await gate.open()
+
+        #expect(try responseErrorCode(response) == "timeout")
+        #expect(elapsed < .milliseconds(200))
+    }
+
+    @Test("does not apply a computation timeout while an export panel is open")
+    func exportIsNotComputationTimed() async throws {
+        let dispatcher = BridgeDispatcher(timeout: .milliseconds(10)) { _ in
+            try await Task.sleep(for: .milliseconds(30))
+            return .object(["exported": .bool(false)])
+        }
+        let manifest = try ArtifactFixture.manifest(content: "panel")
+        let manifestValue = try JSONDecoder().decode(JSONValue.self, from: manifest.encoded())
+        let request = JSONValue.object([
+            "id": .string("rpc:panel"), "method": .string("artifact.export"),
+            "params": .object(["manifest": manifestValue]),
+        ])
+
+        let response = await dispatcher.dispatch(try JSONEncoder().encode(request))
+        let object = try #require(try JSONSerialization.jsonObject(with: response) as? [String: Any])
+        #expect(object["ok"] as? Bool == true)
+    }
 }
 
 private func responseErrorCode(_ data: Data) throws -> String? {

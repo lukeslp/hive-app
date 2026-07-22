@@ -8,7 +8,6 @@
 
 /* Begin PBXBuildFile section */
 		00215BDE74ABAAA16E7BBD94 /* IdeaTilesPackageCodec.swift in Sources */ = {isa = PBXBuildFile; fileRef = B93022FE0561C8E1FDBD54F4 /* IdeaTilesPackageCodec.swift */; };
-		1F8E974E04246A372FBFDC25 /* WebApp in Resources */ = {isa = PBXBuildFile; fileRef = 9CA5E8B63FDCE3E0915B1151 /* WebApp */; };
 		270BD15EE913BE7EB77425A0 /* ArtifactPersistenceTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 34F611097139AA29E136FB4A /* ArtifactPersistenceTests.swift */; };
 		2B1A28759511FEC5BE91ED2F /* BundleResourceResolver.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7C0FED78AA66D75D984C901C /* BundleResourceResolver.swift */; };
 		3B5E3AD6E4F085C8E01F0326 /* BundleResourceResolverTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 57B54CF304C22CFE9CCD4883 /* BundleResourceResolverTests.swift */; };
@@ -25,6 +24,7 @@
 		B6E16A4D1BDB583617B145FE /* JSONValue.swift in Sources */ = {isa = PBXBuildFile; fileRef = 30504990C6314B2372FA94E6 /* JSONValue.swift */; };
 		BC8AC055FB36A62F5C2D797C /* BridgeDispatcher.swift in Sources */ = {isa = PBXBuildFile; fileRef = A7A218BBCBB4D4E7882BA100 /* BridgeDispatcher.swift */; };
 		C1BDAFB1E54B9CE16E31A6A8 /* BridgeValidationTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 673EC3CCD0FC6C6F491D17AF /* BridgeValidationTests.swift */; };
+		D4D1A76992B12345E6BE8DB3 /* ArtifactContractParityTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = F0DCFB2EFE9879EA2A4E4251 /* ArtifactContractParityTests.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -52,7 +52,6 @@
 		8F02A24F2ECB327A938620E6 /* ArtifactRepository.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ArtifactRepository.swift; sourceTree = "<group>"; };
 		997316C75DD94DCFA4B81DBE /* IdeaTilesApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = IdeaTilesApp.swift; sourceTree = "<group>"; };
 		997448083B0C2287930EFADD /* AppWebView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppWebView.swift; sourceTree = "<group>"; };
-		9CA5E8B63FDCE3E0915B1151 /* WebApp */ = {isa = PBXFileReference; lastKnownFileType = folder; name = WebApp; path = Resources/WebApp; sourceTree = SOURCE_ROOT; };
 		A7A218BBCBB4D4E7882BA100 /* BridgeDispatcher.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BridgeDispatcher.swift; sourceTree = "<group>"; };
 		A9961A4E9ED71DFDDDB34631 /* StaticPreviewHost.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StaticPreviewHost.swift; sourceTree = "<group>"; };
 		AD284C727A48E38482D97D3A /* PreviewSecurityTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PreviewSecurityTests.swift; sourceTree = "<group>"; };
@@ -60,6 +59,7 @@
 		B6C2A60650A679A11CAC4F53 /* IdeaTilesTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = IdeaTilesTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		B93022FE0561C8E1FDBD54F4 /* IdeaTilesPackageCodec.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = IdeaTilesPackageCodec.swift; sourceTree = "<group>"; };
 		E26CF3EA9317C621C889C110 /* IdeaTiles.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = IdeaTiles.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		F0DCFB2EFE9879EA2A4E4251 /* ArtifactContractParityTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ArtifactContractParityTests.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXGroup section */
@@ -118,7 +118,6 @@
 		86893824EAAE8563E18CD288 = {
 			isa = PBXGroup;
 			children = (
-				9CA5E8B63FDCE3E0915B1151 /* WebApp */,
 				0EFC9C21153487BEEA31532D /* IdeaTiles */,
 				88228434D22648084E74CB09 /* IdeaTilesTests */,
 				42D6668E4C0AC7DAE2B1D9E4 /* Products */,
@@ -128,6 +127,7 @@
 		88228434D22648084E74CB09 /* IdeaTilesTests */ = {
 			isa = PBXGroup;
 			children = (
+				F0DCFB2EFE9879EA2A4E4251 /* ArtifactContractParityTests.swift */,
 				34F611097139AA29E136FB4A /* ArtifactPersistenceTests.swift */,
 				673EC3CCD0FC6C6F491D17AF /* BridgeValidationTests.swift */,
 				57B54CF304C22CFE9CCD4883 /* BundleResourceResolverTests.swift */,
@@ -155,7 +155,7 @@
 			buildConfigurationList = 7983378DB3903D8FD64B97B0 /* Build configuration list for PBXNativeTarget "IdeaTiles" */;
 			buildPhases = (
 				79F76F40DD7A401CCB6B0378 /* Sources */,
-				C7607D2F852A5E93F643DC2D /* Resources */,
+				45A4F729CB97AB494A2BC779 /* Build Mac WebApp */,
 			);
 			buildRules = (
 			);
@@ -221,16 +221,38 @@
 		};
 /* End PBXProject section */
 
-/* Begin PBXResourcesBuildPhase section */
-		C7607D2F852A5E93F643DC2D /* Resources */ = {
-			isa = PBXResourcesBuildPhase;
+/* Begin PBXShellScriptBuildPhase section */
+		45A4F729CB97AB494A2BC779 /* Build Mac WebApp */ = {
+			isa = PBXShellScriptBuildPhase;
+			alwaysOutOfDate = 1;
 			buildActionMask = 2147483647;
 			files = (
-				1F8E974E04246A372FBFDC25 /* WebApp in Resources */,
+			);
+			inputFileListPaths = (
+			);
+			inputPaths = (
+				"$(SRCROOT)/../client",
+				"$(SRCROOT)/../shared",
+				"$(SRCROOT)/../package.json",
+				"$(SRCROOT)/../pnpm-lock.yaml",
+				"$(SRCROOT)/../vite.mac.config.ts",
+				"$(SRCROOT)/../vite.config.ts",
+				"$(SRCROOT)/../tsconfig.json",
+			);
+			name = "Build Mac WebApp";
+			outputFileListPaths = (
+			);
+			outputPaths = (
+				"$(DERIVED_FILE_DIR)/IdeaTilesWebApp",
+				"$(DERIVED_FILE_DIR)/IdeaTilesWebApp/index.html",
+				"$(TARGET_BUILD_DIR)/$(UNLOCALIZED_RESOURCES_FOLDER_PATH)/WebApp",
+				"$(TARGET_BUILD_DIR)/$(UNLOCALIZED_RESOURCES_FOLDER_PATH)/WebApp/index.html",
 			);
 			runOnlyForDeploymentPostprocessing = 0;
+			shellPath = /bin/sh;
+			shellScript = "set -euo pipefail\ncd \"$SRCROOT/..\"\nweb_output=\"$DERIVED_FILE_DIR/IdeaTilesWebApp\"\nresource_destination=\"$TARGET_BUILD_DIR/$UNLOCALIZED_RESOURCES_FOLDER_PATH/WebApp\"\npnpm exec vite build --config vite.mac.config.ts --outDir \"$web_output\"\nmkdir -p \"$resource_destination\"\n/usr/bin/rsync -a --delete \"$web_output/\" \"$resource_destination/\"\n";
 		};
-/* End PBXResourcesBuildPhase section */
+/* End PBXShellScriptBuildPhase section */
 
 /* Begin PBXSourcesBuildPhase section */
 		79F76F40DD7A401CCB6B0378 /* Sources */ = {
@@ -256,6 +278,7 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				D4D1A76992B12345E6BE8DB3 /* ArtifactContractParityTests.swift in Sources */,
 				270BD15EE913BE7EB77425A0 /* ArtifactPersistenceTests.swift in Sources */,
 				C1BDAFB1E54B9CE16E31A6A8 /* BridgeValidationTests.swift in Sources */,
 				3B5E3AD6E4F085C8E01F0326 /* BundleResourceResolverTests.swift in Sources */,
@@ -284,6 +307,7 @@
 				COMBINE_HIDPI_IMAGES = YES;
 				DEVELOPMENT_TEAM = 596T7J7FB6;
 				ENABLE_APP_SANDBOX = YES;
+				ENABLE_USER_SCRIPT_SANDBOXING = NO;
 				GENERATE_INFOPLIST_FILE = NO;
 				INFOPLIST_FILE = IdeaTiles/Info.plist;
 				LD_RUNPATH_SEARCH_PATHS = (
@@ -307,6 +331,7 @@
 				COMBINE_HIDPI_IMAGES = YES;
 				DEVELOPMENT_TEAM = 596T7J7FB6;
 				ENABLE_APP_SANDBOX = YES;
+				ENABLE_USER_SCRIPT_SANDBOXING = NO;
 				GENERATE_INFOPLIST_FILE = NO;
 				INFOPLIST_FILE = IdeaTiles/Info.plist;
 				LD_RUNPATH_SEARCH_PATHS = (
@@ -358,6 +383,7 @@
 				COPY_PHASE_STRIP = NO;
 				CURRENT_PROJECT_VERSION = 1;
 				DEBUG_INFORMATION_FORMAT = dwarf;
+				ENABLE_HARDENED_RUNTIME = YES;
 				ENABLE_STRICT_OBJC_MSGSEND = YES;
 				ENABLE_TESTABILITY = YES;
 				ENABLE_USER_SCRIPT_SANDBOXING = YES;
@@ -464,6 +490,7 @@
 				COPY_PHASE_STRIP = NO;
 				CURRENT_PROJECT_VERSION = 1;
 				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
+				ENABLE_HARDENED_RUNTIME = YES;
 				ENABLE_NS_ASSERTIONS = NO;
 				ENABLE_STRICT_OBJC_MSGSEND = YES;
 				ENABLE_USER_SCRIPT_SANDBOXING = YES;

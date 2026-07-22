@@ -19,6 +19,57 @@ private actor InFlightRequestRegistry {
     func end(_ id: String) { identifiers.remove(id) }
 }
 
+private enum DispatchOutcome: Sendable {
+    case success(JSONValue)
+    case nativeError(NativeRPCError)
+    case cancelled
+    case failure
+    case timeout
+}
+
+private final class OneShotDispatchReply: @unchecked Sendable {
+    private let lock = NSLock()
+    private var continuation: CheckedContinuation<DispatchOutcome, Never>?
+    private var operationTask: Task<Void, Never>?
+    private var timeoutTask: Task<Void, Never>?
+    private var outcome: DispatchOutcome?
+
+    func wait() async -> DispatchOutcome {
+        await withCheckedContinuation { continuation in
+            lock.withLock {
+                if let outcome { continuation.resume(returning: outcome) }
+                else { self.continuation = continuation }
+            }
+        }
+    }
+
+    func install(operationTask: Task<Void, Never>, timeoutTask: Task<Void, Never>) {
+        lock.withLock {
+            if outcome == nil {
+                self.operationTask = operationTask
+                self.timeoutTask = timeoutTask
+            } else {
+                operationTask.cancel()
+                timeoutTask.cancel()
+            }
+        }
+    }
+
+    func resolve(_ outcome: DispatchOutcome, fromTimeout: Bool = false) {
+        let continuation: CheckedContinuation<DispatchOutcome, Never>? = lock.withLock {
+            guard self.outcome == nil else { return nil }
+            self.outcome = outcome
+            let continuation = self.continuation
+            self.continuation = nil
+            if fromTimeout { operationTask?.cancel() } else { timeoutTask?.cancel() }
+            operationTask = nil
+            timeoutTask = nil
+            return continuation
+        }
+        continuation?.resume(returning: outcome)
+    }
+}
+
 final class BridgeDispatcher: Sendable {
     typealias Operation = @Sendable (ValidatedRPCRequest) async throws -> JSONValue
 
@@ -55,32 +106,53 @@ final class BridgeDispatcher: Sendable {
             ))
         }
 
-        do {
-            let result = try await withThrowingTaskGroup(of: JSONValue.self) { group in
-                group.addTask { try await self.operation(request) }
-                group.addTask {
-                    try await Task.sleep(for: self.timeout)
-                    throw NativeRPCError(code: "timeout", message: "The native request timed out.", retryable: true)
-                }
-                defer { group.cancelAll() }
-                return try await group.next() ?? .null
-            }
-            await registry.end(request.id)
+        let outcome = request.method == .exportArtifact
+            ? await runWithoutComputationTimeout(request)
+            : await runWithComputationTimeout(request)
+        await registry.end(request.id)
+        switch outcome {
+        case .success(let result):
             return responseData(id: request.id, method: request.method, result: result)
-        } catch let error as NativeRPCError {
-            await registry.end(request.id)
+        case .nativeError(let error):
             return responseData(id: request.id, error: error)
-        } catch is CancellationError {
-            await registry.end(request.id)
+        case .cancelled:
             return responseData(id: request.id, error: NativeRPCError(
                 code: "cancelled", message: "The native request was cancelled.", retryable: true
             ))
-        } catch {
-            await registry.end(request.id)
+        case .timeout:
+            return responseData(id: request.id, error: NativeRPCError(
+                code: "timeout", message: "The native request timed out.", retryable: true
+            ))
+        case .failure:
             return responseData(id: request.id, error: NativeRPCError(
                 code: "nativeError", message: "The native request failed.", retryable: false
             ))
         }
+    }
+
+    private func runWithoutComputationTimeout(_ request: ValidatedRPCRequest) async -> DispatchOutcome {
+        do { return .success(try await operation(request)) }
+        catch let error as NativeRPCError { return .nativeError(error) }
+        catch is CancellationError { return .cancelled }
+        catch { return .failure }
+    }
+
+    private func runWithComputationTimeout(_ request: ValidatedRPCRequest) async -> DispatchOutcome {
+        let reply = OneShotDispatchReply()
+        let operationTask = Task {
+            do { reply.resolve(.success(try await self.operation(request))) }
+            catch let error as NativeRPCError { reply.resolve(.nativeError(error)) }
+            catch is CancellationError { reply.resolve(.cancelled) }
+            catch { reply.resolve(.failure) }
+        }
+        let timeoutTask = Task {
+            do {
+                try await Task.sleep(for: self.timeout)
+                reply.resolve(.timeout, fromTimeout: true)
+            } catch {}
+        }
+        reply.install(operationTask: operationTask, timeoutTask: timeoutTask)
+        return await reply.wait()
     }
 
     private func validationError(_ error: RPCValidationError) -> NativeRPCError {

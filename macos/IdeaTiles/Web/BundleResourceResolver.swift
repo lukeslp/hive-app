@@ -104,16 +104,19 @@ final class BundleSchemeHandler: NSObject, WKURLSchemeHandler {
             guard let url = urlSchemeTask.request.url else {
                 throw ResourceServingError.invalidOrigin
             }
+            let data = resource.mimeType == "text/html"
+                ? try Self.injectAppContentSecurityPolicy(into: resource.data)
+                : resource.data
             let response = URLResponse(
                 url: url,
                 mimeType: resource.mimeType,
-                expectedContentLength: resource.data.count,
+                expectedContentLength: data.count,
                 textEncodingName: resource.mimeType.hasPrefix("text/") || resource.mimeType.contains("json")
                     ? "utf-8"
                     : nil
             )
             urlSchemeTask.didReceive(response)
-            urlSchemeTask.didReceive(resource.data)
+            urlSchemeTask.didReceive(data)
             urlSchemeTask.didFinish()
         } catch {
             urlSchemeTask.didFailWithError(error)
@@ -121,4 +124,19 @@ final class BundleSchemeHandler: NSObject, WKURLSchemeHandler {
     }
 
     func webView(_ webView: WKWebView, stop urlSchemeTask: any WKURLSchemeTask) {}
+
+    private static func injectAppContentSecurityPolicy(into data: Data) throws -> Data {
+        guard var html = String(data: data, encoding: .utf8) else { throw ResourceServingError.missingResource }
+        let policy = AppContentSecurityPolicy.contentSecurityPolicy
+            .replacingOccurrences(of: "&", with: "&amp;")
+            .replacingOccurrences(of: "\"", with: "&quot;")
+        let meta = "<meta http-equiv=\"Content-Security-Policy\" content=\"\(policy)\">"
+        if let head = html.range(of: "<head", options: .caseInsensitive),
+           let close = html[head.lowerBound...].firstIndex(of: ">") {
+            html.insert(contentsOf: meta, at: html.index(after: close))
+        } else {
+            html = meta + html
+        }
+        return Data(html.utf8)
+    }
 }

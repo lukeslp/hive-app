@@ -18,17 +18,23 @@ enum MacBridgeBootstrap {
           staticPreview: true
         })
       });
-      const rpc = async (method, params) => {
+      const rpc = async (method, params, timeoutMs = 35000) => {
         if (!handler) throw Object.assign(new Error('Native bridge unavailable.'), { code: 'bridgeUnavailable', retryable: true });
         const id = `rpc:${Date.now()}:${++sequence}`;
-        const reply = await Promise.race([
-          handler.postMessage({ id, method, params }),
-          new Promise((_, reject) => setTimeout(() => reject(Object.assign(new Error('Native request timed out.'), { code: 'timeout', retryable: true })), 35000))
-        ]);
-        if (!reply || reply.id !== id) throw Object.assign(new Error('Native response ID mismatch.'), { code: 'responseMismatch', retryable: false });
-        if (!reply.ok) throw Object.assign(new Error(reply.error?.message || 'Native request failed.'), reply.error || {});
-        if (reply.method !== method) throw Object.assign(new Error('Native response method mismatch.'), { code: 'responseMismatch', retryable: false });
-        return reply.result;
+        let timer = null;
+        try {
+          const nativeReply = handler.postMessage({ id, method, params });
+          const reply = timeoutMs == null ? await nativeReply : await Promise.race([
+            nativeReply,
+            new Promise((_, reject) => { timer = setTimeout(() => reject(Object.assign(new Error('Native request timed out.'), { code: 'timeout', retryable: true })), timeoutMs); })
+          ]);
+          if (!reply || reply.id !== id) throw Object.assign(new Error('Native response ID mismatch.'), { code: 'responseMismatch', retryable: false });
+          if (!reply.ok) throw Object.assign(new Error(reply.error?.message || 'Native request failed.'), reply.error || {});
+          if (reply.method !== method) throw Object.assign(new Error('Native response method mismatch.'), { code: 'responseMismatch', retryable: false });
+          return reply.result;
+        } finally {
+          if (timer !== null) clearTimeout(timer);
+        }
       };
       const services = Object.freeze({
         generator: Object.freeze({
@@ -42,7 +48,7 @@ enum MacBridgeBootstrap {
         }),
         persistence: Object.freeze({
           save: manifest => rpc('artifact.save', { manifest }),
-          export: async manifest => { await rpc('artifact.export', { manifest }); }
+          export: async manifest => { await rpc('artifact.export', { manifest }, null); }
         }),
         attachImageToBoard: async manifest => {
           const saved = await rpc('artifact.save', { manifest });

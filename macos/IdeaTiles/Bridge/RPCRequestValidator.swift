@@ -157,8 +157,9 @@ struct RPCRequestValidator: Sendable {
         guard let number = value as? NSNumber,
               CFGetTypeID(number) != CFBooleanGetTypeID(),
               number.doubleValue.rounded() == number.doubleValue,
-              number.intValue > 0
+              number.doubleValue > 0,
+              number.doubleValue <= 9_007_199_254_740_991
         else { return nil }
-        return number.intValue
+        return Int(number.doubleValue)
     }
 }
