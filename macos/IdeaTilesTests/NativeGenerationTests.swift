@@ -377,6 +377,20 @@ struct ArtifactGenerationTests {
         #expect(await generator.lastPrompt?.utf8.count ?? .max <= NativeContextReducer.maximumUTF8Bytes)
     }
 
+    @Test("Dreamer artifacts retain managed-service provenance")
+    func dreamerManifestProvenance() async throws {
+        let generator = FakeTextGenerator(result: .success("# Managed\n"))
+        let coordinator = ArtifactGenerationCoordinator(
+            engine: FixedGenerationEngine(provider: .dreamer, model: "openai:gpt-5.6-luna", generator: generator)
+        )
+
+        let manifest = try await coordinator.generate(GenerationRequestFixture.request())
+
+        #expect(manifest.provenance.generator.kind == "dreamer")
+        #expect(manifest.provenance.generator.name == "Dreamer")
+        #expect(manifest.provenance.generator.model == "openai:gpt-5.6-luna")
+    }
+
     @Test("context reduction is deterministic and preserves UTF-8 boundaries")
     func utf8ContextReduction() {
         let context = String(repeating: "🧩é", count: 10_000)

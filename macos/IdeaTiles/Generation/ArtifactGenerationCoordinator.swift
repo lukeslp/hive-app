@@ -34,13 +34,18 @@ struct ArtifactManifestFactory: Sendable {
         }
         let data = Data(stripOuterFence(text.content).utf8)
         guard !data.isEmpty else { throw GenerationServiceError.invalidResponse }
+        let generatorKind = switch text.provider {
+        case .apple: "onDevice"
+        case .dreamer: "dreamer"
+        default: "directProvider"
+        }
         return try manifest(
             request: request,
             recipe: recipe,
             data: data,
             encoding: "utf8",
             generator: ArtifactGeneratorDescriptor(
-                kind: text.provider == .apple ? "onDevice" : "directProvider",
+                kind: generatorKind,
                 name: text.provider.displayName,
                 model: text.model
             )

@@ -4,7 +4,7 @@ enum DreamerEndpoints {
     static let redeem = URL(string: "https://api.dr.eamer.dev/v2/access/redeem")!
     static let profile = URL(string: "https://api.dr.eamer.dev/v2/profile")!
     static let responses = URL(string: "https://api.dr.eamer.dev/v2/responses")!
-    static let requestAccess = URL(string: "https://dr.eamer.dev/code/api-access/")!
+    static let requestAccess = URL(string: "https://dr.eamer.dev/api/docs/access.html")!
 }
 
 struct DreamerTarget: Codable, Equatable, Sendable {
@@ -128,6 +128,8 @@ enum DreamerAccessFailure: String, Codable, Error, Sendable {
     case invalidAccess
     case quotaExceeded
     case throttled
+    case redemptionInProgress
+    case credentialStorageFailed
     case offline
     case timeout
     case responseTooLarge
@@ -148,6 +150,8 @@ enum DreamerAccessError: Error, Equatable, LocalizedError, Sendable {
         case .failure(.invalidAccess): "Dreamer access is no longer valid."
         case .failure(.quotaExceeded): "The Dreamer daily quota has been reached."
         case .failure(.throttled): "Too many Dreamer invite attempts. Try again later."
+        case .failure(.redemptionInProgress): "A Dreamer invite is already being redeemed."
+        case .failure(.credentialStorageFailed): "Dreamer access was redeemed, but its credential could not be saved in Keychain. Request a replacement invite."
         case .failure(.offline): "Dreamer is unavailable while this Mac is offline."
         case .failure(.timeout): "Dreamer timed out."
         case .failure(.responseTooLarge): "Dreamer returned too much data."
@@ -171,6 +175,59 @@ protocol DreamerAccessProviding: Sendable {
     func remove() async throws
 }
 
+private enum DreamerDeadlineOutcome<Value: Sendable>: Sendable {
+    case value(Value)
+    case timedOut
+}
+
+struct DreamerDeadline: Sendable {
+    let timeout: Duration
+    private let sleep: @Sendable (Duration) async throws -> Void
+
+    init(
+        timeout: Duration = .seconds(20),
+        sleep: @escaping @Sendable (Duration) async throws -> Void = { duration in
+            try await Task.sleep(for: duration)
+        }
+    ) {
+        self.timeout = timeout
+        self.sleep = sleep
+    }
+
+    func run<Value: Sendable>(
+        _ operation: @escaping @Sendable () async throws -> Value
+    ) async throws -> Value {
+        // The structured race owns both children and never abandons work. Its
+        // wall-clock bound relies on the operation honoring cancellation;
+        // URLSessionHTTPTransport does so by cancelling and resolving its load.
+        try await withThrowingTaskGroup(of: DreamerDeadlineOutcome<Value>.self) { group in
+            group.addTask { .value(try await operation()) }
+            group.addTask {
+                try await sleep(timeout)
+                return .timedOut
+            }
+            defer { group.cancelAll() }
+            guard let first = try await group.next() else { throw CancellationError() }
+            switch first {
+            case .value(let value): return value
+            case .timedOut: throw DreamerAccessError.failure(.timeout)
+            }
+        }
+    }
+}
+
+private actor DreamerRedeemGate {
+    private var active = false
+
+    func begin() -> Bool {
+        guard !active else { return false }
+        active = true
+        return true
+    }
+
+    func finish() { active = false }
+}
+
 struct DreamerAccessService: DreamerAccessProviding, Sendable {
     private struct RedeemResponse: Decodable {
         let accessToken: String
@@ -181,8 +238,43 @@ struct DreamerAccessService: DreamerAccessProviding, Sendable {
         }
     }
 
+    private struct GenerateResponse: Decodable {
+        struct OutputItem: Decodable {
+            struct ContentPart: Decodable {
+                let type: String
+                let text: String?
+            }
+            let type: String
+            let content: [ContentPart]?
+        }
+
+        let status: String
+        let provider: String
+        let model: String
+        let fallbackUsed: Bool
+        let output: [OutputItem]
+
+        enum CodingKeys: String, CodingKey {
+            case status, provider, model, output
+            case fallbackUsed = "fallback_used"
+        }
+    }
+
     let transport: any HTTPTransporting
     let credentials: any CredentialStoring
+    let deadline: DreamerDeadline
+    private let redeemGate: DreamerRedeemGate
+
+    init(
+        transport: any HTTPTransporting,
+        credentials: any CredentialStoring,
+        deadline: DreamerDeadline = DreamerDeadline()
+    ) {
+        self.transport = transport
+        self.credentials = credentials
+        self.deadline = deadline
+        redeemGate = DreamerRedeemGate()
+    }
 
     func redeem(inviteCode: String) async throws -> DreamerProfile {
         let invite = inviteCode.trimmingCharacters(in: .whitespacesAndNewlines)
@@ -191,6 +283,20 @@ struct DreamerAccessService: DreamerAccessProviding, Sendable {
         else {
             throw DreamerAccessError.failure(.invalidInvite)
         }
+        guard await redeemGate.begin() else {
+            throw DreamerAccessError.failure(.redemptionInProgress)
+        }
+        do {
+            let profile = try await deadline.run { try await performRedeem(invite: invite) }
+            await redeemGate.finish()
+            return profile
+        } catch {
+            await redeemGate.finish()
+            throw error
+        }
+    }
+
+    private func performRedeem(invite: String) async throws -> DreamerProfile {
         var request = fixedRequest(url: DreamerEndpoints.redeem)
         request.httpMethod = "POST"
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
@@ -200,9 +306,10 @@ struct DreamerAccessService: DreamerAccessProviding, Sendable {
               response.accessToken.utf8.count <= 256,
               response.accessToken.range(of: #"^dm_[A-Za-z0-9_-]{7,253}$"#, options: .regularExpression) != nil
         else { throw DreamerAccessError.failure(.invalidResponse) }
+        let profile = try response.profile.validated()
         do { try await credentials.set(response.accessToken, for: .dreamer) }
-        catch { throw DreamerAccessError.failure(.invalidAccess) }
-        return try response.profile.validated()
+        catch { throw DreamerAccessError.failure(.credentialStorageFailed) }
+        return profile
     }
 
     func status(refreshProfile: Bool) async throws -> DreamerAccessStatus {
@@ -213,6 +320,10 @@ struct DreamerAccessService: DreamerAccessProviding, Sendable {
     }
 
     func profile() async throws -> DreamerProfile {
+        try await deadline.run { try await performProfile() }
+    }
+
+    private func performProfile() async throws -> DreamerProfile {
         let token = try await managedToken()
         return try await profile(token: token)
     }
@@ -226,6 +337,10 @@ struct DreamerAccessService: DreamerAccessProviding, Sendable {
     }
 
     func generate(prompt: String) async throws -> DreamerGeneratedText {
+        try await deadline.run { try await performGenerate(prompt: prompt) }
+    }
+
+    private func performGenerate(prompt: String) async throws -> DreamerGeneratedText {
         let token = try await managedToken()
         let profile = try await profile(token: token)
         var request = authenticatedRequest(url: DreamerEndpoints.responses, token: token)
@@ -243,13 +358,12 @@ struct DreamerAccessService: DreamerAccessProviding, Sendable {
             "max_output_tokens": 4_096,
         ])
         let data = try await send(request, purpose: .authenticated)
-        guard let object = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
-              object["fallback_used"] as? Bool == false,
-              object["provider"] as? String == profile.defaultTarget.provider,
-              object["model"] as? String == profile.defaultTarget.model,
-              let output = object["output"] as? [[String: Any]],
-              let text = Self.outputText(output),
-              !text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+        guard let response = try? JSONDecoder().decode(GenerateResponse.self, from: data),
+              response.status == "completed",
+              response.fallbackUsed == false,
+              response.provider == profile.defaultTarget.provider,
+              response.model == profile.defaultTarget.model,
+              let text = Self.outputText(response.output)
         else { throw DreamerAccessError.failure(.invalidResponse) }
         return DreamerGeneratedText(content: text, provider: profile.defaultTarget.provider, model: profile.defaultTarget.model)
     }
@@ -322,15 +436,18 @@ struct DreamerAccessService: DreamerAccessProviding, Sendable {
         }
     }
 
-    private static func outputText(_ output: [[String: Any]]) -> String? {
-        for item in output where item["type"] as? String == "message" {
-            guard let parts = item["content"] as? [[String: Any]] else { continue }
-            let text = parts.compactMap { part -> String? in
-                guard part["type"] as? String == "output_text" else { return nil }
-                return part["text"] as? String
-            }.joined()
-            if !text.isEmpty { return text }
+    private static func outputText(_ output: [GenerateResponse.OutputItem]) -> String? {
+        guard output.count <= 64 else { return nil }
+        var result = ""
+        for item in output where item.type == "message" {
+            guard let parts = item.content, parts.count <= 64 else { return nil }
+            for part in parts where part.type == "output_text" {
+                guard let text = part.text,
+                      text.utf8.count <= 262_144 - result.utf8.count
+                else { return nil }
+                result += text
+            }
         }
-        return nil
+        return result.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ? nil : result
     }
 }

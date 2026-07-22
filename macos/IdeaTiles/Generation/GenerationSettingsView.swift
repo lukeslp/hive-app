@@ -11,6 +11,7 @@ final class GenerationSettingsViewModel: ObservableObject {
     @Published private(set) var statusMessage: String?
     @Published var dreamerInvite = ""
     @Published private(set) var dreamerProfile: DreamerProfile?
+    @Published private(set) var isRedeemingDreamer = false
 
     private let preferences: any GenerationPreferencesStoring
     private let credentials: any CredentialStoring
@@ -75,7 +76,13 @@ final class GenerationSettingsViewModel: ObservableObject {
 
     func redeemDreamerInvite() async throws {
         guard let dreamer else { throw DreamerAccessError.failure(.notConfigured) }
-        let profile = try await dreamer.redeem(inviteCode: dreamerInvite)
+        guard !isRedeemingDreamer else {
+            throw DreamerAccessError.failure(.redemptionInProgress)
+        }
+        isRedeemingDreamer = true
+        defer { isRedeemingDreamer = false }
+        let invite = dreamerInvite
+        let profile = try await dreamer.redeem(inviteCode: invite)
         dreamerInvite = ""
         dreamerProfile = profile
         credentialConfigured = true
@@ -167,11 +174,15 @@ struct GenerationSettingsView: View {
                             .foregroundStyle(.secondary)
                     } else {
                         SecureField("Invite code", text: $model.dreamerInvite)
+                            .disabled(model.isRedeemingDreamer)
                         HStack {
-                            Button("Enter Invite Code") {
+                            Button(model.isRedeemingDreamer ? "Redeeming…" : "Enter Invite Code") {
                                 Task { await perform { try await model.redeemDreamerInvite() } }
                             }
-                            .disabled(model.dreamerInvite.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+                            .disabled(
+                                model.isRedeemingDreamer
+                                    || model.dreamerInvite.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+                            )
                             Button("Request Dreamer Access") {
                                 NSWorkspace.shared.open(DreamerEndpoints.requestAccess)
                             }
