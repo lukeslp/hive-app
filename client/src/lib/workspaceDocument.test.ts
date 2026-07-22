@@ -173,6 +173,43 @@ describe("canonical workspace document", () => {
     expect(withTheme.id).not.toBe(withoutTheme.id);
   });
 
+  it("derives missing tile IDs from normalized canonical semantics", () => {
+    const root = {
+      q: 0,
+      r: 0,
+      text: "Equivalent root",
+      type: "root" as const,
+      depth: 0,
+      pinned: false,
+    };
+    const common = {
+      viewState: { x: 0, y: 0, zoom: 0.8 },
+      creativity: 0.5,
+    };
+    const nodeTheme = migrateTilesSession({
+      ...common,
+      nodes: { "0,0": { ...root, isKeyTheme: true } },
+    });
+    const topLevelTheme = migrateTilesSession({
+      ...common,
+      nodes: { "0,0": root },
+      keyThemes: ["0,0"],
+    });
+    const omittedOptionals = migrateTilesSession({
+      ...common,
+      nodes: { "0,0": root },
+    });
+    const explicitFalseAndNull = migrateTilesSession({
+      ...common,
+      nodes: {
+        "0,0": { ...root, isKeyTheme: false, parentId: null },
+      },
+    });
+
+    expect(nodeTheme).toEqual(topLevelTheme);
+    expect(omittedOptionals).toEqual(explicitFalseAndNull);
+  });
+
   it("uses locale-independent key ordering for content-derived IDs", () => {
     const { boardId: _boardId, ...withoutId } = tilesSession;
     const reversedNodes = Object.fromEntries(
@@ -268,9 +305,11 @@ describe("canonical workspace document", () => {
     const workspace = migrateTilesSession(tilesSession);
     for (const createdAt of [
       "0000-01-01T00:00Z",
+      "0000-02-29T00:00Z",
       "2026-01-01T00:00Z",
       "2026-01-01T00:00:00Z",
       "2026-01-01T00:00:00.123+05:30",
+      "0400-02-29T00:00Z",
     ]) {
       expect(
         workspaceDocumentSchema.safeParse({
@@ -280,6 +319,7 @@ describe("canonical workspace document", () => {
       ).toBe(true);
     }
     for (const createdAt of [
+      "0100-02-29T00:00Z",
       "2026-02-30T00:00:00Z",
       "2026-01-01T00:00+0100",
       "2026-01-01T00:00:00+99:99",

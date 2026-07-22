@@ -745,14 +745,10 @@ function stableBrainSphereBoardId(sourceId: string): string {
   return `board:brainsphere:${(hash >>> 0).toString(16).padStart(8, "0")}`;
 }
 
-function stableTilesBoardId(session: {
-  nodes: Record<string, unknown>;
-  viewState: unknown;
-  creativity: unknown;
-  keyThemes?: string[];
-}): string {
-  const compareCodeUnits = (left: string, right: string) =>
-    left < right ? -1 : left > right ? 1 : 0;
+const compareCodeUnits = (left: string, right: string) =>
+  left < right ? -1 : left > right ? 1 : 0;
+
+function stableTilesBoardId(workspaceWithoutId: unknown): string {
   const canonicalize = (value: unknown): unknown => {
     if (Array.isArray(value)) return value.map(canonicalize);
     if (value && typeof value === "object") {
@@ -764,16 +760,7 @@ function stableTilesBoardId(session: {
     }
     return value;
   };
-  const canonical = JSON.stringify(
-    canonicalize({
-      nodes: session.nodes,
-      viewState: session.viewState,
-      creativity: session.creativity,
-      keyThemes: Array.from(new Set(session.keyThemes ?? [])).sort(
-        compareCodeUnits
-      ),
-    })
-  );
+  const canonical = JSON.stringify(canonicalize(workspaceWithoutId));
   let first = 2_166_136_261;
   let second = 2_166_136_261 ^ 0x9e3779b9;
   for (let index = 0; index < canonical.length; index += 1) {
@@ -904,11 +891,10 @@ export function migrateTilesSession(input: unknown): WorkspaceDocument {
     ])
   );
 
-  return workspaceDocumentSchema.parse({
+  const workspaceWithoutId = {
     format: WORKSPACE_FORMAT,
     schemaVersion: WORKSPACE_SCHEMA_VERSION,
-    id: session.boardId ?? stableTilesBoardId(session),
-    activeMode: "tiles",
+    activeMode: "tiles" as const,
     graph: { nodes, edges: dedupeEdges(edges) },
     projections: {
       tiles: { nodes: tilePositions, viewport: session.viewState },
@@ -920,6 +906,24 @@ export function migrateTilesSession(input: unknown): WorkspaceDocument {
       createdAt: session.exportDate,
       source: "ideaTiles",
     },
+  };
+  const identityWorkspace = {
+    ...workspaceWithoutId,
+    graph: {
+      nodes: [...workspaceWithoutId.graph.nodes].sort((left, right) =>
+        compareCodeUnits(left.id, right.id)
+      ),
+      edges: [...workspaceWithoutId.graph.edges].sort((left, right) =>
+        compareCodeUnits(
+          `${left.kind}\0${left.sourceId}\0${left.targetId}`,
+          `${right.kind}\0${right.sourceId}\0${right.targetId}`
+        )
+      ),
+    },
+  };
+  return workspaceDocumentSchema.parse({
+    ...workspaceWithoutId,
+    id: session.boardId ?? stableTilesBoardId(identityWorkspace),
   });
 }
 
