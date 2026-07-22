@@ -1,8 +1,8 @@
 import fs from "node:fs";
 import path from "node:path";
 
-const EXPECTED_SEMANTIC_VERSION = "1.1.0";
-const EXPECTED_APPLE_VERSION = "1.1";
+const EXPECTED_SEMANTIC_VERSION = "1.3.0";
+const EXPECTED_APPLE_VERSION = "1.3";
 const EXPECTED_APPLE_BUILD = "2";
 const EXPECTED_ANDROID_CODE = "11000";
 const APP_BUNDLE_ID = "app.hexmind.ios";

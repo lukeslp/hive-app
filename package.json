@@ -1,6 +1,6 @@
 {
   "name": "hexmind-app",
-  "version": "1.1.0",
+  "version": "1.3.0",
   "type": "module",
   "license": "MIT",
   "scripts": {
@@ -30,6 +30,8 @@
     "mac:release:direct": "bash scripts/release-mac-direct.sh",
     "mac:release:direct:archive-only": "bash scripts/release-mac-direct.sh --archive-only",
     "mac:release:direct:preflight": "bash scripts/release-mac-direct.sh --preflight",
+    "store:screenshots": "node scripts/capture-app-store-screenshots.mjs",
+    "store:validate": "node scripts/validate-app-store-assets.mjs",
     "release:tools:test": "node --test scripts/release-tools.test.mjs",
     "workspace:list": "xcodebuild -list -workspace IdeaTiles.xcworkspace",
     "workspace:open": "pnpm mac:generate && open IdeaTiles.xcworkspace",

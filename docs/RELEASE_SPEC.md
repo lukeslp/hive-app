@@ -1,6 +1,6 @@
 # Release Specification: Idea Tiles
 
-**Version**: 1.0.x (match Xcode `MARKETING_VERSION`)  
+**Version**: 1.3.x (match Xcode `MARKETING_VERSION`)
 **Last updated**: 2026-05-12  
 **Platform**: iOS 26+ (Capacitor), web companion  
 **Related docs**: [`RELEASE_REVIEW.md`](./RELEASE_REVIEW.md), [`APP_STORE_PACK.md`](./APP_STORE_PACK.md)

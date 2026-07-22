@@ -1,0 +1,35 @@
+Move from scattered ideas to something you can use.
+
+Idea Tiles for Mac combines a spatial hex canvas with Artifact Studio: a focused workflow that turns a whole board, one branch, or a hand-picked selection into a reviewable document or file.
+
+MAP IDEAS VISUALLY
+
+• Place thoughts on a flexible hex canvas.
+• Expand branches, merge related tiles, and mark key themes.
+• Pan, zoom, filter, undo, and return to locally saved boards.
+
+TURN THE BOARD INTO AN OUTCOME
+
+Artifact Studio can create:
+
+• Briefs, structured reports, action plans, narratives, and deep dives
+• Implementation plans and code scaffolds
+• Mermaid diagrams and standalone SVG assets
+• Static web prototypes with an isolated preview
+• Artwork through Apple Image Playground
+
+Review every result before you save or export it. Generated files keep provenance back to the source board and tiles, so the outcome stays connected to the thinking behind it.
+
+CHOOSE HOW GENERATION WORKS
+
+Use Apple Foundation Models entirely on your Mac, connect a loopback Ollama server, enter your own provider credential, or use an authorized Dreamer profile. Idea Tiles tells you where prompts and board context go before generation begins. Provider credentials are stored in Keychain.
+
+LOCAL FIRST, CLOUD ONLY WHEN CHOSEN
+
+Boards and artifacts are stored on your Mac. Account sign-in is optional. Text artifacts can sync after sign-in; image files remain local unless you select them individually for upload.
+
+BUILT FOR MAC
+
+Idea Tiles is a native SwiftUI app with a sandboxed workspace, keyboard-friendly controls, secure credential storage, hardened runtime, and support for both Apple Silicon and Intel Macs running macOS 26 or later.
+
+Start with the board. Finish with a report, plan, diagram, prototype, or file you can share.

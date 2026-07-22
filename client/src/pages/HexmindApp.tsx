@@ -95,6 +95,10 @@ import {
 } from "@/lib/hexConstants";
 import { hexToPixel, pixelToHex, hexDistance } from "@/lib/hexGrid";
 import { NODE_TYPES } from "@/lib/nodeTypes";
+import {
+  APP_STORE_SHOWCASE_NODES,
+  getAppStoreShowcase,
+} from "@/lib/appStoreShowcase";
 
 // --- Pure helpers (no React state) ---
 
@@ -140,11 +144,12 @@ const getNearestNodes = (
 // ─────────────────────────────────────────────────────────────────────────────
 
 export default function HexmindApp() {
+  const appStoreShowcase = getAppStoreShowcase();
   const macArtifactHost =
     typeof window !== "undefined" ? window.ideaTilesMac : undefined;
-  const macArtifactStudioAvailable = hasMacArtifactStudioCapability(
-    macArtifactHost?.capabilities
-  );
+  const macArtifactStudioAvailable =
+    appStoreShowcase === "artifact" ||
+    hasMacArtifactStudioCapability(macArtifactHost?.capabilities);
   const spherePreviewEnabled =
     import.meta.env.VITE_ENABLE_SPHERE_MODE_PREVIEW === "true";
   const requestSpherePreview = () => {
@@ -192,7 +197,9 @@ export default function HexmindApp() {
     if (saved) return saved === "true";
     return !window.matchMedia("(prefers-reduced-motion: reduce)").matches;
   });
-  const [showSettingsModal, setShowSettingsModal] = useState(false);
+  const [showSettingsModal, setShowSettingsModal] = useState(
+    appStoreShowcase === "settings"
+  );
   const [lastAutoExpandTime, setLastAutoExpandTime] = useState(0);
 
   // Undo/Redo
@@ -205,7 +212,10 @@ export default function HexmindApp() {
     undo: performUndo,
     redo: performRedo,
     resetHistory,
-  } = useHistory<Record<string, HexNode>>({}, 50);
+  } = useHistory<Record<string, HexNode>>(
+    appStoreShowcase ? APP_STORE_SHOWCASE_NODES : {},
+    50
+  );
 
   /** Alias for `pushHistory` — accepts snapshot or `(prev) => next` (race-safe). */
   const commitNodes: UseHistoryReturn<Record<string, HexNode>>["push"] =
@@ -225,7 +235,9 @@ export default function HexmindApp() {
   // Collaboration
   const collab = useCollaboration(nodes, commitNodes);
   const [showCollabModal, setShowCollabModal] = useState(false);
-  const [showArtifactStudio, setShowArtifactStudio] = useState(false);
+  const [showArtifactStudio, setShowArtifactStudio] = useState(
+    appStoreShowcase === "artifact"
+  );
   const attachArtifactImage = useCallback(
     async (attachment: ArtifactImageAttachment) => {
       let attached = false;
@@ -318,11 +330,17 @@ export default function HexmindApp() {
   );
 
   // ── Interaction state ───────────────────────────────────────────────────
-  const [inspectedNodeId, setInspectedNodeId] = useState<string | null>(null);
+  const [inspectedNodeId, setInspectedNodeId] = useState<string | null>(
+    appStoreShowcase === "detail" ? "0,0" : null
+  );
   const [hoveredNodeId, setHoveredNodeId] = useState<string | null>(null);
   const isTouchDevice =
     typeof window !== "undefined" && "ontouchstart" in window;
-  const [selectedNodeId, setSelectedNodeId] = useState<string | null>(null);
+  const [selectedNodeId, setSelectedNodeId] = useState<string | null>(
+    appStoreShowcase === "detail" || appStoreShowcase === "artifact"
+      ? "0,0"
+      : null
+  );
   const [editingNodeId, setEditingNodeId] = useState<string | null>(null);
   const [editTitle, setEditTitle] = useState("");
   const [editDesc, setEditDesc] = useState("");
@@ -384,7 +402,9 @@ export default function HexmindApp() {
   }, []);
   const [showKeyboardShortcuts, setShowKeyboardShortcuts] = useState(false);
   const [filterType, setFilterType] = useState<string | null>(null);
-  const [showOnlyKeyThemes, setShowOnlyKeyThemes] = useState(false);
+  const [showOnlyKeyThemes, setShowOnlyKeyThemes] = useState(
+    appStoreShowcase === "themes"
+  );
 
   // Context prompts
   const [showContextPrompt, setShowContextPrompt] = useState(false);
@@ -419,6 +439,7 @@ export default function HexmindApp() {
 
   // Auto-show the onboarding prompt when the board is empty
   useEffect(() => {
+    if (appStoreShowcase) return;
     if (dismissedOnboardingRef.current) return;
     if (Object.keys(nodes).length === 0 && !showOnboardingPrompt) {
       const reduced = window.matchMedia(
@@ -545,6 +566,18 @@ export default function HexmindApp() {
     announceTemplateLoaded: announcer.announceTemplateLoaded,
     getRequestHeaders: providerSettings.getRequestHeaders,
   });
+
+  useEffect(() => {
+    if (!appStoreShowcase) return;
+    setViewState({
+      x: 0,
+      y: appStoreShowcase === "detail" ? 40 : 0,
+      zoom: window.innerWidth < 700 ? 0.46 : 1,
+    });
+    if (appStoreShowcase === "templates") {
+      templates.setShowTemplates(true);
+    }
+  }, []);
 
   // ── Effects ─────────────────────────────────────────────────────────────
   useEffect(() => {
@@ -2220,7 +2253,7 @@ Generate 6 diverse related ideas. Connect to key themes when relevant.`;
       />
 
       <OnboardingTour
-        showTutorial={tourActive}
+        showTutorial={!appStoreShowcase && tourActive}
         onTutorialComplete={completeTour}
         onStartBrainstorm={startBrainstorm}
         nodeCount={Object.keys(nodes).length}

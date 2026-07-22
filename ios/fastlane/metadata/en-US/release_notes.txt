@@ -1,7 +1,12 @@
-Apple Intelligence detection is far more reliable: the app no longer reports it unavailable while the model is still warming up after a reboot or system update, and it re-checks automatically whenever you return to the app.
+Version 1.3 makes private brainstorming more reliable and more portable.
 
-Template customization now runs on-device, matching every other generation path on iPhone and iPad: your prompts never leave the device.
+NEW
+• Export boards as JPG alongside PNG, SVG, and JSON.
+• Customize templates with Apple's on-device Foundation Models.
 
-New: export boards as JPG, alongside PNG, SVG, and JSON.
+IMPROVED
+• Model readiness is checked more reliably after a restart, system update, or return to the app.
+• The availability message now distinguishes unsupported hardware from a model that is still preparing.
+• Refreshed app icon and launch artwork.
 
-Refreshed app icon and splash screen. Feedback welcome: luke@lukesteuber.com.
+Your prompts and board context stay on your device when using Apple Foundation Models. Feedback is welcome at luke@lukesteuber.com.

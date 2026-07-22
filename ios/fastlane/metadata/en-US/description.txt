@@ -1,30 +1,34 @@
-Turn one idea into a map of everything around it.
+Turn one thought into a visual map of everything around it.
 
-Idea Tiles is a hexagonal brainstorming canvas for anyone who thinks in fragments: writers chasing a stuck chapter, designers mapping a flow, indie product folks scoping the next feature, students breaking a topic into pieces. You start with a single tile holding a single thought. Every tap pushes outward from there, expanding the conceptual space around your idea until the canvas holds its whole neighborhood: the obvious next steps, the odd angles, the connections you wouldn't have found staring at a list.
+Idea Tiles is a hexagonal brainstorming canvas for writers, designers, product thinkers, researchers, and anyone who works better with connected fragments than a blank page. Start with one tile, explore the ideas around it, and keep following the branches that matter.
 
-Four verbs do the work:
+EXPLORE THE SPACE AROUND AN IDEA
 
-• Expand: tap any tile and the on-device model sketches six related directions around it. Branches keep their context, so the third ring still knows what the first tile was about.
-• Merge: drag two tiles together and the app synthesizes a new one that captures what the pair share.
-• Star: mark key themes and filter the canvas to just those threads when the board gets dense.
-• Export: save a board as PNG, JPG, SVG, or JSON, or pick up where you left off across sessions.
+• Expand a tile into six related directions with Apple Intelligence on supported devices.
+• Merge two tiles into one thought that captures what they share.
+• Star important themes and filter a busy board down to what matters.
+• Undo, redo, pan, and zoom without breaking your flow.
 
-Private by default on iPhone and iPad.
+PRIVATE BY DESIGN
 
-On supported devices (iPhone 15 Pro, iPhone 16 and later, or an M-series iPad with Apple Intelligence enabled), tile expansion runs on Apple's on-device Foundation Models. Your prompts and ideas never leave the device. There is no cloud fallback: if the model isn't available, the app says so instead of quietly sending data elsewhere. No accounts, no analytics SDK, no tracking IDs.
+On supported iPhone and iPad models, generation runs through Apple's on-device Foundation Models. Prompts, board context, and responses stay on your device. There is no silent cloud fallback, no account requirement, no advertising profile, and no analytics SDK in the native app.
 
-Share a board.
+MAKE THE BOARD PORTABLE
 
-Boards live on your device. When you want one out in the world, export it as a PNG, JPG, or SVG image, or as JSON, straight from the share sheet: AirDrop it, message it, save it to Files.
+Export your work as PNG, JPG, SVG, or JSON through the standard share sheet. Send it with AirDrop or Messages, save it to Files, or keep the structured JSON for later editing.
 
-Built to feel fast.
+RETURN TO YOUR WORK
 
-Smooth pan and pinch on the canvas, undo/redo for every move, keyboard shortcuts for the iPad-with-keyboard crowd, and proper accessibility labels for VoiceOver.
+Boards are saved locally across sessions. Template customization also uses the on-device model, and model readiness is checked again when the app returns to the foreground.
 
-Requirements:
+ACCESSIBLE AND RESPONSIVE
 
-• Tile expansion needs Apple Intelligence (iOS 26 or later) on eligible hardware.
-• Everything else (canvas, merge, star, filter, export) works on any supported iPhone or iPad.
-• If your device can't run Apple Intelligence, you'll see a clear message instead of a confusing failure.
+Idea Tiles includes VoiceOver labels, adjustable text, high-contrast options, reduced-motion support, keyboard shortcuts, and touch interactions designed for both iPhone and iPad.
 
-Free, no in-app purchase, no subscription. Open-source under the MIT license. I'd love your feedback at luke@lukesteuber.com.
+REQUIREMENTS
+
+• Generation requires iOS 26 or later, Apple Intelligence enabled, and eligible hardware.
+• Canvas editing, merge, star, filter, local sessions, and export remain available without generation.
+• When the system model is unavailable or still preparing, Idea Tiles explains why and checks again automatically.
+
+Idea Tiles is free, has no subscription or in-app purchase, and is open source under the MIT license.
