@@ -35,6 +35,11 @@ export interface ArtifactStudioProps {
   branchRootNodeId?: string | null;
   services?: ArtifactStudioServices;
   onAttachImage?: (attachment: ArtifactImageAttachment) => Promise<void> | void;
+  cloudSync?: (
+    artifact: ArtifactManifest,
+    imageFileIds: string[]
+  ) => Promise<void>;
+  onCloudSignIn?: () => Promise<void>;
 }
 
 function createRequestId(): string {
@@ -107,6 +112,8 @@ export function ArtifactStudio({
   branchRootNodeId,
   services,
   onAttachImage,
+  cloudSync,
+  onCloudSignIn,
 }: ArtifactStudioProps) {
   const [scopeKind, setScopeKind] = useState<ArtifactScope["kind"]>("board");
   const [recipeId, setRecipeId] = useState("brief");
@@ -117,6 +124,9 @@ export function ArtifactStudio({
   );
   const [artifact, setArtifact] = useState<ArtifactManifest | null>(null);
   const [message, setMessage] = useState<string | null>(null);
+  const [cloudImageFileIds, setCloudImageFileIds] = useState<Set<string>>(
+    () => new Set()
+  );
   const abortController = useRef<AbortController | null>(null);
 
   useEffect(() => {
@@ -125,6 +135,7 @@ export function ArtifactStudio({
     setProgress(null);
     setArtifact(null);
     setMessage(null);
+    setCloudImageFileIds(new Set());
   }, [isOpen]);
 
   const scope = useMemo<ArtifactScope>(() => {
@@ -200,6 +211,7 @@ export function ArtifactStudio({
         return;
       }
       setArtifact(result);
+      setCloudImageFileIds(new Set());
       setProgress(null);
       setStage("result");
     } catch (error) {
@@ -227,7 +239,45 @@ export function ArtifactStudio({
       if (action === "save") {
         const saved = await services.persistence.save(artifact);
         setArtifact(saved);
-        setMessage("Artifact saved.");
+        if (cloudSync) {
+          const imageFileIds = saved.files
+            .filter(
+              file =>
+                file.mimeType.startsWith("image/") &&
+                cloudImageFileIds.has(file.id)
+            )
+            .map(file => file.id);
+          const artifactForSync: ArtifactManifest = {
+            ...saved,
+            files: saved.files.map(file => {
+              if (
+                file.mimeType.startsWith("image/") &&
+                !cloudImageFileIds.has(file.id)
+              ) {
+                const { content: _content, ...metadata } = file;
+                return metadata;
+              }
+              return file;
+            }),
+            sync: {
+              status: "pending",
+              includeImages: imageFileIds.length > 0,
+              updatedAt: new Date().toISOString(),
+            },
+          };
+          try {
+            await cloudSync(artifactForSync, imageFileIds);
+            setMessage("Artifact saved locally and synced.");
+          } catch (error) {
+            setMessage(
+              `Artifact saved locally. Cloud sync failed: ${
+                error instanceof Error ? error.message : "unknown error"
+              }`
+            );
+          }
+        } else {
+          setMessage("Artifact saved.");
+        }
       } else if (action === "export") {
         await services.persistence.export(artifact);
         setMessage("Export started.");
@@ -451,6 +501,64 @@ export function ArtifactStudio({
               </p>
             </div>
             <ArtifactResultPreview artifact={artifact} />
+            {cloudSync &&
+              artifact.files.some(file =>
+                file.mimeType.startsWith("image/")
+              ) && (
+                <div className="space-y-2 rounded-lg border border-border p-3">
+                  {artifact.files
+                    .filter(file => file.mimeType.startsWith("image/"))
+                    .map(file => (
+                      <label
+                        key={file.id}
+                        className="flex items-start gap-2 text-sm"
+                      >
+                        <input
+                          type="checkbox"
+                          aria-label="Sync image to cloud"
+                          checked={cloudImageFileIds.has(file.id)}
+                          onChange={event => {
+                            setCloudImageFileIds(current => {
+                              const next = new Set(current);
+                              if (event.target.checked) next.add(file.id);
+                              else next.delete(file.id);
+                              return next;
+                            });
+                          }}
+                        />
+                        <span>
+                          Sync {file.path} to cloud
+                          <span className="block text-xs text-muted-foreground">
+                            Image files stay only on this Mac unless selected.
+                          </span>
+                        </span>
+                      </label>
+                    ))}
+                </div>
+              )}
+            {!cloudSync && onCloudSignIn && (
+              <div className="flex items-center justify-between gap-3 rounded-lg border border-border p-3">
+                <p className="text-sm text-muted-foreground">
+                  Sign in to sync text artifacts. Images remain local unless
+                  selected individually.
+                </p>
+                <Button
+                  variant="outline"
+                  onClick={() => {
+                    setMessage(null);
+                    void onCloudSignIn().catch(error =>
+                      setMessage(
+                        error instanceof Error
+                          ? error.message
+                          : "Sign-in failed."
+                      )
+                    );
+                  }}
+                >
+                  Sign in for cloud sync
+                </Button>
+              </div>
+            )}
             {message && (
               <p className="text-sm text-muted-foreground" role="status">
                 {message}

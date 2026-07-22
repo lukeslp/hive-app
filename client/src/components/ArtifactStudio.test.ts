@@ -77,6 +77,79 @@ const attachment = {
 afterEach(cleanup);
 
 describe("Artifact Studio", () => {
+  it("strips embedded image payloads until each image is selected", async () => {
+    const imageArtifact: ArtifactManifest = {
+      ...artifact,
+      kind: "staticWeb",
+      files: [
+        {
+          ...artifact.files[0],
+          id: "file:image:cloud",
+          path: "artwork.png",
+          mimeType: "image/png",
+          encoding: "base64",
+          content: "iVBORw0KGgo=",
+        },
+      ],
+    };
+    const cloudSync = vi.fn(async () => undefined);
+    const services: ArtifactStudioServices = {
+      generator: { generate: vi.fn(async () => imageArtifact) },
+      persistence: {
+        save: vi.fn(async value => value),
+        export: vi.fn(async () => undefined),
+      },
+      attachImageToBoard: vi.fn(async () => attachment),
+    };
+
+    const rendered = render(
+      React.createElement(ArtifactStudio, {
+        isOpen: true,
+        onClose: vi.fn(),
+        boardId: "board:cloud:41",
+        nodes,
+        services,
+        cloudSync,
+      })
+    );
+    fireEvent.click(screen.getByRole("button", { name: "Review generation" }));
+    fireEvent.click(screen.getByRole("button", { name: "Generate artifact" }));
+    fireEvent.click(await screen.findByRole("button", { name: "Save" }));
+    await waitFor(() => expect(cloudSync).toHaveBeenCalledTimes(1));
+    expect(cloudSync.mock.calls[0]?.[0].files[0]).not.toHaveProperty("content");
+    expect(cloudSync.mock.calls[0]?.[1]).toEqual([]);
+
+    rendered.unmount();
+    cloudSync.mockClear();
+    render(
+      React.createElement(ArtifactStudio, {
+        isOpen: true,
+        onClose: vi.fn(),
+        boardId: "board:cloud:41",
+        nodes,
+        services,
+        cloudSync,
+      })
+    );
+    fireEvent.click(screen.getByRole("button", { name: "Review generation" }));
+    fireEvent.click(screen.getByRole("button", { name: "Generate artifact" }));
+    fireEvent.click(
+      await screen.findByRole("checkbox", { name: "Sync image to cloud" })
+    );
+    fireEvent.click(screen.getByRole("button", { name: "Save" }));
+    await waitFor(() => expect(cloudSync).toHaveBeenCalledTimes(1));
+    expect(cloudSync).toHaveBeenLastCalledWith(
+      expect.objectContaining({
+        files: [expect.objectContaining({ content: "iVBORw0KGgo=" })],
+        sync: expect.objectContaining({
+          includeImages: true,
+          status: "pending",
+        }),
+      }),
+      ["file:image:cloud"]
+    );
+  });
+
   it("requires confirmation, reports progress, previews, and delegates actions", async () => {
     const save = vi.fn(async (value: ArtifactManifest) => value);
     const generate = vi.fn<ArtifactStudioServices["generator"]["generate"]>(

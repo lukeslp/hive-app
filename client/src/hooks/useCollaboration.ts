@@ -8,6 +8,7 @@
 
 import { useState, useEffect, useRef, useCallback } from "react";
 import { toast } from "sonner";
+import { getCollaborationWebSocketUrl } from "@/lib/platform";
 import type { HexNode } from "@/types/hivemind";
 import type { UseHistoryReturn } from "@/hooks/useHistory";
 
@@ -86,8 +87,7 @@ export function useCollaboration(
 
   // ── Build WebSocket URL ────────────────────────────────────────────────
   const getWsUrl = useCallback(() => {
-    const protocol = window.location.protocol === "https:" ? "wss:" : "ws:";
-    return `${protocol}//${window.location.host}/ws/collab`;
+    return getCollaborationWebSocketUrl();
   }, []);
 
   // ── Clear connection timeout ──────────────────────────────────────────

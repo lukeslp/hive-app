@@ -14,10 +14,11 @@ import { useState, useEffect, useCallback, useRef } from "react";
 import { toast } from "sonner";
 import { trpc } from "@/lib/trpc";
 import { buildApiUrl } from "@/lib/api";
-import { getPublicWebAppOrigin, isCapacitor } from "@/lib/platform";
+import { getPublicWebAppUrl, isCapacitor } from "@/lib/platform";
 import { STORAGE_KEY, AUTOSAVE_KEY } from "@/lib/hexConstants";
 import { generateThumbnail } from "@/lib/canvasSnapshot";
 import { saveBlob } from "@/lib/saveBlob";
+import { buildShareSnapshot } from "@/lib/shareSnapshot";
 import {
   boardIdForLocalSession,
   createLocalBoardId,
@@ -476,7 +477,7 @@ export function useSessionManagement({
 
   // ── Share ──────────────────────────────────────────────────────────────
   const generateShareUrl = useCallback(async () => {
-    const data = { nodes, viewState, creativity };
+    const data = buildShareSnapshot({ nodes, viewState, creativity }, []);
     try {
       const res = await fetch(buildApiUrl("share"), {
         method: "POST",
@@ -491,9 +492,8 @@ export function useSessionManagement({
         );
       }
       const { id } = await res.json();
-      const path = window.location.pathname || "/";
-      const url = `${getPublicWebAppOrigin()}${path}?s=${id}`;
-      const iosUrl = `${APP_PUBLIC_WEB_ORIGIN}${path}?s=${id}`;
+      const url = getPublicWebAppUrl({ s: id });
+      const iosUrl = `${APP_PUBLIC_WEB_ORIGIN}/?s=${encodeURIComponent(id)}`;
       setShareUrl(url);
       setIosShareUrl(iosUrl);
       setShowShareModal(true);

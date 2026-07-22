@@ -20,6 +20,7 @@ import { useAuth } from "@/_core/hooks/useAuth";
 import { useCollaboration } from "@/hooks/useCollaboration";
 import { useMergeSuggestions } from "@/hooks/useMergeSuggestions";
 import { useOGImage } from "@/hooks/useOGImage";
+import { trpc } from "@/lib/trpc";
 import type { MergeSuggestion } from "@/hooks/useMergeSuggestions";
 
 import { KeyboardShortcutsModal } from "@/components/KeyboardShortcutsModal";
@@ -69,8 +70,10 @@ import {
   hasMacArtifactStudioCapability,
   type ArtifactStudioServices,
   type ArtifactImageAttachment,
+  type ArtifactManifest,
   type NativeCredentialService,
   type NativeGenerationSettingsService,
+  type NativeAuthenticationService,
 } from "@shared/macArtifacts";
 import {
   HEX_SIZE,
@@ -97,6 +100,7 @@ declare global {
       artifactStudioServices?: ArtifactStudioServices;
       generationSettings?: NativeGenerationSettingsService;
       credentials?: NativeCredentialService;
+      auth?: NativeAuthenticationService;
     };
   }
 }
@@ -497,7 +501,7 @@ export default function HexmindApp() {
   const search = useSearch({ nodes });
 
   // ── Auth (for cloud session persistence) ────────────────────────────────
-  const { isAuthenticated } = useAuth();
+  const { isAuthenticated, login } = useAuth();
 
   // ── Session management ──────────────────────────────────────────────────
   const sessions = useSessionManagement({
@@ -511,6 +515,20 @@ export default function HexmindApp() {
     enableAutoSave,
     isAuthenticated,
   });
+  const cloudArtifactMutation = trpc.artifacts.upsert.useMutation();
+  const syncArtifactToCloud = useCallback(
+    async (artifact: ArtifactManifest, imageFileIds: string[]) => {
+      if (!sessions.activeCloudSessionId) {
+        throw new Error("Save this board as a cloud session before syncing.");
+      }
+      await cloudArtifactMutation.mutateAsync({
+        sessionId: sessions.activeCloudSessionId,
+        artifact,
+        imageFileIds,
+      });
+    },
+    [cloudArtifactMutation, sessions.activeCloudSessionId]
+  );
 
   // ── OG Image for social sharing ─────────────────────────────────────────
   useOGImage(null, sessions.activeCloudSessionName || undefined);
@@ -2277,6 +2295,12 @@ Generate 6 diverse related ideas. Connect to key themes when relevant.`;
           branchRootNodeId={selectedNodeId}
           services={macArtifactHost?.artifactStudioServices}
           onAttachImage={attachArtifactImage}
+          cloudSync={
+            isAuthenticated && sessions.activeCloudSessionId
+              ? syncArtifactToCloud
+              : undefined
+          }
+          onCloudSignIn={!isAuthenticated ? login : undefined}
         />
       )}
 

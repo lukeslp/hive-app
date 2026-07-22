@@ -4,6 +4,7 @@ import UniformTypeIdentifiers
 
 struct NativeBridgeRouter: Sendable {
     typealias Exporter = @Sendable (ArtifactManifest) async throws -> Bool
+    typealias Authenticator = @Sendable (URL) async throws -> Bool
 
     let repository: ArtifactRepository
     let generationCoordinator: ArtifactGenerationCoordinator?
@@ -11,6 +12,7 @@ struct NativeBridgeRouter: Sendable {
     let credentialStore: (any CredentialStoring)?
     let capabilities: MacRuntimeCapabilities
     let exporter: Exporter
+    let authenticator: Authenticator?
 
     init(
         repository: ArtifactRepository,
@@ -22,6 +24,7 @@ struct NativeBridgeRouter: Sendable {
             imagePlayground: false,
             keychain: false
         ),
+        authenticator: Authenticator? = nil,
         exporter: @escaping Exporter
     ) {
         self.repository = repository
@@ -29,6 +32,7 @@ struct NativeBridgeRouter: Sendable {
         self.generationPreferences = generationPreferences
         self.credentialStore = credentialStore
         self.capabilities = capabilities
+        self.authenticator = authenticator
         self.exporter = exporter
     }
 
@@ -130,6 +134,23 @@ struct NativeBridgeRouter: Sendable {
                 return .object(["provider": .string(provider.rawValue), "configured": .bool(false)])
             } catch {
                 throw credentialError()
+            }
+        case .beginAuthentication:
+            guard let authenticator,
+                  let rawURL = request.params["loginURL"]?.stringValue,
+                  let url = URL(string: rawURL)
+            else { throw NativeRPCError.notConfigured }
+            do {
+                return .object(["authenticated": .bool(try await authenticator(url))])
+            } catch let error as AuthenticationError {
+                switch error {
+                case .invalidLoginURL:
+                    throw invalidParameters()
+                case .alreadyPresenting:
+                    throw NativeRPCError(code: "authInProgress", message: "A sign-in window is already open.", retryable: true)
+                case .navigationFailed:
+                    throw NativeRPCError(code: "authFailed", message: "The sign-in page could not be loaded.", retryable: true)
+                }
             }
         }
     }

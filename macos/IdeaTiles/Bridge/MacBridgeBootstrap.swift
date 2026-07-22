@@ -112,8 +112,14 @@ enum MacBridgeBootstrap {
             set: (provider, credential) => rpc('credentials.set', { provider, credential }),
             remove: provider => rpc('credentials.remove', { provider })
           });
+          const auth = Object.freeze({
+            signIn: async loginURL => {
+              const result = await rpc('auth.signIn', { loginURL }, null);
+              return result?.authenticated === true;
+            }
+          });
           Object.defineProperty(window, 'ideaTilesMac', {
-            value: Object.freeze({ capabilities, artifactStudioServices: services, generationSettings, credentials }),
+            value: Object.freeze({ capabilities, artifactStudioServices: services, generationSettings, credentials, auth }),
             configurable: false,
             enumerable: true,
             writable: false

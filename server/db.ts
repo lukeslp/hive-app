@@ -1,9 +1,26 @@
-import { eq, and, desc } from "drizzle-orm";
+import { eq, and, desc, count, inArray } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/mysql2";
-import { InsertUser, users, sessions, InsertSession } from "../drizzle/schema";
+import {
+  InsertUser,
+  users,
+  sessions,
+  InsertSession,
+  artifacts,
+  artifactFiles,
+} from "../drizzle/schema";
+import type { ArtifactManifest } from "../shared/macArtifacts";
+import type { PreparedArtifactFile } from "./artifactPolicy";
+import { MAX_ARTIFACTS_PER_SESSION } from "./artifactPolicy";
 import { ENV } from "./_core/env";
 
 let _db: ReturnType<typeof drizzle> | null = null;
+
+export class ArtifactQuotaError extends Error {
+  constructor() {
+    super("Cloud session artifact quota reached");
+    this.name = "ArtifactQuotaError";
+  }
+}
 
 // Lazily create the drizzle instance so local tooling can run without a DB.
 export async function getDb() {
@@ -170,7 +187,223 @@ export async function updateSession(
 export async function deleteSessionById(sessionId: number, userId: number) {
   const db = await getDb();
   if (!db) throw new Error("Database not available");
-  await db
-    .delete(sessions)
-    .where(and(eq(sessions.id, sessionId), eq(sessions.userId, userId)));
+  await db.transaction(async tx => {
+    const owned = await tx
+      .select({ id: sessions.id })
+      .from(sessions)
+      .where(and(eq(sessions.id, sessionId), eq(sessions.userId, userId)))
+      .limit(1);
+    if (!owned[0]) return;
+    const childArtifacts = await tx
+      .select({ id: artifacts.id })
+      .from(artifacts)
+      .where(
+        and(eq(artifacts.sessionId, sessionId), eq(artifacts.userId, userId))
+      );
+    const artifactIds = childArtifacts.map(item => item.id);
+    if (artifactIds.length > 0) {
+      await tx
+        .delete(artifactFiles)
+        .where(inArray(artifactFiles.artifactId, artifactIds));
+      await tx.delete(artifacts).where(inArray(artifacts.id, artifactIds));
+    }
+    await tx.delete(sessions).where(eq(sessions.id, sessionId));
+  });
+}
+
+// ── Artifact sync ───────────────────────────────────────────────────────
+
+export async function getArtifactOwnership(id: string) {
+  const db = await getDb();
+  if (!db) return null;
+  const rows = await db
+    .select({ userId: artifacts.userId, sessionId: artifacts.sessionId })
+    .from(artifacts)
+    .where(eq(artifacts.id, id))
+    .limit(1);
+  return rows[0] ?? null;
+}
+
+export async function countArtifactsForSession(
+  sessionId: number,
+  userId: number
+) {
+  const db = await getDb();
+  if (!db) return 0;
+  const rows = await db
+    .select({ value: count() })
+    .from(artifacts)
+    .where(
+      and(eq(artifacts.sessionId, sessionId), eq(artifacts.userId, userId))
+    );
+  return rows[0]?.value ?? 0;
+}
+
+export async function listArtifacts(sessionId: number, userId: number) {
+  const db = await getDb();
+  if (!db) return [];
+  return db
+    .select({
+      id: artifacts.id,
+      title: artifacts.title,
+      kind: artifacts.kind,
+      recipeId: artifacts.recipeId,
+      createdAt: artifacts.createdAt,
+      updatedAt: artifacts.updatedAt,
+    })
+    .from(artifacts)
+    .where(
+      and(eq(artifacts.sessionId, sessionId), eq(artifacts.userId, userId))
+    )
+    .orderBy(desc(artifacts.updatedAt));
+}
+
+export async function getArtifact(id: string, userId: number) {
+  const db = await getDb();
+  if (!db) return null;
+  const rows = await db
+    .select()
+    .from(artifacts)
+    .where(and(eq(artifacts.id, id), eq(artifacts.userId, userId)))
+    .limit(1);
+  const artifact = rows[0];
+  if (!artifact) return null;
+  const files = await db
+    .select()
+    .from(artifactFiles)
+    .where(eq(artifactFiles.artifactId, artifact.id));
+  return {
+    id: artifact.id,
+    sessionId: artifact.sessionId,
+    schemaVersion: artifact.schemaVersion,
+    title: artifact.title,
+    kind: artifact.kind,
+    recipeId: artifact.recipeId,
+    scope: JSON.parse(artifact.scope),
+    provenance: JSON.parse(artifact.provenance),
+    createdAt: artifact.manifestCreatedAt,
+    updatedAt: artifact.manifestUpdatedAt,
+    files: files.map(file => ({
+      id: file.fileId,
+      path: file.path,
+      mimeType: file.mimeType,
+      sizeBytes: file.sizeBytes,
+      checksum: { algorithm: "sha256" as const, value: file.checksum },
+      encoding: file.encoding,
+      content: file.contentSynced ? file.content : null,
+      contentSynced: file.contentSynced,
+      createdAt: file.fileCreatedAt,
+      updatedAt: file.fileUpdatedAt,
+    })),
+  };
+}
+
+export async function upsertArtifact(input: {
+  userId: number;
+  sessionId: number;
+  artifact: ArtifactManifest;
+  files: PreparedArtifactFile[];
+}) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  await db.transaction(async tx => {
+    const session = await tx
+      .select({ id: sessions.id })
+      .from(sessions)
+      .where(
+        and(eq(sessions.id, input.sessionId), eq(sessions.userId, input.userId))
+      )
+      .limit(1)
+      .for("update");
+    if (!session[0]) throw new Error("Session ownership changed during sync");
+
+    const existing = await tx
+      .select({ userId: artifacts.userId, sessionId: artifacts.sessionId })
+      .from(artifacts)
+      .where(eq(artifacts.id, input.artifact.id))
+      .limit(1);
+    if (
+      existing[0] &&
+      (existing[0].userId !== input.userId ||
+        existing[0].sessionId !== input.sessionId)
+    ) {
+      throw new Error("Artifact ownership changed during sync");
+    }
+
+    if (!existing[0]) {
+      const totals = await tx
+        .select({ value: count() })
+        .from(artifacts)
+        .where(
+          and(
+            eq(artifacts.sessionId, input.sessionId),
+            eq(artifacts.userId, input.userId)
+          )
+        );
+      if ((totals[0]?.value ?? 0) >= MAX_ARTIFACTS_PER_SESSION) {
+        throw new ArtifactQuotaError();
+      }
+    }
+
+    const values = {
+      id: input.artifact.id,
+      userId: input.userId,
+      sessionId: input.sessionId,
+      schemaVersion: input.artifact.schemaVersion,
+      title: input.artifact.title,
+      kind: input.artifact.kind,
+      recipeId: input.artifact.recipeId,
+      scope: JSON.stringify(input.artifact.scope),
+      provenance: JSON.stringify(input.artifact.provenance),
+      manifestCreatedAt: input.artifact.createdAt,
+      manifestUpdatedAt: input.artifact.updatedAt,
+    };
+    if (existing[0]) {
+      await tx
+        .update(artifacts)
+        .set(values)
+        .where(
+          and(
+            eq(artifacts.id, input.artifact.id),
+            eq(artifacts.userId, input.userId)
+          )
+        );
+      await tx
+        .delete(artifactFiles)
+        .where(eq(artifactFiles.artifactId, input.artifact.id));
+    } else {
+      await tx.insert(artifacts).values(values);
+    }
+    await tx.insert(artifactFiles).values(
+      input.files.map(file => ({
+        artifactId: input.artifact.id,
+        fileId: file.fileId,
+        path: file.path,
+        mimeType: file.mimeType,
+        sizeBytes: file.sizeBytes,
+        checksum: file.checksum,
+        encoding: file.encoding,
+        content: file.content,
+        contentSynced: file.contentSynced,
+        fileCreatedAt: file.createdAt,
+        fileUpdatedAt: file.updatedAt,
+      }))
+    );
+  });
+}
+
+export async function deleteArtifact(id: string, userId: number) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  return db.transaction(async tx => {
+    const owned = await tx
+      .select({ id: artifacts.id })
+      .from(artifacts)
+      .where(and(eq(artifacts.id, id), eq(artifacts.userId, userId)))
+      .limit(1);
+    if (!owned[0]) return false;
+    await tx.delete(artifactFiles).where(eq(artifactFiles.artifactId, id));
+    await tx.delete(artifacts).where(eq(artifacts.id, id));
+    return true;
+  });
 }

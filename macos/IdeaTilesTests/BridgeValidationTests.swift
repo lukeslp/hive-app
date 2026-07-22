@@ -18,6 +18,7 @@ struct BridgeValidationTests {
         #"{"id":"rpc:credentials:status","method":"credentials.status","params":{}}"#,
         #"{"id":"rpc:credentials:set","method":"credentials.set","params":{"provider":"openai","credential":"secret-value"}}"#,
         #"{"id":"rpc:credentials:remove","method":"credentials.remove","params":{"provider":"openai"}}"#,
+        #"{"id":"rpc:auth","method":"auth.signIn","params":{"loginURL":"https://ideatiles.app/api/oauth/native-start"}}"#,
     ])
     func acceptsSettingsAndCredentialRequests(_ json: String) throws {
         _ = try RPCRequestValidator().parse(Data(json.utf8))
@@ -33,6 +34,22 @@ struct BridgeValidationTests {
     func rejectsInvalidSettingsAndCredentialRequests(_ json: String) {
         #expect(throws: RPCValidationError.self) {
             try RPCRequestValidator().parse(Data(json.utf8))
+        }
+    }
+
+    @Test("validates the hosted callback before opening the native auth sheet")
+    func validatesAuthenticationURL() throws {
+        let valid = URL(string: "https://ideatiles.app/api/oauth/native-start")!
+        #expect(try AuthenticationURLPolicy.validate(valid) == valid)
+
+        for invalid in [
+            "http://ideatiles.app/api/oauth/native-start",
+            "https://ideatiles.app/api/oauth/native-start?next=evil",
+            "https://user:password@ideatiles.app/api/oauth/native-start",
+        ] {
+            #expect(throws: AuthenticationError.self) {
+                try AuthenticationURLPolicy.validate(URL(string: invalid)!)
+            }
         }
     }
 
@@ -236,6 +253,19 @@ struct BridgeDispatcherTests {
         ]
 
         let response = await dispatcher.dispatch(try JSONSerialization.data(withJSONObject: request))
+        let object = try #require(try JSONSerialization.jsonObject(with: response) as? [String: Any])
+        #expect(object["ok"] as? Bool == true)
+    }
+
+    @Test("does not apply a computation timeout while the authentication sheet is open")
+    func authenticationSheetIsNotComputationTimed() async throws {
+        let dispatcher = BridgeDispatcher(timeout: .milliseconds(10)) { _ in
+            try await Task.sleep(for: .milliseconds(30))
+            return .object(["authenticated": .bool(true)])
+        }
+        let data = Data(#"{"id":"rpc:auth:sheet","method":"auth.signIn","params":{"loginURL":"https://ideatiles.app/api/oauth/native-start"}}"#.utf8)
+
+        let response = await dispatcher.dispatch(data)
         let object = try #require(try JSONSerialization.jsonObject(with: response) as? [String: Any])
         #expect(object["ok"] as? Bool == true)
     }

@@ -108,7 +108,9 @@ final class BridgeDispatcher: Sendable {
 
         let isUserDrivenSheet = request.method == .generateArtifact
             && request.params["recipeId"]?.stringValue == "image-playground-artwork"
-        let outcome = request.method == .exportArtifact || isUserDrivenSheet
+        let outcome = request.method == .exportArtifact
+            || request.method == .beginAuthentication
+            || isUserDrivenSheet
             ? await runWithoutComputationTimeout(request)
             : await runWithComputationTimeout(request)
         await registry.end(request.id)

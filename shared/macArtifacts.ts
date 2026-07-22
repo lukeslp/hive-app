@@ -138,6 +138,11 @@ export type MacPlatformCapabilities = z.infer<
   typeof macPlatformCapabilitiesSchema
 >;
 
+export interface NativeAuthenticationService {
+  /** Opens a native same-data-store sign-in sheet; no token enters JavaScript. */
+  signIn(loginURL: string): Promise<boolean>;
+}
+
 export function hasMacArtifactStudioCapability(
   candidate: unknown
 ): candidate is MacPlatformCapabilities {

@@ -12,6 +12,7 @@ enum RPCMethod: String, Sendable, CaseIterable {
     case credentialStatus = "credentials.status"
     case setCredential = "credentials.set"
     case removeCredential = "credentials.remove"
+    case beginAuthentication = "auth.signIn"
 }
 
 struct ValidatedRPCRequest: Sendable, Equatable {
@@ -93,6 +94,14 @@ struct RPCRequestValidator: Sendable {
                   let provider = GenerationProvider(rawValue: providerName),
                   provider.requiresCredential
             else { throw RPCValidationError.invalidParameters }
+        case .beginAuthentication:
+            guard Set(params.keys) == ["loginURL"],
+                  let rawURL = params["loginURL"] as? String,
+                  rawURL.utf8.count <= 4_096,
+                  let url = URL(string: rawURL)
+            else { throw RPCValidationError.invalidParameters }
+            do { _ = try AuthenticationURLPolicy.validate(url) }
+            catch { throw RPCValidationError.invalidParameters }
         case .cancelArtifact:
             guard Set(params.keys) == ["requestId"],
                   let requestID = params["requestId"] as? String,

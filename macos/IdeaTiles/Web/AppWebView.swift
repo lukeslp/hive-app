@@ -140,7 +140,10 @@ final class MacRuntime {
             generationCoordinator: generationCoordinator,
             generationPreferences: generationPreferences,
             credentialStore: credentialStore,
-            capabilities: capabilities
+            capabilities: capabilities,
+            authenticator: { loginURL in
+                try await MacAuthenticationService.signIn(loginURL: loginURL)
+            }
         ) { manifest in
             let boardPayload = try? await repository.boardPayload(id: manifest.provenance.sourceBoardId)
             return try await FilePanelService.export(manifest, boardPayload: boardPayload)

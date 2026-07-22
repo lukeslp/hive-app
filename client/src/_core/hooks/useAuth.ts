@@ -1,6 +1,6 @@
 import { getLoginUrl } from "@/const";
 import { trpc } from "@/lib/trpc";
-import { isCapacitor } from "@/lib/platform";
+import { isCapacitor, isNativeMac } from "@/lib/platform";
 import { TRPCClientError } from "@trpc/client";
 import { useCallback, useEffect, useMemo } from "react";
 
@@ -48,6 +48,19 @@ export function useAuth(options?: UseAuthOptions) {
     }
   }, [logoutMutation, utils]);
 
+  const login = useCallback(async () => {
+    const target = redirectPath ?? getLoginUrl();
+    if (!target) throw new Error("Hosted sign-in is not configured.");
+    if (isNativeMac()) {
+      const service = window.ideaTilesMac?.auth;
+      if (!service) throw new Error("Native sign-in is unavailable.");
+      const authenticated = await service.signIn(target);
+      if (authenticated) await meQuery.refetch();
+      return;
+    }
+    window.location.href = target;
+  }, [meQuery, redirectPath]);
+
   const state = useMemo(() => {
     return {
       user: meQuery.data ?? null,
@@ -86,5 +99,6 @@ export function useAuth(options?: UseAuthOptions) {
     ...state,
     refresh: () => meQuery.refetch(),
     logout,
+    login,
   };
 }

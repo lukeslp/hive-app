@@ -1,4 +1,6 @@
 export { COOKIE_NAME, ONE_YEAR_MS } from "@shared/const";
+import { APP_PUBLIC_WEB_ORIGIN } from "@shared/appBrand";
+import { isNativeMac } from "@/lib/platform";
 
 // Generate login URL at runtime so redirect URI reflects the current origin.
 //
@@ -10,6 +12,9 @@ export { COOKIE_NAME, ONE_YEAR_MS } from "@shared/const";
 // that actually try to redirect will navigate to "" (no-op on Capacitor;
 // stays on the current page on web).
 export const getLoginUrl = (): string => {
+  if (isNativeMac()) {
+    return `${APP_PUBLIC_WEB_ORIGIN}/api/oauth/native-start`;
+  }
   const oauthPortalUrl = import.meta.env.VITE_OAUTH_PORTAL_URL;
   const appId = import.meta.env.VITE_APP_ID;
   if (!oauthPortalUrl || !appId) {
