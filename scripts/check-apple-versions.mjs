@@ -79,6 +79,9 @@ expectOnly(
   uniqueMatches(iosProject, /PRODUCT_BUNDLE_IDENTIFIER = ([^;]+);/g),
   APP_BUNDLE_ID
 );
+if (!iosProject.includes("path = ../../macos/IdeaTiles.xcodeproj;")) {
+  fail("the iOS project does not link the native Mac subproject");
+}
 
 const fastlane = read("ios/fastlane/Fastfile");
 const fastlaneAppVersions = [
@@ -103,11 +106,24 @@ const iosSchemes = fs
 if (!iosSchemes.includes("Idea Tiles.xcscheme")) {
   fail('the canonical shared iOS scheme "Idea Tiles" is missing');
 }
+if (!iosSchemes.includes("IdeaTiles Mac.xcscheme")) {
+  fail('the shared native Mac scheme "IdeaTiles Mac" is missing');
+}
 for (const scheme of iosSchemes) {
   const contents = fs.readFileSync(
     path.join(iosSchemeDirectory, scheme),
     "utf8"
   );
+  if (scheme === "IdeaTiles Mac.xcscheme") {
+    if (
+      !contents.includes(
+        'ReferencedContainer = "container:../../macos/IdeaTiles.xcodeproj"'
+      )
+    ) {
+      fail(`${scheme} does not reference the native Mac subproject`);
+    }
+    continue;
+  }
   if (contents.includes('ReferencedContainer = "container:App.xcodeproj"')) {
     fail(`${scheme} still references the compatibility project name`);
   }

@@ -21,6 +21,23 @@
 		A303D8B62FB19EE50038698B /* SceneDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = A303D8B52FB19EE50038698B /* SceneDelegate.swift */; };
 /* End PBXBuildFile section */
 
+/* Begin PBXContainerItemProxy section */
+		9F1AAA0002AAAAAAAAAAAA03 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 9F1AAA0002AAAAAAAAAAAA01 /* IdeaTiles.xcodeproj */;
+			proxyType = 2;
+			remoteGlobalIDString = E26CF3EA9317C621C889C110;
+			remoteInfo = Subproject;
+		};
+		9F1AAA0002AAAAAAAAAAAA05 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 9F1AAA0002AAAAAAAAAAAA01 /* IdeaTiles.xcodeproj */;
+			proxyType = 2;
+			remoteGlobalIDString = B6C2A60650A679A11CAC4F53;
+			remoteInfo = Subproject;
+		};
+/* End PBXContainerItemProxy section */
+
 /* Begin PBXFileReference section */
 		2FAD9762203C412B000D30F8 /* config.xml */ = {isa = PBXFileReference; lastKnownFileType = text.xml; path = config.xml; sourceTree = "<group>"; };
 		50379B222058CBB4000EE86E /* capacitor.config.json */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.json; path = capacitor.config.json; sourceTree = "<group>"; };
@@ -36,6 +53,7 @@
 		9F1AAA0001AAAAAAAAAAAA03 /* App.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = App.entitlements; sourceTree = "<group>"; };
 		9F1AAA0001AAAAAAAAAAAA05 /* FoundationModelsPlugin.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FoundationModelsPlugin.swift; sourceTree = "<group>"; };
 		9F1AAA0001AAAAAAAAAAAA11 /* AppViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppViewController.swift; sourceTree = "<group>"; };
+		9F1AAA0002AAAAAAAAAAAA01 /* IdeaTiles.xcodeproj */ = {isa = PBXFileReference; lastKnownFileType = "wrapper.pb-project"; name = IdeaTiles.xcodeproj; path = ../../macos/IdeaTiles.xcodeproj; sourceTree = "<group>"; };
 		A303D8B52FB19EE50038698B /* SceneDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SceneDelegate.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
@@ -56,6 +74,7 @@
 			children = (
 				958DCC722DB07C7200EA8C5F /* debug.xcconfig */,
 				504EC3061FED79650016851F /* App */,
+				9F1AAA0002AAAAAAAAAAAA01 /* IdeaTiles.xcodeproj */,
 				504EC3051FED79650016851F /* Products */,
 				A303D8B52FB19EE50038698B /* SceneDelegate.swift */,
 			);
@@ -86,6 +105,15 @@
 				9F1AAA0001AAAAAAAAAAAA11 /* AppViewController.swift */,
 			);
 			path = App;
+			sourceTree = "<group>";
+		};
+		9F1AAA0002AAAAAAAAAAAA02 /* Products */ = {
+			isa = PBXGroup;
+			children = (
+				9F1AAA0002AAAAAAAAAAAA04 /* IdeaTiles.app */,
+				9F1AAA0002AAAAAAAAAAAA06 /* IdeaTilesTests.xctest */,
+			);
+			name = Products;
 			sourceTree = "<group>";
 		};
 /* End PBXGroup section */
@@ -142,6 +170,12 @@
 				D4C12C0A2AAA248700AAC8A2 /* XCLocalSwiftPackageReference "CapApp-SPM" */,
 			);
 			productRefGroup = 504EC3051FED79650016851F /* Products */;
+			projectReferences = (
+				{
+					ProductGroup = 9F1AAA0002AAAAAAAAAAAA02 /* Products */;
+					ProjectRef = 9F1AAA0002AAAAAAAAAAAA01 /* IdeaTiles.xcodeproj */;
+				},
+			);
 			projectDirPath = "";
 			projectRoot = "";
 			targets = (
@@ -149,6 +183,23 @@
 			);
 		};
 /* End PBXProject section */
+
+/* Begin PBXReferenceProxy section */
+		9F1AAA0002AAAAAAAAAAAA04 /* IdeaTiles.app */ = {
+			isa = PBXReferenceProxy;
+			fileType = wrapper.application;
+			path = IdeaTiles.app;
+			remoteRef = 9F1AAA0002AAAAAAAAAAAA03 /* PBXContainerItemProxy */;
+			sourceTree = BUILT_PRODUCTS_DIR;
+		};
+		9F1AAA0002AAAAAAAAAAAA06 /* IdeaTilesTests.xctest */ = {
+			isa = PBXReferenceProxy;
+			fileType = wrapper.cfbundle;
+			path = IdeaTilesTests.xctest;
+			remoteRef = 9F1AAA0002AAAAAAAAAAAA05 /* PBXContainerItemProxy */;
+			sourceTree = BUILT_PRODUCTS_DIR;
+		};
+/* End PBXReferenceProxy section */
 
 /* Begin PBXResourcesBuildPhase section */
 		504EC3021FED79650016851F /* Resources */ = {

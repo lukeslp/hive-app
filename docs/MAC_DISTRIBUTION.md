@@ -12,6 +12,8 @@ pnpm workspace:open
 
 `IdeaTiles.xcworkspace` contains the renamed iOS project and the generated Mac project. Use the `Idea Tiles` scheme for iOS and `IdeaTiles` for macOS. `ios/App/IdeaTiles.xcodeproj` is the iOS source project; the relative `ios/App/App.xcodeproj` symlink exists only because Capacitor expects that path. Keep both.
 
+The root workspace is the normal Xcode entry point; do not open the repository folder as a project. If the iOS `.xcodeproj` is opened directly, select the shared `IdeaTiles Mac` scheme to build the linked native Mac subproject for `My Mac` or `Any Mac`.
+
 After editing `macos/project.yml`, regenerate and validate:
 
 ```bash
