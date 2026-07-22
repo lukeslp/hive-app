@@ -4,6 +4,21 @@ import Testing
 
 @Suite("Task 1 artifact contract parity")
 struct ArtifactContractParityTests {
+    @Test(arguments: ["id", "path"])
+    func rejectsDuplicateFileIdentity(_ key: String) throws {
+        var raw = try rawManifest()
+        var files = try #require(raw["files"] as? [[String: Any]])
+        var duplicate = files[0]
+        duplicate["id"] = key == "id" ? files[0]["id"] : "file:duplicate"
+        duplicate["path"] = key == "path" ? files[0]["path"] : "duplicate.md"
+        files.append(duplicate)
+        raw["files"] = files
+
+        #expect(throws: ArtifactContractError.self) {
+            try ArtifactManifest.decode(data: JSONSerialization.data(withJSONObject: raw))
+        }
+    }
+
     @Test(arguments: ["encoding", "content"])
     func rejectsNullFileOptionals(_ key: String) throws {
         var raw = try rawManifest()

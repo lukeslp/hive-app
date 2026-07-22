@@ -92,6 +92,10 @@ struct ArtifactManifest: Codable, Sendable, Equatable {
         return try encoder.encode(self)
     }
 
+    func validate() throws {
+        _ = try Self.decode(data: encoded())
+    }
+
     func withoutInlineContent() -> ArtifactManifest {
         var copy = self
         for index in copy.files.indices { copy.files[index].content = nil }
@@ -155,6 +159,9 @@ private enum ArtifactShapeValidator {
         try validateTimestamp(updatedAt)
         try validateScope(scope)
         try files.forEach(validateFile)
+        guard Set(files.compactMap { $0["id"] as? String }).count == files.count,
+              Set(files.compactMap { $0["path"] as? String }).count == files.count
+        else { throw ArtifactContractError.invalidManifest }
         try validateProvenance(provenance)
         try validateSync(sync)
     }

@@ -36,6 +36,14 @@ enum AppContentSecurityPolicy {
       {"trigger":{"url-filter":"^wss?://.*","unless-domain":["ideatiles.app"]},"action":{"type":"block"}}
     ]
     """#
+
+    static func allowsExternalRequest(_ url: URL) -> Bool {
+        (url.scheme == "https" || url.scheme == "wss")
+            && url.host == "ideatiles.app"
+            && url.user == nil
+            && url.password == nil
+            && url.port == nil
+    }
 }
 
 @MainActor
@@ -149,17 +157,21 @@ struct AppWebView: NSViewRepresentable {
         )
         configuration.userContentController = contentController
 
-        WKContentRuleListStore.default().compileContentRuleList(
-            forIdentifier: "app.ideatiles.main.network-allowlist-v1",
-            encodedContentRuleList: AppContentSecurityPolicy.contentBlockerRules
-        ) { ruleList, _ in
-            if let ruleList { contentController.add(ruleList) }
-        }
-
         let webView = WKWebView(frame: .zero, configuration: configuration)
         webView.navigationDelegate = runtime.navigationDelegate
         webView.allowsMagnification = true
-        webView.load(URLRequest(url: URL(string: "ideatiles://app/index.html")!))
+
+        WKContentRuleListStore.default().compileContentRuleList(
+            forIdentifier: "app.ideatiles.main.network-allowlist-v1",
+            encodedContentRuleList: AppContentSecurityPolicy.contentBlockerRules
+        ) { ruleList, error in
+            if let ruleList {
+                contentController.add(ruleList)
+            } else {
+                NSLog("Idea Tiles content-rule compilation failed; the document CSP remains active: %@", error?.localizedDescription ?? "unknown error")
+            }
+            webView.load(URLRequest(url: URL(string: "ideatiles://app/index.html")!))
+        }
         return webView
     }
 

@@ -87,6 +87,104 @@ struct ArtifactPersistenceTests {
         #expect(try await reopened.loadArtifact(id: manifest.id) == manifest)
         #expect(try await reopened.artifactCount() == 1)
     }
+
+    @Test("metadata commit failure after swap restores the complete old artifact")
+    func metadataFailureRestoresArtifact() async throws {
+        let root = try TestDirectory.make()
+        let original = try ArtifactFixture.manifest(contents: ["one.md": "old one", "two.md": "old two"])
+        do {
+            let repository = try ArtifactRepository(root: root)
+            _ = try await repository.saveArtifact(original)
+        }
+
+        let replacement = try ArtifactFixture.manifest(contents: ["one.md": "new one", "two.md": "new two"])
+        do {
+            let failing = try ArtifactRepository(root: root, metadataCommitter: { _ in
+                throw SimulatedMetadataCommitError.failed
+            })
+            await #expect(throws: SimulatedMetadataCommitError.self) {
+                try await failing.saveArtifact(replacement)
+            }
+        }
+
+        let reopened = try ArtifactRepository(root: root)
+        #expect(try await reopened.loadArtifact(id: original.id) == original)
+    }
+
+    @Test("rollback failure surfaces an integrity error")
+    func rollbackFailureIsExplicit() async throws {
+        let root = try TestDirectory.make()
+        let original = try ArtifactFixture.manifest(content: "old")
+        do {
+            let repository = try ArtifactRepository(root: root)
+            _ = try await repository.saveArtifact(original)
+        }
+        let failing = try ArtifactRepository(
+            root: root,
+            metadataCommitter: { _ in throw SimulatedMetadataCommitError.failed },
+            rollback: { _, _ in throw SimulatedRollbackError.failed }
+        )
+
+        await #expect(throws: ArtifactPersistenceError.rollbackFailed) {
+            try await failing.saveArtifact(ArtifactFixture.manifest(content: "new"))
+        }
+    }
+
+    @Test("board metadata failure restores old payload and cleans a new payload")
+    func boardMetadataFailureRollsBack() async throws {
+        let existingRoot = try TestDirectory.make()
+        do {
+            let repository = try ArtifactRepository(root: existingRoot)
+            _ = try await repository.saveBoard(id: "board:stable", title: "Old", payload: Data("old".utf8))
+        }
+        do {
+            let failingExisting = try ArtifactRepository(root: existingRoot, metadataCommitter: { _ in
+                throw SimulatedMetadataCommitError.failed
+            })
+            await #expect(throws: SimulatedMetadataCommitError.self) {
+                try await failingExisting.saveBoard(id: "board:stable", title: "New", payload: Data("new".utf8))
+            }
+        }
+        let reopened = try ArtifactRepository(root: existingRoot)
+        #expect(try await reopened.boardPayload(id: "board:stable") == Data("old".utf8))
+
+        let newRoot = try TestDirectory.make()
+        let failingNew = try ArtifactRepository(root: newRoot, metadataCommitter: { _ in
+            throw SimulatedMetadataCommitError.failed
+        })
+        await #expect(throws: SimulatedMetadataCommitError.self) {
+            try await failingNew.saveBoard(id: "board:new", title: "New", payload: Data("new".utf8))
+        }
+        #expect(!FileManager.default.fileExists(atPath: newRoot.appending(path: "Boards/board:new/board.json").path))
+    }
+
+    @Test(arguments: ["id", "path"])
+    func duplicateFilesCannotReachRepository(_ field: String) async throws {
+        let repository = try ArtifactRepository(root: TestDirectory.make(), inMemory: true)
+        var manifest = try ArtifactFixture.manifest(contents: ["one.md": "one", "two.md": "two"])
+        if field == "id" {
+            let first = manifest.files[0]
+            let second = manifest.files[1]
+            manifest.files[1] = ArtifactFile(
+                id: first.id, path: second.path, mimeType: second.mimeType, sizeBytes: second.sizeBytes,
+                checksum: second.checksum, createdAt: second.createdAt, updatedAt: second.updatedAt,
+                encoding: second.encoding, content: second.content
+            )
+        } else {
+            let first = manifest.files[0]
+            let second = manifest.files[1]
+            manifest.files[1] = ArtifactFile(
+                id: second.id, path: first.path, mimeType: second.mimeType, sizeBytes: second.sizeBytes,
+                checksum: second.checksum, createdAt: second.createdAt, updatedAt: second.updatedAt,
+                encoding: second.encoding, content: second.content
+            )
+        }
+
+        await #expect(throws: ArtifactContractError.self) {
+            try await repository.saveArtifact(manifest)
+        }
+        #expect(try await repository.artifactCount() == 0)
+    }
 }
 
 @Suite("Idea Tiles package validation")
@@ -283,9 +381,56 @@ struct IdeaTilesPackageTests {
 
         #expect(try IdeaTilesPackageCodec().importPackage(at: packageURL) == original.withoutInlineContent())
     }
+
+    @Test("production replacer overwrites an existing valid package")
+    func validOverwriteRoundTrip() throws {
+        let root = try TestDirectory.make()
+        let packageURL = root.appending(path: "Overwrite.ideatiles", directoryHint: .isDirectory)
+        try IdeaTilesPackageCodec().export(manifest: ArtifactFixture.manifest(content: "old"), to: packageURL)
+        let replacement = try ArtifactFixture.manifest(content: "new")
+
+        try IdeaTilesPackageCodec().export(manifest: replacement, to: packageURL)
+        let imported = try IdeaTilesPackageCodec().importContents(at: packageURL)
+
+        #expect(imported.manifest == replacement.withoutInlineContent())
+        #expect(imported.payloads["index.md"] == Data("new".utf8))
+    }
+
+    @Test(arguments: ["id", "path"])
+    func duplicateFilesCannotExport(_ field: String) throws {
+        let root = try TestDirectory.make()
+        let packageURL = root.appending(path: "Duplicate.ideatiles")
+        var manifest = try ArtifactFixture.manifest(contents: ["one.md": "one", "two.md": "two"])
+        let first = manifest.files[0]
+        let second = manifest.files[1]
+        manifest.files[1] = ArtifactFile(
+            id: field == "id" ? first.id : second.id,
+            path: field == "path" ? first.path : second.path,
+            mimeType: second.mimeType,
+            sizeBytes: second.sizeBytes,
+            checksum: second.checksum,
+            createdAt: second.createdAt,
+            updatedAt: second.updatedAt,
+            encoding: second.encoding,
+            content: second.content
+        )
+
+        #expect(throws: ArtifactContractError.self) {
+            try IdeaTilesPackageCodec().export(manifest: manifest, to: packageURL)
+        }
+        #expect(!FileManager.default.fileExists(atPath: packageURL.path))
+    }
 }
 
 private enum SimulatedCommitError: Error {
+    case failed
+}
+
+private enum SimulatedMetadataCommitError: Error {
+    case failed
+}
+
+private enum SimulatedRollbackError: Error {
     case failed
 }
 

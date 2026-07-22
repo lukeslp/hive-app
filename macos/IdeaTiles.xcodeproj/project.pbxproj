@@ -250,7 +250,7 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 			shellPath = /bin/sh;
-			shellScript = "set -euo pipefail\ncd \"$SRCROOT/..\"\nweb_output=\"$DERIVED_FILE_DIR/IdeaTilesWebApp\"\nresource_destination=\"$TARGET_BUILD_DIR/$UNLOCALIZED_RESOURCES_FOLDER_PATH/WebApp\"\npnpm exec vite build --config vite.mac.config.ts --outDir \"$web_output\"\nmkdir -p \"$resource_destination\"\n/usr/bin/rsync -a --delete \"$web_output/\" \"$resource_destination/\"\n";
+			shellScript = "set -euo pipefail\nexport PATH=\"/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin\"\nnode_bin=\"$(command -v node || true)\"\npnpm_bin=\"$(command -v pnpm || true)\"\nif [ -z \"$node_bin\" ] || [ -z \"$pnpm_bin\" ]; then\n  echo \"error: Idea Tiles Mac web build requires node and pnpm in /opt/homebrew/bin or /usr/local/bin. Install them with Homebrew: brew install node pnpm\" >&2\n  exit 127\nfi\ncd \"$SRCROOT/..\"\nweb_output=\"$DERIVED_FILE_DIR/IdeaTilesWebApp\"\nresource_destination=\"$TARGET_BUILD_DIR/$UNLOCALIZED_RESOURCES_FOLDER_PATH/WebApp\"\n\"$pnpm_bin\" exec vite build --config vite.mac.config.ts --outDir \"$web_output\"\nmkdir -p \"$resource_destination\"\n/usr/bin/rsync -a --delete \"$web_output/\" \"$resource_destination/\"\n";
 		};
 /* End PBXShellScriptBuildPhase section */
 

@@ -40,10 +40,17 @@ targets:
           - $(TARGET_BUILD_DIR)/$(UNLOCALIZED_RESOURCES_FOLDER_PATH)/WebApp/index.html
         script: |
           set -euo pipefail
+          export PATH="/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin"
+          node_bin="$(command -v node || true)"
+          pnpm_bin="$(command -v pnpm || true)"
+          if [ -z "$node_bin" ] || [ -z "$pnpm_bin" ]; then
+            echo "error: Idea Tiles Mac web build requires node and pnpm in /opt/homebrew/bin or /usr/local/bin. Install them with Homebrew: brew install node pnpm" >&2
+            exit 127
+          fi
           cd "$SRCROOT/.."
           web_output="$DERIVED_FILE_DIR/IdeaTilesWebApp"
           resource_destination="$TARGET_BUILD_DIR/$UNLOCALIZED_RESOURCES_FOLDER_PATH/WebApp"
-          pnpm exec vite build --config vite.mac.config.ts --outDir "$web_output"
+          "$pnpm_bin" exec vite build --config vite.mac.config.ts --outDir "$web_output"
           mkdir -p "$resource_destination"
           /usr/bin/rsync -a --delete "$web_output/" "$resource_destination/"
     settings:

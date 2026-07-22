@@ -50,14 +50,27 @@ enum ArtifactPersistenceError: Error, Equatable {
     case missingContent
     case sizeMismatch
     case checksumMismatch
+    case rollbackFailed
 }
 
 actor ArtifactRepository {
+    typealias MetadataCommitter = (ModelContext) throws -> Void
+    typealias PersistenceRollback = (URL, URL?) throws -> Void
+
     private let root: URL
     private let container: ModelContainer
+    private let metadataCommitter: MetadataCommitter
+    private let rollback: PersistenceRollback
 
-    init(root: URL, inMemory: Bool = false) throws {
+    init(
+        root: URL,
+        inMemory: Bool = false,
+        metadataCommitter: @escaping MetadataCommitter = { try $0.save() },
+        rollback: @escaping PersistenceRollback = ArtifactRepository.restorePreviousItem
+    ) throws {
         self.root = root.standardizedFileURL
+        self.metadataCommitter = metadataCommitter
+        self.rollback = rollback
         try FileManager.default.createDirectory(at: root, withIntermediateDirectories: true)
         let schema = Schema([BoardMetadataRecord.self, ArtifactMetadataRecord.self])
         let configuration: ModelConfiguration
@@ -89,7 +102,11 @@ actor ArtifactRepository {
         let relativePath = "Boards/\(id)/board.json"
         let url = root.appending(path: relativePath)
         try FileManager.default.createDirectory(at: url.deletingLastPathComponent(), withIntermediateDirectories: true)
-        try payload.write(to: url, options: [.atomic, .completeFileProtection])
+        let staging = url.deletingLastPathComponent().appending(path: ".board.\(UUID().uuidString).staging")
+        let backup = url.deletingLastPathComponent().appending(path: ".board.\(UUID().uuidString).backup")
+        try payload.write(to: staging, options: [.atomic, .completeFileProtection])
+        var stagingCommitted = false
+        defer { if !stagingCommitted { try? FileManager.default.removeItem(at: staging) } }
 
         let context = ModelContext(container)
         let matchingID = id
@@ -102,7 +119,31 @@ actor ArtifactRepository {
         } else {
             context.insert(BoardMetadataRecord(id: id, title: title, payloadRelativePath: relativePath, now: now))
         }
-        try context.save()
+        let hadExisting = FileManager.default.fileExists(atPath: url.path)
+        var didSwap = false
+        do {
+            if hadExisting {
+                _ = try FileManager.default.replaceItemAt(
+                    url,
+                    withItemAt: staging,
+                    backupItemName: backup.lastPathComponent,
+                    options: .withoutDeletingBackupItem
+                )
+            } else {
+                try FileManager.default.moveItem(at: staging, to: url)
+            }
+            stagingCommitted = true
+            didSwap = true
+            try metadataCommitter(context)
+        } catch {
+            if didSwap {
+                do { try rollback(url, hadExisting ? backup : nil) }
+                catch { throw ArtifactPersistenceError.rollbackFailed }
+                if !hadExisting { try? FileManager.default.removeItem(at: url.deletingLastPathComponent()) }
+            }
+            throw error
+        }
+        if hadExisting { try? FileManager.default.removeItem(at: backup) }
         return BoardSnapshot(id: id, title: title)
     }
 
@@ -115,6 +156,7 @@ actor ArtifactRepository {
     }
 
     func saveArtifact(_ manifest: ArtifactManifest, payloads suppliedPayloads: [String: Data] = [:]) throws -> ArtifactManifest {
+        try manifest.validate()
         guard RPCRequestValidator.isStableID(manifest.id), RPCRequestValidator.isStableID(manifest.provenance.sourceBoardId) else {
             throw ArtifactPersistenceError.invalidIdentifier
         }
@@ -197,11 +239,11 @@ actor ArtifactRepository {
             }
             stagingCommitted = true
             didSwap = true
-            try context.save()
+            try metadataCommitter(context)
         } catch {
             if didSwap {
-                try? FileManager.default.removeItem(at: artifactRoot)
-                if hadExisting { try? FileManager.default.moveItem(at: backup, to: artifactRoot) }
+                do { try rollback(artifactRoot, hadExisting ? backup : nil) }
+                catch { throw ArtifactPersistenceError.rollbackFailed }
             }
             throw error
         }
@@ -253,5 +295,18 @@ actor ArtifactRepository {
 
     private func pathRelativeToRoot(_ url: URL) -> String {
         String(url.path.dropFirst(root.path.count + 1))
+    }
+
+    static func restorePreviousItem(at liveURL: URL, backupURL: URL?) throws {
+        let fileManager = FileManager.default
+        if fileManager.fileExists(atPath: liveURL.path) {
+            try fileManager.removeItem(at: liveURL)
+        }
+        if let backupURL {
+            guard fileManager.fileExists(atPath: backupURL.path) else {
+                throw ArtifactPersistenceError.rollbackFailed
+            }
+            try fileManager.moveItem(at: backupURL, to: liveURL)
+        }
     }
 }

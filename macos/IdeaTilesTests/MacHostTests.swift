@@ -48,6 +48,15 @@ struct MacHostBootstrapTests {
             return excluded.contains("ideatiles.app")
         })
     }
+
+    @Test("main network policy allows canonical API traffic and denies other origins")
+    func behavioralSubresourcePolicy() throws {
+        #expect(AppContentSecurityPolicy.allowsExternalRequest(try #require(URL(string: "https://ideatiles.app/api/generate"))))
+        #expect(AppContentSecurityPolicy.allowsExternalRequest(try #require(URL(string: "wss://ideatiles.app/ws/collab/board"))))
+        #expect(!AppContentSecurityPolicy.allowsExternalRequest(try #require(URL(string: "https://example.com/leak"))))
+        #expect(!AppContentSecurityPolicy.allowsExternalRequest(try #require(URL(string: "https://api.ideatiles.app/generate"))))
+        #expect(!AppContentSecurityPolicy.allowsExternalRequest(try #require(URL(string: "http://ideatiles.app/api/generate"))))
+    }
 }
 
 @Suite("Native bridge routing")

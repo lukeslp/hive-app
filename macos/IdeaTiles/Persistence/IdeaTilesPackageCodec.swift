@@ -51,6 +51,7 @@ struct IdeaTilesPackageCodec: Sendable {
         payloads suppliedPayloads: [String: Data] = [:],
         to destination: URL
     ) throws {
+        try manifest.validate()
         guard destination.pathExtension.lowercased() == "ideatiles" else { throw IdeaTilesPackageError.invalidExtension }
 
         let artifactBase = "artifacts/\(manifest.id)"

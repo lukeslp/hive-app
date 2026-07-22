@@ -103,6 +103,7 @@ struct PreviewSecurityTests {
             script: "document.readyState === 'complete' && document.styleSheets.length > 0 && document.querySelector('#root')?.children.length > 0"
         )
         #expect(try await webView.evaluateJavaScript("document.querySelectorAll('script[type=module]').length > 0") as? Bool == true)
+        #expect(try await webView.evaluateJavaScript("getComputedStyle(document.body).position === 'fixed' && getComputedStyle(document.body).overflow === 'hidden'") as? Bool == true)
     }
 }
 
