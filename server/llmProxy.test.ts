@@ -253,6 +253,7 @@ describe("LLM Proxy Router", () => {
       const fetchInit = mockFetch.mock.calls[0]?.[1];
       const upstreamBody = JSON.parse(fetchInit.body);
       expect(upstreamBody.generationConfig.maxOutputTokens).toBe(4096);
+      expect(upstreamBody.generationConfig).not.toHaveProperty("temperature");
     });
 
     it("ignores client-supplied Ollama hosts, models, and credentials", async () => {

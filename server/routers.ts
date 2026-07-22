@@ -3,6 +3,7 @@ import { getSessionCookieOptions } from "./_core/cookies";
 import { systemRouter } from "./_core/systemRouter";
 import { publicProcedure, router } from "./_core/trpc";
 import { sessionsRouter } from "./routers/sessions";
+import { artifactsRouter } from "./routers/artifacts";
 
 export const appRouter = router({
   system: systemRouter,
@@ -18,6 +19,7 @@ export const appRouter = router({
   }),
 
   sessions: sessionsRouter,
+  artifacts: artifactsRouter,
 });
 
 export type AppRouter = typeof appRouter;

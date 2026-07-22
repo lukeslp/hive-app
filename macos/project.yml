@@ -1,0 +1,100 @@
+name: IdeaTiles
+options:
+  bundleIdPrefix: app.ideatiles
+  deploymentTarget:
+    macOS: "26.0"
+  xcodeVersion: "26.0"
+settings:
+  base:
+    ARCHS: arm64
+    ONLY_ACTIVE_ARCH: true
+    SWIFT_VERSION: "6.0"
+    SWIFT_STRICT_CONCURRENCY: complete
+    MACOSX_DEPLOYMENT_TARGET: "26.0"
+    MARKETING_VERSION: 1.1
+    CURRENT_PROJECT_VERSION: 2
+    ENABLE_HARDENED_RUNTIME: true
+    ENABLE_USER_SCRIPT_SANDBOXING: true
+targets:
+  IdeaTiles:
+    type: application
+    platform: macOS
+    deploymentTarget: "26.0"
+    sources:
+      - path: IdeaTiles
+        excludes:
+          - PrivacyInfo.xcprivacy
+      - path: IdeaTiles/PrivacyInfo.xcprivacy
+        buildPhase: resources
+    postBuildScripts:
+      - name: Build Mac WebApp
+        basedOnDependencyAnalysis: false
+        inputFiles:
+          - $(SRCROOT)/../client
+          - $(SRCROOT)/../shared
+          - $(SRCROOT)/../package.json
+          - $(SRCROOT)/../pnpm-lock.yaml
+          - $(SRCROOT)/../vite.mac.config.ts
+          - $(SRCROOT)/../vite.config.ts
+          - $(SRCROOT)/../tsconfig.json
+        outputFiles:
+          - $(DERIVED_FILE_DIR)/IdeaTilesWebApp
+          - $(DERIVED_FILE_DIR)/IdeaTilesWebApp/index.html
+          - $(TARGET_BUILD_DIR)/$(UNLOCALIZED_RESOURCES_FOLDER_PATH)/WebApp
+          - $(TARGET_BUILD_DIR)/$(UNLOCALIZED_RESOURCES_FOLDER_PATH)/WebApp/index.html
+        script: |
+          set -euo pipefail
+          export PATH="/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin"
+          node_bin="$(command -v node || true)"
+          pnpm_bin="$(command -v pnpm || true)"
+          if [ -z "$node_bin" ] || [ -z "$pnpm_bin" ]; then
+            echo "error: Idea Tiles Mac web build requires node and pnpm in /opt/homebrew/bin or /usr/local/bin. Install them with Homebrew: brew install node pnpm" >&2
+            exit 127
+          fi
+          cd "$SRCROOT/.."
+          web_output="$DERIVED_FILE_DIR/IdeaTilesWebApp"
+          resource_destination="$TARGET_BUILD_DIR/$UNLOCALIZED_RESOURCES_FOLDER_PATH/WebApp"
+          "$pnpm_bin" exec vite build --config vite.mac.config.ts --outDir "$web_output"
+          mkdir -p "$resource_destination"
+          /usr/bin/rsync -a --delete "$web_output/" "$resource_destination/"
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: app.hexmind.ios
+        PRODUCT_NAME: IdeaTiles
+        PRODUCT_MODULE_NAME: IdeaTiles
+        ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
+        GENERATE_INFOPLIST_FILE: false
+        INFOPLIST_FILE: IdeaTiles/Info.plist
+        CODE_SIGN_ENTITLEMENTS: IdeaTiles/IdeaTiles.entitlements
+        CODE_SIGN_STYLE: Automatic
+        DEVELOPMENT_TEAM: 596T7J7FB6
+        ENABLE_APP_SANDBOX: true
+        ENABLE_USER_SCRIPT_SANDBOXING: false
+    entitlements:
+      path: IdeaTiles/IdeaTiles.entitlements
+      properties:
+        com.apple.security.app-sandbox: true
+        com.apple.security.network.client: true
+        com.apple.security.files.user-selected.read-write: true
+  IdeaTilesTests:
+    type: bundle.unit-test
+    platform: macOS
+    deploymentTarget: "26.0"
+    sources:
+      - path: IdeaTilesTests
+    dependencies:
+      - target: IdeaTiles
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: app.hexmind.ios.macos.tests
+        GENERATE_INFOPLIST_FILE: true
+        CODE_SIGNING_ALLOWED: false
+schemes:
+  IdeaTiles:
+    build:
+      targets:
+        IdeaTiles: all
+        IdeaTilesTests: [test]
+    test:
+      targets:
+        - IdeaTilesTests

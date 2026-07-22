@@ -1,18 +1,19 @@
 # Idea Tiles
 
-**Idea Tiles** (_Brainstorm with local AI_) is a hexagonal tile brainstorming app built as a React SPA with an Express backend, plus Capacitor shells for iOS and Android. **Canonical marketing origin:** `https://ideatiles.app`. Bundle id and some legacy domains may still reference **hexmind**; user-facing copy uses Idea Tiles.
+**Idea Tiles** (_Brainstorm with local language models_) is a hexagonal tile brainstorming app built as a React SPA with an Express backend, plus Capacitor shells for iOS and Android. **Canonical marketing origin:** `https://ideatiles.app`. Bundle id and some legacy domains may still reference **hexmind**; user-facing copy uses Idea Tiles.
 
 ## What This Project Does
 
-- Expands ideas into neighboring hex tiles with AI-assisted brainstorming.
+- Expands ideas into neighboring hex tiles with language-model-assisted brainstorming.
 - Supports merge/combine workflows, clustering, key-theme marking, and visual linking.
 - Saves sessions locally and can sync/share collaborative sessions through the server (web; cloud session list is disabled in the native shell today — see `docs/RELEASE_SPEC.md`).
 - Runs as:
   - Web app (`pnpm dev` / `pnpm start`)
   - iOS app (Capacitor + Apple Foundation Models path)
   - Android app (AICore Gemini Nano, then checksum-verified Gemma, then cloud)
+  - macOS app (native SwiftUI/WebKit shell with Artifact Studio)
 
-## Current Product State (June 2026)
+## Current Product State (July 2026)
 
 - **App Store:** 1.0 live; the **1.1 release train is open** (availability fixes, JPG export, on-device template customization). Listing metadata is managed as code in `ios/fastlane/` (`bundle exec fastlane upload_listing`).
 - **Android:** release in testing; no signed Android artifact is published.
@@ -24,6 +25,7 @@
 - Hosted/web provider behavior is locked to Anthropic in-app (no provider picker exposed), matching ideatiles.app's managed default path.
 - Settings visual treatment now uses a softer glass/card style and removes dense provider-management controls for a cleaner, on-brand surface.
 - iOS behavior is intentionally privacy-first: tile generation on iOS is on-device only (no cloud fallback).
+- The native Mac app defaults to Apple Foundation Models. Optional direct-provider keys stay in Keychain; Dreamer access is a single curated choice redeemed with a one-time invite. Request access at `https://dr.eamer.dev/api/docs/access.html`.
 - On iOS, neighbor-generation failures no longer synthesize placeholder tiles or fall through to cloud — empty slots stay empty and the user gets an explicit availability/parse error toast. On web/Android the cloud path may still pad to six branches when the model returns fewer; see `client/src/hooks/useAIGeneration.ts` (`buildNeighborNodes`).
 - Universal Links/AASA and server operations remain in [`NEXT_STEPS.md`](NEXT_STEPS.md).
 
@@ -51,6 +53,7 @@ pnpm build        # Vite client + esbuild server bundle
 pnpm start        # Production server
 pnpm cap:build    # Build + sync iOS
 pnpm cap:sync:android
+pnpm mac:generate # Regenerate macos/IdeaTiles.xcodeproj from macos/project.yml
 
 # App Store listing metadata (no binary; copy in ios/fastlane/metadata/)
 cd ios && bundle install && bundle exec fastlane upload_listing
@@ -119,6 +122,7 @@ development-signed and must not be published.
 - `shared/`: shared types/constants across client/server.
 - `drizzle/`: schema + migrations.
 - `ios/` and `android/`: Capacitor native shells and platform plugins.
+- `macos/`: native Mac host, strict typed bridge, local artifact persistence, and generation settings.
 
 The server entrypoint is `server/_core/index.ts` and mounts:
 

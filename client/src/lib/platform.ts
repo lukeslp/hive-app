@@ -13,6 +13,15 @@ declare global {
   }
 }
 
+/** True inside the dedicated WKWebView-based macOS app. */
+export function isNativeMac(): boolean {
+  if (typeof window === "undefined") return false;
+  const candidate = window as Window & {
+    ideaTilesMac?: { capabilities?: { nativeMac?: boolean } };
+  };
+  return candidate.ideaTilesMac?.capabilities?.nativeMac === true;
+}
+
 /** True when running inside a Capacitor native shell (Android/iOS). */
 export function isCapacitor(): boolean {
   return (
@@ -62,7 +71,7 @@ export function getPublicWebAppOrigin(): string {
       : "";
   if (fromEnv) return trimTrailingSlashes(fromEnv);
 
-  if (typeof window !== "undefined" && !isCapacitor()) {
+  if (typeof window !== "undefined" && !isCapacitor() && !isNativeMac()) {
     return trimTrailingSlashes(
       `${window.location.protocol}//${window.location.host}`
     );
@@ -90,7 +99,7 @@ function getConfiguredNativeApiBaseUrl(): string | null {
  * - On web: relative path (same-origin proxy).
  */
 export function getApiBaseUrl(): string {
-  if (isCapacitor()) {
+  if (isCapacitor() || isNativeMac()) {
     return getConfiguredNativeApiBaseUrl() ?? `${APP_PUBLIC_WEB_ORIGIN}/api`;
   }
 
@@ -102,4 +111,27 @@ export function getApiBaseUrl(): string {
  */
 export function getTrpcUrl(): string {
   return `${trimTrailingSlashes(getApiBaseUrl())}/trpc`;
+}
+
+/** Hosted collaboration is enabled only for the dedicated Mac shell. */
+export function getCollaborationWebSocketUrl(): string {
+  if (isNativeMac()) {
+    const origin = new URL(APP_PUBLIC_WEB_ORIGIN);
+    const protocol = origin.protocol === "https:" ? "wss:" : "ws:";
+    return `${protocol}//${origin.host}/ws/collab`;
+  }
+  const protocol = window.location.protocol === "https:" ? "wss:" : "ws:";
+  return `${protocol}//${window.location.host}/ws/collab`;
+}
+
+/** Build a browser-openable hosted app URL, never a private native URL. */
+export function getPublicWebAppUrl(parameters: Record<string, string>): string {
+  const url = new URL(getPublicWebAppOrigin());
+  if (!isCapacitor() && !isNativeMac() && typeof window !== "undefined") {
+    url.pathname = window.location.pathname || "/";
+  }
+  for (const [key, value] of Object.entries(parameters)) {
+    url.searchParams.set(key, value);
+  }
+  return url.toString();
 }

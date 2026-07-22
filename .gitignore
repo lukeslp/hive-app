@@ -6,6 +6,8 @@
 dist/
 build/
 *.dist
+macos/Resources/WebApp/
+macos/DerivedData/
 
 # Environment variables
 .env
@@ -125,9 +127,9 @@ ios/App/build/
 ios/DerivedData/
 ios/App/Pods/
 ios/App/App.xcworkspace/xcuserdata/
-ios/App/App.xcodeproj/xcuserdata/
-ios/App/App.xcodeproj/project.xcworkspace/xcuserdata/
-ios/App/App.xcodeproj/project.xcworkspace/xcshareddata/swiftpm/
+ios/App/IdeaTiles.xcodeproj/xcuserdata/
+ios/App/IdeaTiles.xcodeproj/project.xcworkspace/xcuserdata/
+ios/App/IdeaTiles.xcodeproj/project.xcworkspace/xcshareddata/swiftpm/
 xcuserdata/
 *.xcuserstate
 

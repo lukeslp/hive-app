@@ -24,6 +24,7 @@ import { useAuth } from "@/_core/hooks/useAuth";
 import { useCollaboration } from "@/hooks/useCollaboration";
 import { useMergeSuggestions } from "@/hooks/useMergeSuggestions";
 import { useOGImage } from "@/hooks/useOGImage";
+import { trpc } from "@/lib/trpc";
 import type { MergeSuggestion } from "@/hooks/useMergeSuggestions";
 
 import { KeyboardShortcutsModal } from "@/components/KeyboardShortcutsModal";
@@ -43,6 +44,10 @@ import { ShareModal } from "@/components/ShareModal";
 import { SettingsModal } from "@/components/SettingsModal";
 import { ConfirmationModal } from "@/components/ConfirmationModal";
 import {
+  ArtifactCloudSyncError,
+  ArtifactStudio,
+} from "@/components/ArtifactStudio";
+import {
   CollabModal,
   getCollabRoomFromUrl,
   clearCollabParam,
@@ -50,7 +55,7 @@ import {
 import { RemoteCursors } from "@/components/RemoteCursors";
 import { MergeSuggestionIndicator } from "@/components/MergeSuggestionIndicator";
 
-import { buildApiUrl } from "@/lib/api";
+import { generateTextForCurrentPlatform } from "@/lib/macGeneration";
 import { isCapacitor, getPlatform, isIos } from "@/lib/platform";
 import {
   tryOnDeviceFirst,
@@ -68,6 +73,12 @@ import {
 import type { HexNode, ViewState, ConfirmModalState } from "@/types/hivemind";
 import { getNodeKey } from "@/types/hexmind";
 import { APP_DISPLAY_NAME, APP_EXPORT_FILE_PREFIX } from "@shared/appBrand";
+import {
+  hasMacArtifactStudioCapability,
+  type ArtifactStudioServices,
+  type ArtifactImageAttachment,
+  type ArtifactManifest,
+} from "@shared/macArtifacts";
 import {
   HEX_SIZE,
   HEX_WIDTH,
@@ -130,6 +141,18 @@ const getNearestNodes = (
 // ─────────────────────────────────────────────────────────────────────────────
 
 export default function HexmindApp() {
+  const macArtifactHost =
+    typeof window !== "undefined" ? window.ideaTilesMac : undefined;
+  const macArtifactStudioAvailable = hasMacArtifactStudioCapability(
+    macArtifactHost?.capabilities
+  );
+  const spherePreviewEnabled =
+    import.meta.env.VITE_ENABLE_SPHERE_MODE_PREVIEW === "true";
+  const requestSpherePreview = () => {
+    toast.info(
+      "Sphere workspace data is ready. The 3D renderer is planned for a later preview."
+    );
+  };
   // ── Core state ──────────────────────────────────────────────────────────
   const [loadingNodes, setLoadingNodes] = useState<Set<string>>(new Set());
   const [generatingNeighbors, setGeneratingNeighbors] = useState<Set<string>>(
@@ -203,6 +226,28 @@ export default function HexmindApp() {
   // Collaboration
   const collab = useCollaboration(nodes, commitNodes);
   const [showCollabModal, setShowCollabModal] = useState(false);
+  const [showArtifactStudio, setShowArtifactStudio] = useState(false);
+  const attachArtifactImage = useCallback(
+    async (attachment: ArtifactImageAttachment) => {
+      let attached = false;
+      flushSync(() => {
+        commitNodes(previous => {
+          const target = previous[attachment.targetNodeId];
+          if (!target) return previous;
+          attached = true;
+          return {
+            ...previous,
+            [attachment.targetNodeId]: {
+              ...target,
+              imageAttachment: attachment,
+            },
+          };
+        });
+      });
+      if (!attached) throw new Error("The target tile no longer exists.");
+    },
+    [commitNodes]
+  );
 
   // Build nodePresenceMap from collab.nodePresence for HexCanvas
   const nodePresenceMap = useMemo(() => {
@@ -455,7 +500,7 @@ export default function HexmindApp() {
   const search = useSearch({ nodes });
 
   // ── Auth (for cloud session persistence) ────────────────────────────────
-  const { isAuthenticated } = useAuth();
+  const { isAuthenticated, login } = useAuth();
 
   // ── Session management ──────────────────────────────────────────────────
   const sessions = useSessionManagement({
@@ -469,6 +514,24 @@ export default function HexmindApp() {
     enableAutoSave,
     isAuthenticated,
   });
+  const cloudArtifactMutation = trpc.artifacts.upsert.useMutation();
+  const syncArtifactToCloud = useCallback(
+    async (artifact: ArtifactManifest, imageFileIds: string[]) => {
+      if (!sessions.activeCloudSessionId) {
+        throw new ArtifactCloudSyncError(
+          "cloudSessionRequired",
+          "Save this board as a cloud session before syncing."
+        );
+      }
+      const result = await cloudArtifactMutation.mutateAsync({
+        sessionId: sessions.activeCloudSessionId,
+        artifact,
+        imageFileIds,
+      });
+      return { remoteId: result.id };
+    },
+    [cloudArtifactMutation, sessions.activeCloudSessionId]
+  );
 
   // ── OG Image for social sharing ─────────────────────────────────────────
   useOGImage(null, sessions.activeCloudSessionName || undefined);
@@ -575,12 +638,13 @@ export default function HexmindApp() {
   }, [enableHighContrast]);
 
   const resetBoard = useCallback(() => {
+    sessions.beginNewBoard();
     resetHistory({});
     setSelectedNodeId(null);
     setInspectedNodeId(null);
     setRootInput("");
     resetTour();
-  }, [resetHistory, resetTour]);
+  }, [resetHistory, resetTour, sessions.beginNewBoard]);
 
   const requestDeleteBoard = useCallback(() => {
     setConfirmModal({
@@ -851,7 +915,8 @@ Generate 6 diverse related ideas. Connect to key themes when relevant.`;
         // FM produced text but JSON.parse failed — fall through.
       }
       if (!preFetchedBranches && !isIos()) {
-        // Web/Android still has cloud as a fallback.
+        // Other platforms continue through their configured transport; native
+        // Mac uses the provider selected in its native settings.
         toast.warning("On-device returned unparseable output — using cloud", {
           duration: 2500,
         });
@@ -884,38 +949,20 @@ Generate 6 diverse related ideas. Connect to key themes when relevant.`;
 
     try {
       let branches: any[] = [];
-      let viaOnDevice = false;
-
       if (preFetchedBranches) {
         branches = preFetchedBranches;
-        viaOnDevice = true;
         clearTimeout(timeoutId);
       } else {
-        const response = await fetch(buildApiUrl("generate"), {
-          method: "POST",
+        const generation = await generateTextForCurrentPlatform({
+          prompt: userQuery,
+          systemPrompt,
+          cloudPayload: requestPayload,
           headers: providerSettings.getRequestHeaders(),
-          body: JSON.stringify(requestPayload),
           signal: controller.signal,
         });
 
         clearTimeout(timeoutId);
-        const result = await response.json();
-
-        const apiErr =
-          typeof result?.error?.message === "string"
-            ? result.error.message
-            : "";
-        if (!response.ok || result.error) {
-          throw new Error(
-            apiErr ||
-              (response.statusText
-                ? `HTTP ${response.status}: ${response.statusText}`
-                : `HTTP ${response.status}`)
-          );
-        }
-
-        let text = result.candidates?.[0]?.content?.parts?.[0]?.text;
-        if (!text) throw new Error("API returned no content");
+        let text = generation.text;
 
         text = text
           .replace(/^```json\s*/, "")
@@ -1198,27 +1245,25 @@ Generate 6 diverse related ideas. Connect to key themes when relevant.`;
         return;
       }
 
-      const response = await fetch(buildApiUrl("generate"), {
-        method: "POST",
+      const cloudPayload = {
+        model: GEMINI_TEXT_MODEL,
+        contents: [{ parts: [{ text: userText }] }],
+        systemInstruction: { parts: [{ text: systemText }] },
+        generationConfig: {
+          responseMimeType: "application/json",
+          // Slightly higher temperature for refresh than first-pass
+          // generation, to encourage divergence from the existing tile.
+          temperature: 0.9 + aiGeneration.creativity * 0.4,
+        },
+      };
+      const generation = await generateTextForCurrentPlatform({
+        prompt: userText,
+        systemPrompt: systemText,
+        cloudPayload,
         headers: providerSettings.getRequestHeaders(),
-        body: JSON.stringify({
-          model: GEMINI_TEXT_MODEL,
-          contents: [{ parts: [{ text: userText }] }],
-          systemInstruction: { parts: [{ text: systemText }] },
-          generationConfig: {
-            responseMimeType: "application/json",
-            // Slightly higher temperature for refresh than first-pass
-            // generation, since we want divergence from the existing tile.
-            temperature: 0.9 + aiGeneration.creativity * 0.4,
-          },
-        }),
       });
 
-      const result = await response.json();
-      if (!response.ok || result.error)
-        throw new Error(result.error?.message || `HTTP ${response.status}`);
-
-      let text = result.candidates?.[0]?.content?.parts?.[0]?.text;
+      let text = generation.text;
       if (text)
         text = text
           .replace(/^```json\s*/, "")
@@ -1546,10 +1591,8 @@ Generate 6 diverse related ideas. Connect to key themes when relevant.`;
   };
 
   // ── Export ──────────────────────────────────────────────────────────────
-  // Both exports go through saveBlob, which branches on platform: browsers
-  // get the <a download> pattern, Capacitor writes the file to Documents
-  // and invokes the iOS share sheet. Before this, <a download> silently
-  // failed in WKWebView and the user saw nothing happen after tapping.
+  // All exports go through saveBlob: browsers download, Mac opens a native
+  // save panel, and Capacitor writes to Documents before showing iOS sharing.
   const exportAsImage = async () => {
     haptics.medium();
     const svgContent = document.getElementById("hex-canvas-layer")?.innerHTML;
@@ -1795,6 +1838,13 @@ Generate 6 diverse related ideas. Connect to key themes when relevant.`;
           );
         }}
         onShowSessions={() => sessions.setShowSessionsModal(true)}
+        onShowArtifactStudio={
+          macArtifactStudioAvailable
+            ? () => setShowArtifactStudio(true)
+            : undefined
+        }
+        spherePreviewEnabled={spherePreviewEnabled}
+        onRequestSpherePreview={requestSpherePreview}
         onExportSession={sessions.exportSession}
         onImportSession={sessions.importSession}
         // Cloud Share Link is web-only: it POSTs board JSON to /api/share.
@@ -2219,6 +2269,22 @@ Generate 6 diverse related ideas. Connect to key themes when relevant.`;
         message={confirmModal.message}
       />
 
+      {macArtifactStudioAvailable && (
+        <ArtifactStudio
+          isOpen={showArtifactStudio}
+          onClose={() => setShowArtifactStudio(false)}
+          boardId={sessions.artifactBoardId}
+          nodes={nodes}
+          selectedNodeIds={selectedNodeId ? [selectedNodeId] : []}
+          branchRootNodeId={selectedNodeId}
+          services={macArtifactHost?.artifactStudioServices}
+          beforeExport={sessions.flushNativeWorkspace}
+          onAttachImage={attachArtifactImage}
+          cloudSync={isAuthenticated ? syncArtifactToCloud : undefined}
+          onCloudSignIn={!isAuthenticated ? login : undefined}
+        />
+      )}
+
       <SessionsModal
         isOpen={sessions.showSessionsModal}
         onClose={() => sessions.setShowSessionsModal(false)}
@@ -2338,10 +2404,10 @@ Generate 6 diverse related ideas. Connect to key themes when relevant.`;
         androidGemmaStatus={providerSettings.androidGemmaStatus}
         androidAICoreStatus={providerSettings.androidAICoreStatus}
         androidGemmaDownload={providerSettings.androidGemmaDownload}
-        isDownloadingAndroidModel={
-          providerSettings.isDownloadingAndroidModel
-        }
+        isDownloadingAndroidModel={providerSettings.isDownloadingAndroidModel}
         downloadAndroidModel={providerSettings.downloadAndroidModel}
+        spherePreviewEnabled={spherePreviewEnabled}
+        onRequestSpherePreview={requestSpherePreview}
         onDeleteBoard={requestDeleteBoard}
       />
 

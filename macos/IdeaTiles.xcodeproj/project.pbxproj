@@ -1,0 +1,623 @@
+// !$*UTF8*$!
+{
+	archiveVersion = 1;
+	classes = {
+	};
+	objectVersion = 77;
+	objects = {
+
+/* Begin PBXBuildFile section */
+		00215BDE74ABAAA16E7BBD94 /* IdeaTilesPackageCodec.swift in Sources */ = {isa = PBXBuildFile; fileRef = B93022FE0561C8E1FDBD54F4 /* IdeaTilesPackageCodec.swift */; };
+		0BF571F819EE36F106BE1E08 /* CredentialStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 330D76B8B709A62E2DE7CFFC /* CredentialStore.swift */; };
+		1FC909E581FD10B79CBDA774 /* DirectProviderClient.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6CB89740890115CE35EF00FE /* DirectProviderClient.swift */; };
+		270BD15EE913BE7EB77425A0 /* ArtifactPersistenceTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 34F611097139AA29E136FB4A /* ArtifactPersistenceTests.swift */; };
+		2800EC2ECF866DD9FA802EDD /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = A2CF5E362C661D149F07ADFD /* Assets.xcassets */; };
+		2B1A28759511FEC5BE91ED2F /* BundleResourceResolver.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7C0FED78AA66D75D984C901C /* BundleResourceResolver.swift */; };
+		342F5D26DB4EF7D2B84266FF /* GenerationSettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 573072F9CD3B445DCA8A9E53 /* GenerationSettingsView.swift */; };
+		3B5E3AD6E4F085C8E01F0326 /* BundleResourceResolverTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 57B54CF304C22CFE9CCD4883 /* BundleResourceResolverTests.swift */; };
+		3C9397843178FA808C2CC6C1 /* ImagePlaygroundService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 17901CFCD0AA9E127981F9EB /* ImagePlaygroundService.swift */; };
+		3DA9EF688C52836B086C9148 /* GenerationContracts.swift in Sources */ = {isa = PBXBuildFile; fileRef = 20008B51163A1874046161D3 /* GenerationContracts.swift */; };
+		63E67C420968CF92BD884DBE /* NativeGenerationTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9DCAEC30F365345E28CDB7E0 /* NativeGenerationTests.swift */; };
+		68B37D64569D80215B54406C /* ArtifactContracts.swift in Sources */ = {isa = PBXBuildFile; fileRef = 522FC3A76A70FEF021C7AE41 /* ArtifactContracts.swift */; };
+		6A351970193D63B60BBA991D /* MacBridgeBootstrap.swift in Sources */ = {isa = PBXBuildFile; fileRef = 33DBB6B4F992BB6B68FB3FFC /* MacBridgeBootstrap.swift */; };
+		6A4DE27E34A4FE22D8C81073 /* ArtifactGenerationCoordinator.swift in Sources */ = {isa = PBXBuildFile; fileRef = 51494E7FE8DB8552441D42E9 /* ArtifactGenerationCoordinator.swift */; };
+		6D6104CA46D6393660F4026E /* PreviewSecurityTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = AD284C727A48E38482D97D3A /* PreviewSecurityTests.swift */; };
+		6DC99EEB1CF0D8D0449FD3FC /* StaticPreviewHost.swift in Sources */ = {isa = PBXBuildFile; fileRef = A9961A4E9ED71DFDDDB34631 /* StaticPreviewHost.swift */; };
+		71D4FB47F556E6B122BF7C27 /* DreamerAccess.swift in Sources */ = {isa = PBXBuildFile; fileRef = 56CB051DB424BB44FB5AD07D /* DreamerAccess.swift */; };
+		7E9C39E8633C5DE73E0E62B5 /* PrivacyInfo.xcprivacy in Resources */ = {isa = PBXBuildFile; fileRef = CD1EF532704A1920B210E587 /* PrivacyInfo.xcprivacy */; };
+		82E3C41C27C1338A793ED0EE /* MacHostTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1CFF7077C12A3B5F46C0677F /* MacHostTests.swift */; };
+		87DA9272E656C6B149116E77 /* NativeBridgeRouter.swift in Sources */ = {isa = PBXBuildFile; fileRef = 755F109DE328663F8BF6404A /* NativeBridgeRouter.swift */; };
+		9A7DB781CB4A25C2E4D1B087 /* RPCRequestValidator.swift in Sources */ = {isa = PBXBuildFile; fileRef = B5DFDF3E64D9B10EDCDC5AA6 /* RPCRequestValidator.swift */; };
+		A209A40A4C5785ED1509B691 /* ArtifactRepository.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8F02A24F2ECB327A938620E6 /* ArtifactRepository.swift */; };
+		A60D88B73957D1330B9ED7CB /* AppWebView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 997448083B0C2287930EFADD /* AppWebView.swift */; };
+		A9748AAE70B983BB504F5130 /* IdeaTilesApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 997316C75DD94DCFA4B81DBE /* IdeaTilesApp.swift */; };
+		B6E16A4D1BDB583617B145FE /* JSONValue.swift in Sources */ = {isa = PBXBuildFile; fileRef = 30504990C6314B2372FA94E6 /* JSONValue.swift */; };
+		BC8AC055FB36A62F5C2D797C /* BridgeDispatcher.swift in Sources */ = {isa = PBXBuildFile; fileRef = A7A218BBCBB4D4E7882BA100 /* BridgeDispatcher.swift */; };
+		C1BDAFB1E54B9CE16E31A6A8 /* BridgeValidationTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 673EC3CCD0FC6C6F491D17AF /* BridgeValidationTests.swift */; };
+		D212A68E78857266A2B0C1D5 /* DreamerAccessTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 273EC4AE93C4625B67B6E066 /* DreamerAccessTests.swift */; };
+		D4D1A76992B12345E6BE8DB3 /* ArtifactContractParityTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = F0DCFB2EFE9879EA2A4E4251 /* ArtifactContractParityTests.swift */; };
+		D82E6A61EDD77E7BA12A0176 /* GenerationEngine.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1DAC35AEE32E8430F502F24 /* GenerationEngine.swift */; };
+		E598DCC6AF1FE223C499C530 /* MacAuthenticationService.swift in Sources */ = {isa = PBXBuildFile; fileRef = DCCB62035302565E2566C038 /* MacAuthenticationService.swift */; };
+/* End PBXBuildFile section */
+
+/* Begin PBXContainerItemProxy section */
+		85BBB40E2512737CF8F753AD /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 94884435560EA9E0B1DC9054 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = CA0AB72A5320AB5BB6254C21;
+			remoteInfo = IdeaTiles;
+		};
+/* End PBXContainerItemProxy section */
+
+/* Begin PBXFileReference section */
+		116DECBB13147482B1D5A679 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
+		17901CFCD0AA9E127981F9EB /* ImagePlaygroundService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ImagePlaygroundService.swift; sourceTree = "<group>"; };
+		1CFF7077C12A3B5F46C0677F /* MacHostTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MacHostTests.swift; sourceTree = "<group>"; };
+		20008B51163A1874046161D3 /* GenerationContracts.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GenerationContracts.swift; sourceTree = "<group>"; };
+		273EC4AE93C4625B67B6E066 /* DreamerAccessTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DreamerAccessTests.swift; sourceTree = "<group>"; };
+		30504990C6314B2372FA94E6 /* JSONValue.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = JSONValue.swift; sourceTree = "<group>"; };
+		330D76B8B709A62E2DE7CFFC /* CredentialStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CredentialStore.swift; sourceTree = "<group>"; };
+		33DBB6B4F992BB6B68FB3FFC /* MacBridgeBootstrap.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MacBridgeBootstrap.swift; sourceTree = "<group>"; };
+		34F611097139AA29E136FB4A /* ArtifactPersistenceTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ArtifactPersistenceTests.swift; sourceTree = "<group>"; };
+		51494E7FE8DB8552441D42E9 /* ArtifactGenerationCoordinator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ArtifactGenerationCoordinator.swift; sourceTree = "<group>"; };
+		522FC3A76A70FEF021C7AE41 /* ArtifactContracts.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ArtifactContracts.swift; sourceTree = "<group>"; };
+		56CB051DB424BB44FB5AD07D /* DreamerAccess.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DreamerAccess.swift; sourceTree = "<group>"; };
+		573072F9CD3B445DCA8A9E53 /* GenerationSettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GenerationSettingsView.swift; sourceTree = "<group>"; };
+		57B54CF304C22CFE9CCD4883 /* BundleResourceResolverTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BundleResourceResolverTests.swift; sourceTree = "<group>"; };
+		673EC3CCD0FC6C6F491D17AF /* BridgeValidationTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BridgeValidationTests.swift; sourceTree = "<group>"; };
+		6CB89740890115CE35EF00FE /* DirectProviderClient.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DirectProviderClient.swift; sourceTree = "<group>"; };
+		6F3688AFC53854060FB89A84 /* IdeaTiles.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = IdeaTiles.entitlements; sourceTree = "<group>"; };
+		755F109DE328663F8BF6404A /* NativeBridgeRouter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NativeBridgeRouter.swift; sourceTree = "<group>"; };
+		7C0FED78AA66D75D984C901C /* BundleResourceResolver.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BundleResourceResolver.swift; sourceTree = "<group>"; };
+		8F02A24F2ECB327A938620E6 /* ArtifactRepository.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ArtifactRepository.swift; sourceTree = "<group>"; };
+		997316C75DD94DCFA4B81DBE /* IdeaTilesApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = IdeaTilesApp.swift; sourceTree = "<group>"; };
+		997448083B0C2287930EFADD /* AppWebView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppWebView.swift; sourceTree = "<group>"; };
+		9DCAEC30F365345E28CDB7E0 /* NativeGenerationTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NativeGenerationTests.swift; sourceTree = "<group>"; };
+		A2CF5E362C661D149F07ADFD /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
+		A7A218BBCBB4D4E7882BA100 /* BridgeDispatcher.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BridgeDispatcher.swift; sourceTree = "<group>"; };
+		A9961A4E9ED71DFDDDB34631 /* StaticPreviewHost.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StaticPreviewHost.swift; sourceTree = "<group>"; };
+		AD284C727A48E38482D97D3A /* PreviewSecurityTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PreviewSecurityTests.swift; sourceTree = "<group>"; };
+		B1DAC35AEE32E8430F502F24 /* GenerationEngine.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GenerationEngine.swift; sourceTree = "<group>"; };
+		B5DFDF3E64D9B10EDCDC5AA6 /* RPCRequestValidator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RPCRequestValidator.swift; sourceTree = "<group>"; };
+		B6C2A60650A679A11CAC4F53 /* IdeaTilesTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = IdeaTilesTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+		B93022FE0561C8E1FDBD54F4 /* IdeaTilesPackageCodec.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = IdeaTilesPackageCodec.swift; sourceTree = "<group>"; };
+		CD1EF532704A1920B210E587 /* PrivacyInfo.xcprivacy */ = {isa = PBXFileReference; path = PrivacyInfo.xcprivacy; sourceTree = "<group>"; };
+		DCCB62035302565E2566C038 /* MacAuthenticationService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MacAuthenticationService.swift; sourceTree = "<group>"; };
+		E26CF3EA9317C621C889C110 /* IdeaTiles.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = IdeaTiles.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		F0DCFB2EFE9879EA2A4E4251 /* ArtifactContractParityTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ArtifactContractParityTests.swift; sourceTree = "<group>"; };
+/* End PBXFileReference section */
+
+/* Begin PBXGroup section */
+		014F9BDD2A0932971FB894F3 /* Web */ = {
+			isa = PBXGroup;
+			children = (
+				997448083B0C2287930EFADD /* AppWebView.swift */,
+				7C0FED78AA66D75D984C901C /* BundleResourceResolver.swift */,
+				DCCB62035302565E2566C038 /* MacAuthenticationService.swift */,
+			);
+			path = Web;
+			sourceTree = "<group>";
+		};
+		0EFC9C21153487BEEA31532D /* IdeaTiles */ = {
+			isa = PBXGroup;
+			children = (
+				A2CF5E362C661D149F07ADFD /* Assets.xcassets */,
+				6F3688AFC53854060FB89A84 /* IdeaTiles.entitlements */,
+				997316C75DD94DCFA4B81DBE /* IdeaTilesApp.swift */,
+				116DECBB13147482B1D5A679 /* Info.plist */,
+				CD1EF532704A1920B210E587 /* PrivacyInfo.xcprivacy */,
+				60CD1170007A91B15EC3565C /* Bridge */,
+				6CAC7A5360E50BF9A775A224 /* Generation */,
+				FE5748A41E2B94BDF249D3B8 /* Persistence */,
+				614FE1408A18C539B94969C0 /* Preview */,
+				014F9BDD2A0932971FB894F3 /* Web */,
+			);
+			path = IdeaTiles;
+			sourceTree = "<group>";
+		};
+		42D6668E4C0AC7DAE2B1D9E4 /* Products */ = {
+			isa = PBXGroup;
+			children = (
+				E26CF3EA9317C621C889C110 /* IdeaTiles.app */,
+				B6C2A60650A679A11CAC4F53 /* IdeaTilesTests.xctest */,
+			);
+			name = Products;
+			sourceTree = "<group>";
+		};
+		60CD1170007A91B15EC3565C /* Bridge */ = {
+			isa = PBXGroup;
+			children = (
+				A7A218BBCBB4D4E7882BA100 /* BridgeDispatcher.swift */,
+				30504990C6314B2372FA94E6 /* JSONValue.swift */,
+				33DBB6B4F992BB6B68FB3FFC /* MacBridgeBootstrap.swift */,
+				755F109DE328663F8BF6404A /* NativeBridgeRouter.swift */,
+				B5DFDF3E64D9B10EDCDC5AA6 /* RPCRequestValidator.swift */,
+			);
+			path = Bridge;
+			sourceTree = "<group>";
+		};
+		614FE1408A18C539B94969C0 /* Preview */ = {
+			isa = PBXGroup;
+			children = (
+				A9961A4E9ED71DFDDDB34631 /* StaticPreviewHost.swift */,
+			);
+			path = Preview;
+			sourceTree = "<group>";
+		};
+		6CAC7A5360E50BF9A775A224 /* Generation */ = {
+			isa = PBXGroup;
+			children = (
+				51494E7FE8DB8552441D42E9 /* ArtifactGenerationCoordinator.swift */,
+				330D76B8B709A62E2DE7CFFC /* CredentialStore.swift */,
+				6CB89740890115CE35EF00FE /* DirectProviderClient.swift */,
+				56CB051DB424BB44FB5AD07D /* DreamerAccess.swift */,
+				20008B51163A1874046161D3 /* GenerationContracts.swift */,
+				B1DAC35AEE32E8430F502F24 /* GenerationEngine.swift */,
+				573072F9CD3B445DCA8A9E53 /* GenerationSettingsView.swift */,
+				17901CFCD0AA9E127981F9EB /* ImagePlaygroundService.swift */,
+			);
+			path = Generation;
+			sourceTree = "<group>";
+		};
+		86893824EAAE8563E18CD288 = {
+			isa = PBXGroup;
+			children = (
+				0EFC9C21153487BEEA31532D /* IdeaTiles */,
+				88228434D22648084E74CB09 /* IdeaTilesTests */,
+				42D6668E4C0AC7DAE2B1D9E4 /* Products */,
+			);
+			sourceTree = "<group>";
+		};
+		88228434D22648084E74CB09 /* IdeaTilesTests */ = {
+			isa = PBXGroup;
+			children = (
+				F0DCFB2EFE9879EA2A4E4251 /* ArtifactContractParityTests.swift */,
+				34F611097139AA29E136FB4A /* ArtifactPersistenceTests.swift */,
+				673EC3CCD0FC6C6F491D17AF /* BridgeValidationTests.swift */,
+				57B54CF304C22CFE9CCD4883 /* BundleResourceResolverTests.swift */,
+				273EC4AE93C4625B67B6E066 /* DreamerAccessTests.swift */,
+				1CFF7077C12A3B5F46C0677F /* MacHostTests.swift */,
+				9DCAEC30F365345E28CDB7E0 /* NativeGenerationTests.swift */,
+				AD284C727A48E38482D97D3A /* PreviewSecurityTests.swift */,
+			);
+			path = IdeaTilesTests;
+			sourceTree = "<group>";
+		};
+		FE5748A41E2B94BDF249D3B8 /* Persistence */ = {
+			isa = PBXGroup;
+			children = (
+				522FC3A76A70FEF021C7AE41 /* ArtifactContracts.swift */,
+				8F02A24F2ECB327A938620E6 /* ArtifactRepository.swift */,
+				B93022FE0561C8E1FDBD54F4 /* IdeaTilesPackageCodec.swift */,
+			);
+			path = Persistence;
+			sourceTree = "<group>";
+		};
+/* End PBXGroup section */
+
+/* Begin PBXNativeTarget section */
+		CA0AB72A5320AB5BB6254C21 /* IdeaTiles */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 7983378DB3903D8FD64B97B0 /* Build configuration list for PBXNativeTarget "IdeaTiles" */;
+			buildPhases = (
+				79F76F40DD7A401CCB6B0378 /* Sources */,
+				C7607D2F852A5E93F643DC2D /* Resources */,
+				45A4F729CB97AB494A2BC779 /* Build Mac WebApp */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			name = IdeaTiles;
+			packageProductDependencies = (
+			);
+			productName = IdeaTiles;
+			productReference = E26CF3EA9317C621C889C110 /* IdeaTiles.app */;
+			productType = "com.apple.product-type.application";
+		};
+		CFE1F05D3FC330EC7D4655D5 /* IdeaTilesTests */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 0C447AA3DC05356C014EF6B6 /* Build configuration list for PBXNativeTarget "IdeaTilesTests" */;
+			buildPhases = (
+				7BBBD3CC42D0D3F9EDB1CD47 /* Sources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+				DAE0CAD3E7FC5FE97DE14446 /* PBXTargetDependency */,
+			);
+			name = IdeaTilesTests;
+			packageProductDependencies = (
+			);
+			productName = IdeaTilesTests;
+			productReference = B6C2A60650A679A11CAC4F53 /* IdeaTilesTests.xctest */;
+			productType = "com.apple.product-type.bundle.unit-test";
+		};
+/* End PBXNativeTarget section */
+
+/* Begin PBXProject section */
+		94884435560EA9E0B1DC9054 /* Project object */ = {
+			isa = PBXProject;
+			attributes = {
+				BuildIndependentTargetsInParallel = YES;
+				LastUpgradeCheck = 2600;
+				TargetAttributes = {
+					CA0AB72A5320AB5BB6254C21 = {
+						DevelopmentTeam = 596T7J7FB6;
+						ProvisioningStyle = Automatic;
+					};
+				};
+			};
+			buildConfigurationList = BC1424ABAF5D7DDF67F2EB5F /* Build configuration list for PBXProject "IdeaTiles" */;
+			developmentRegion = en;
+			hasScannedForEncodings = 0;
+			knownRegions = (
+				Base,
+				en,
+			);
+			mainGroup = 86893824EAAE8563E18CD288;
+			minimizedProjectReferenceProxies = 1;
+			preferredProjectObjectVersion = 77;
+			productRefGroup = 42D6668E4C0AC7DAE2B1D9E4 /* Products */;
+			projectDirPath = "";
+			projectRoot = "";
+			targets = (
+				CA0AB72A5320AB5BB6254C21 /* IdeaTiles */,
+				CFE1F05D3FC330EC7D4655D5 /* IdeaTilesTests */,
+			);
+		};
+/* End PBXProject section */
+
+/* Begin PBXResourcesBuildPhase section */
+		C7607D2F852A5E93F643DC2D /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				2800EC2ECF866DD9FA802EDD /* Assets.xcassets in Resources */,
+				7E9C39E8633C5DE73E0E62B5 /* PrivacyInfo.xcprivacy in Resources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXResourcesBuildPhase section */
+
+/* Begin PBXShellScriptBuildPhase section */
+		45A4F729CB97AB494A2BC779 /* Build Mac WebApp */ = {
+			isa = PBXShellScriptBuildPhase;
+			alwaysOutOfDate = 1;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			inputFileListPaths = (
+			);
+			inputPaths = (
+				"$(SRCROOT)/../client",
+				"$(SRCROOT)/../shared",
+				"$(SRCROOT)/../package.json",
+				"$(SRCROOT)/../pnpm-lock.yaml",
+				"$(SRCROOT)/../vite.mac.config.ts",
+				"$(SRCROOT)/../vite.config.ts",
+				"$(SRCROOT)/../tsconfig.json",
+			);
+			name = "Build Mac WebApp";
+			outputFileListPaths = (
+			);
+			outputPaths = (
+				"$(DERIVED_FILE_DIR)/IdeaTilesWebApp",
+				"$(DERIVED_FILE_DIR)/IdeaTilesWebApp/index.html",
+				"$(TARGET_BUILD_DIR)/$(UNLOCALIZED_RESOURCES_FOLDER_PATH)/WebApp",
+				"$(TARGET_BUILD_DIR)/$(UNLOCALIZED_RESOURCES_FOLDER_PATH)/WebApp/index.html",
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+			shellPath = /bin/sh;
+			shellScript = "set -euo pipefail\nexport PATH=\"/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin\"\nnode_bin=\"$(command -v node || true)\"\npnpm_bin=\"$(command -v pnpm || true)\"\nif [ -z \"$node_bin\" ] || [ -z \"$pnpm_bin\" ]; then\n  echo \"error: Idea Tiles Mac web build requires node and pnpm in /opt/homebrew/bin or /usr/local/bin. Install them with Homebrew: brew install node pnpm\" >&2\n  exit 127\nfi\ncd \"$SRCROOT/..\"\nweb_output=\"$DERIVED_FILE_DIR/IdeaTilesWebApp\"\nresource_destination=\"$TARGET_BUILD_DIR/$UNLOCALIZED_RESOURCES_FOLDER_PATH/WebApp\"\n\"$pnpm_bin\" exec vite build --config vite.mac.config.ts --outDir \"$web_output\"\nmkdir -p \"$resource_destination\"\n/usr/bin/rsync -a --delete \"$web_output/\" \"$resource_destination/\"\n";
+		};
+/* End PBXShellScriptBuildPhase section */
+
+/* Begin PBXSourcesBuildPhase section */
+		79F76F40DD7A401CCB6B0378 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				A60D88B73957D1330B9ED7CB /* AppWebView.swift in Sources */,
+				68B37D64569D80215B54406C /* ArtifactContracts.swift in Sources */,
+				6A4DE27E34A4FE22D8C81073 /* ArtifactGenerationCoordinator.swift in Sources */,
+				A209A40A4C5785ED1509B691 /* ArtifactRepository.swift in Sources */,
+				BC8AC055FB36A62F5C2D797C /* BridgeDispatcher.swift in Sources */,
+				2B1A28759511FEC5BE91ED2F /* BundleResourceResolver.swift in Sources */,
+				0BF571F819EE36F106BE1E08 /* CredentialStore.swift in Sources */,
+				1FC909E581FD10B79CBDA774 /* DirectProviderClient.swift in Sources */,
+				71D4FB47F556E6B122BF7C27 /* DreamerAccess.swift in Sources */,
+				3DA9EF688C52836B086C9148 /* GenerationContracts.swift in Sources */,
+				D82E6A61EDD77E7BA12A0176 /* GenerationEngine.swift in Sources */,
+				342F5D26DB4EF7D2B84266FF /* GenerationSettingsView.swift in Sources */,
+				A9748AAE70B983BB504F5130 /* IdeaTilesApp.swift in Sources */,
+				00215BDE74ABAAA16E7BBD94 /* IdeaTilesPackageCodec.swift in Sources */,
+				3C9397843178FA808C2CC6C1 /* ImagePlaygroundService.swift in Sources */,
+				B6E16A4D1BDB583617B145FE /* JSONValue.swift in Sources */,
+				E598DCC6AF1FE223C499C530 /* MacAuthenticationService.swift in Sources */,
+				6A351970193D63B60BBA991D /* MacBridgeBootstrap.swift in Sources */,
+				87DA9272E656C6B149116E77 /* NativeBridgeRouter.swift in Sources */,
+				9A7DB781CB4A25C2E4D1B087 /* RPCRequestValidator.swift in Sources */,
+				6DC99EEB1CF0D8D0449FD3FC /* StaticPreviewHost.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		7BBBD3CC42D0D3F9EDB1CD47 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				D4D1A76992B12345E6BE8DB3 /* ArtifactContractParityTests.swift in Sources */,
+				270BD15EE913BE7EB77425A0 /* ArtifactPersistenceTests.swift in Sources */,
+				C1BDAFB1E54B9CE16E31A6A8 /* BridgeValidationTests.swift in Sources */,
+				3B5E3AD6E4F085C8E01F0326 /* BundleResourceResolverTests.swift in Sources */,
+				D212A68E78857266A2B0C1D5 /* DreamerAccessTests.swift in Sources */,
+				82E3C41C27C1338A793ED0EE /* MacHostTests.swift in Sources */,
+				63E67C420968CF92BD884DBE /* NativeGenerationTests.swift in Sources */,
+				6D6104CA46D6393660F4026E /* PreviewSecurityTests.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXSourcesBuildPhase section */
+
+/* Begin PBXTargetDependency section */
+		DAE0CAD3E7FC5FE97DE14446 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = CA0AB72A5320AB5BB6254C21 /* IdeaTiles */;
+			targetProxy = 85BBB40E2512737CF8F753AD /* PBXContainerItemProxy */;
+		};
+/* End PBXTargetDependency section */
+
+/* Begin XCBuildConfiguration section */
+		45B6384167E55C5E27D07962 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				CODE_SIGN_ENTITLEMENTS = IdeaTiles/IdeaTiles.entitlements;
+				CODE_SIGN_STYLE = Automatic;
+				COMBINE_HIDPI_IMAGES = YES;
+				DEVELOPMENT_TEAM = 596T7J7FB6;
+				ENABLE_APP_SANDBOX = YES;
+				ENABLE_USER_SCRIPT_SANDBOXING = NO;
+				GENERATE_INFOPLIST_FILE = NO;
+				INFOPLIST_FILE = IdeaTiles/Info.plist;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/../Frameworks",
+				);
+				MACOSX_DEPLOYMENT_TARGET = 26.0;
+				PRODUCT_BUNDLE_IDENTIFIER = app.hexmind.ios;
+				PRODUCT_MODULE_NAME = IdeaTiles;
+				PRODUCT_NAME = IdeaTiles;
+				SDKROOT = macosx;
+			};
+			name = Debug;
+		};
+		7476844E0716CA64F2F688BD /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				CODE_SIGN_ENTITLEMENTS = IdeaTiles/IdeaTiles.entitlements;
+				CODE_SIGN_STYLE = Automatic;
+				COMBINE_HIDPI_IMAGES = YES;
+				DEVELOPMENT_TEAM = 596T7J7FB6;
+				ENABLE_APP_SANDBOX = YES;
+				ENABLE_USER_SCRIPT_SANDBOXING = NO;
+				GENERATE_INFOPLIST_FILE = NO;
+				INFOPLIST_FILE = IdeaTiles/Info.plist;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/../Frameworks",
+				);
+				MACOSX_DEPLOYMENT_TARGET = 26.0;
+				PRODUCT_BUNDLE_IDENTIFIER = app.hexmind.ios;
+				PRODUCT_MODULE_NAME = IdeaTiles;
+				PRODUCT_NAME = IdeaTiles;
+				SDKROOT = macosx;
+			};
+			name = Release;
+		};
+		99E442A3AD1251F261BBECE2 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				ARCHS = arm64;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++14";
+				CLANG_CXX_LIBRARY = "libc++";
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_ENABLE_OBJC_WEAK = YES;
+				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
+				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_COMMA = YES;
+				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
+				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
+				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
+				CLANG_WARN_EMPTY_BODY = YES;
+				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INFINITE_RECURSION = YES;
+				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
+				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
+				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
+				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
+				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
+				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
+				CLANG_WARN_STRICT_PROTOTYPES = YES;
+				CLANG_WARN_SUSPICIOUS_MOVE = YES;
+				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
+				CLANG_WARN_UNREACHABLE_CODE = YES;
+				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+				COPY_PHASE_STRIP = NO;
+				CURRENT_PROJECT_VERSION = 2;
+				DEBUG_INFORMATION_FORMAT = dwarf;
+				ENABLE_HARDENED_RUNTIME = YES;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				ENABLE_TESTABILITY = YES;
+				ENABLE_USER_SCRIPT_SANDBOXING = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu11;
+				GCC_DYNAMIC_NO_PIC = NO;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_OPTIMIZATION_LEVEL = 0;
+				GCC_PREPROCESSOR_DEFINITIONS = (
+					"$(inherited)",
+					"DEBUG=1",
+				);
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
+				GCC_WARN_UNDECLARED_SELECTOR = YES;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
+				GCC_WARN_UNUSED_FUNCTION = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				MACOSX_DEPLOYMENT_TARGET = 26.0;
+				MARKETING_VERSION = 1.1;
+				MTL_ENABLE_DEBUG_INFO = INCLUDE_SOURCE;
+				MTL_FAST_MATH = YES;
+				ONLY_ACTIVE_ARCH = YES;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = macosx;
+				SWIFT_ACTIVE_COMPILATION_CONDITIONS = DEBUG;
+				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
+				SWIFT_STRICT_CONCURRENCY = complete;
+				SWIFT_VERSION = 6.0;
+			};
+			name = Debug;
+		};
+		C6A8FC8D0680E9644F9D747A /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				CODE_SIGNING_ALLOWED = NO;
+				COMBINE_HIDPI_IMAGES = YES;
+				GENERATE_INFOPLIST_FILE = YES;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/../Frameworks",
+					"@loader_path/../Frameworks",
+				);
+				MACOSX_DEPLOYMENT_TARGET = 26.0;
+				PRODUCT_BUNDLE_IDENTIFIER = app.hexmind.ios.macos.tests;
+				SDKROOT = macosx;
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/IdeaTiles.app/Contents/MacOS/IdeaTiles";
+			};
+			name = Debug;
+		};
+		DDF3AFA7EC3BC4A782E0FB39 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				CODE_SIGNING_ALLOWED = NO;
+				COMBINE_HIDPI_IMAGES = YES;
+				GENERATE_INFOPLIST_FILE = YES;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/../Frameworks",
+					"@loader_path/../Frameworks",
+				);
+				MACOSX_DEPLOYMENT_TARGET = 26.0;
+				PRODUCT_BUNDLE_IDENTIFIER = app.hexmind.ios.macos.tests;
+				SDKROOT = macosx;
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/IdeaTiles.app/Contents/MacOS/IdeaTiles";
+			};
+			name = Release;
+		};
+		E861E008CFA74D07298E4BCA /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				ARCHS = arm64;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++14";
+				CLANG_CXX_LIBRARY = "libc++";
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_ENABLE_OBJC_WEAK = YES;
+				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
+				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_COMMA = YES;
+				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
+				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
+				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
+				CLANG_WARN_EMPTY_BODY = YES;
+				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INFINITE_RECURSION = YES;
+				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
+				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
+				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
+				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
+				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
+				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
+				CLANG_WARN_STRICT_PROTOTYPES = YES;
+				CLANG_WARN_SUSPICIOUS_MOVE = YES;
+				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
+				CLANG_WARN_UNREACHABLE_CODE = YES;
+				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+				COPY_PHASE_STRIP = NO;
+				CURRENT_PROJECT_VERSION = 2;
+				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
+				ENABLE_HARDENED_RUNTIME = YES;
+				ENABLE_NS_ASSERTIONS = NO;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				ENABLE_USER_SCRIPT_SANDBOXING = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu11;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
+				GCC_WARN_UNDECLARED_SELECTOR = YES;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
+				GCC_WARN_UNUSED_FUNCTION = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				MACOSX_DEPLOYMENT_TARGET = 26.0;
+				MARKETING_VERSION = 1.1;
+				MTL_ENABLE_DEBUG_INFO = NO;
+				MTL_FAST_MATH = YES;
+				ONLY_ACTIVE_ARCH = YES;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = macosx;
+				SWIFT_COMPILATION_MODE = wholemodule;
+				SWIFT_OPTIMIZATION_LEVEL = "-O";
+				SWIFT_STRICT_CONCURRENCY = complete;
+				SWIFT_VERSION = 6.0;
+			};
+			name = Release;
+		};
+/* End XCBuildConfiguration section */
+
+/* Begin XCConfigurationList section */
+		0C447AA3DC05356C014EF6B6 /* Build configuration list for PBXNativeTarget "IdeaTilesTests" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				C6A8FC8D0680E9644F9D747A /* Debug */,
+				DDF3AFA7EC3BC4A782E0FB39 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Debug;
+		};
+		7983378DB3903D8FD64B97B0 /* Build configuration list for PBXNativeTarget "IdeaTiles" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				45B6384167E55C5E27D07962 /* Debug */,
+				7476844E0716CA64F2F688BD /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Debug;
+		};
+		BC1424ABAF5D7DDF67F2EB5F /* Build configuration list for PBXProject "IdeaTiles" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				99E442A3AD1251F261BBECE2 /* Debug */,
+				E861E008CFA74D07298E4BCA /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Debug;
+		};
+/* End XCConfigurationList section */
+	};
+	rootObject = 94884435560EA9E0B1DC9054 /* Project object */;
+}

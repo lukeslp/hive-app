@@ -1,7 +1,7 @@
 /**
  * useAIGeneration Hook
  *
- * Encapsulates all AI generation logic for HiveMind:
+ * Encapsulates all language-model generation logic for Idea Tiles:
  * - Neighbor generation via Gemini API
  * - Rate limiting and error handling
  * - Loading state management
@@ -10,7 +10,7 @@
 
 import { useState, useRef, useCallback } from "react";
 import { toast } from "sonner";
-import { buildApiUrl } from "@/lib/api";
+import { generateTextForCurrentPlatform } from "@/lib/macGeneration";
 import { sanitizeJson } from "@/lib/sanitize";
 import { GEMINI_TEXT_MODEL, DIRECTIONS } from "@/lib/hexConstants";
 import { hexDistance } from "@/lib/hexGrid";
@@ -493,8 +493,8 @@ Generate 6 neighbor nodes.`;
       }
 
       // ── Try Apple on-device inference first (iOS 26+ with Apple Intelligence) ──
-      // On iOS this is the ONLY path — no cloud fallback. Web/Android still
-      // fall through to /api/generate when FM isn't available.
+      // On iOS this is the ONLY path. Other platforms continue through their
+      // configured transport; native Mac dispatches through its selected engine.
       const fm = await tryOnDeviceBranchesFirst({
         prompt: userQuery,
         systemPrompt,
@@ -527,7 +527,7 @@ Generate 6 neighbor nodes.`;
       // accepted). When FM didn't produce usable text we return null so
       // the caller falls through to its own UI affordance, rather than
       // fabricating fake "Idea 1…Idea 6" placeholder neighbors that the
-      // user would reasonably mistake for real AI output.
+      // user would reasonably mistake for real model output.
       if (isIos()) {
         const errorMsg = fm
           ? "On-device returned unparseable output"
@@ -539,8 +539,8 @@ Generate 6 neighbor nodes.`;
       }
 
       if (fm) {
-        // Web/Android: FM produced text but parseBranches found nothing
-        // usable. Distinguish this from "FM didn't run" before falling through.
+        // A non-iOS platform received unusable on-device text; its configured
+        // transport gets one clean attempt below.
         toast.warning("On-device returned unparseable output — using cloud", {
           duration: 2500,
         });
@@ -551,69 +551,32 @@ Generate 6 neighbor nodes.`;
       abortControllerRef.current = controller;
       const timeoutId = setTimeout(() => controller.abort(), REQUEST_TIMEOUT);
 
-      const fetchUrl = buildApiUrl("generate");
       if (import.meta.env.DEV)
         console.log(
-          "[AI] cloud fetch starting:",
-          fetchUrl,
+          "[Generation] request starting:",
           "payload bytes:",
           requestSize
         );
 
       try {
-        const response = await fetch(fetchUrl, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(requestPayload),
+        const generation = await generateTextForCurrentPlatform({
+          prompt: userQuery,
+          systemPrompt,
+          cloudPayload: requestPayload,
           signal: controller.signal,
         });
 
         clearTimeout(timeoutId);
-        if (import.meta.env.DEV)
-          console.log(
-            "[AI] cloud fetch response:",
-            response.status,
-            response.statusText
-          );
-
-        const result = await response.json();
-
-        const apiErr =
-          typeof result?.error?.message === "string"
-            ? result.error.message
-            : "";
-        if (!response.ok || result.error) {
-          console.error(
-            "[AI] HTTP/API Error:",
-            JSON.stringify({
-              status: response.status,
-              statusText: response.statusText,
-              body: result,
-            })
-          );
-          throw new Error(
-            apiErr ||
-              (response.statusText
-                ? `HTTP ${response.status}: ${response.statusText}`
-                : `HTTP ${response.status}`)
-          );
-        }
-
-        const text = result.candidates?.[0]?.content?.parts?.[0]?.text;
-
-        if (!text) {
-          console.error(
-            "[AI] No text in API response. Top-level keys:",
-            JSON.stringify(Object.keys(result ?? {}))
-          );
-          throw new Error("API returned no content");
-        }
+        const text = generation.text;
 
         if (import.meta.env.DEV)
-          console.log("[AI] cloud text length:", text.length);
+          console.log("[Generation] response text length:", text.length);
         const branches = parseAndValidateBranches(text);
         if (import.meta.env.DEV)
-          console.log("[AI] parsed+validated branches:", branches.length);
+          console.log(
+            "[Generation] parsed and validated branches:",
+            branches.length
+          );
         const newNodes = buildNeighborNodes(
           branches,
           centerNode,
@@ -635,7 +598,7 @@ Generate 6 neighbor nodes.`;
         }
 
         console.error(
-          "[AI] generate failed:",
+          "[Generation] request failed:",
           JSON.stringify({
             name: err instanceof Error ? err.name : "unknown",
             message: err instanceof Error ? err.message : String(err),
@@ -653,7 +616,7 @@ Generate 6 neighbor nodes.`;
 
         // Return null on cloud failure rather than fabricating "Idea 1…6"
         // placeholder neighbors. The placeholder path indistinguishably
-        // looked like real AI output to users and was the dominant
+        // looked like real model output to users and was the dominant
         // misleading-UX surface for testers on the unhappy path.
         return null;
       } finally {

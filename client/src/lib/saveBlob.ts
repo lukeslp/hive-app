@@ -14,7 +14,15 @@
 import { Filesystem, Directory } from "@capacitor/filesystem";
 import { Share } from "@capacitor/share";
 import { APP_DISPLAY_NAME } from "@shared/appBrand";
-import { isCapacitor } from "@/lib/platform";
+import { isCapacitor, isNativeMac } from "@/lib/platform";
+
+const MAX_NATIVE_MAC_EXPORT_BYTES = 12_000_000;
+const MAC_EXPORT_MIME_TYPES = new Set([
+  "application/json",
+  "image/png",
+  "image/jpeg",
+  "image/svg+xml",
+]);
 
 interface SaveBlobOptions {
   /** Title shown in the iOS share sheet header. Ignored on web. */
@@ -26,11 +34,35 @@ export async function saveBlob(
   filename: string,
   options: SaveBlobOptions = {}
 ): Promise<void> {
+  if (isNativeMac()) {
+    await saveBlobMac(blob, filename);
+    return;
+  }
   if (!isCapacitor()) {
     saveBlobWeb(blob, filename);
     return;
   }
   await saveBlobNative(blob, filename, options.dialogTitle);
+}
+
+async function saveBlobMac(blob: Blob, filename: string): Promise<void> {
+  const fileExports = window.ideaTilesMac?.fileExports;
+  if (!fileExports) throw new Error("Native Mac file export is unavailable.");
+  if (
+    blob.size > MAX_NATIVE_MAC_EXPORT_BYTES ||
+    !MAC_EXPORT_MIME_TYPES.has(blob.type)
+  ) {
+    throw new Error("This file type or size cannot be exported on Mac.");
+  }
+  await fileExports.save({
+    filename,
+    mimeType: blob.type as
+      | "application/json"
+      | "image/png"
+      | "image/jpeg"
+      | "image/svg+xml",
+    data: await blobToBase64(blob),
+  });
 }
 
 function saveBlobWeb(blob: Blob, filename: string): void {

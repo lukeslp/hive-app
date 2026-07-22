@@ -31,6 +31,7 @@ import {
   Settings,
   Filter,
   Users,
+  Map,
 } from "@/lib/icons";
 import { NODE_TYPES } from "@/lib/nodeTypes";
 
@@ -58,6 +59,9 @@ interface ToolbarProps {
   onCloseSearch: () => void;
   onToggleKeyThemes: () => void;
   onShowSessions: () => void;
+  onShowArtifactStudio?: () => void;
+  spherePreviewEnabled?: boolean;
+  onRequestSpherePreview?: () => void;
   onExportSession: () => void;
   onImportSession: (file: File) => void;
   /** Cloud Share Link. Omit (undefined) to hide the Share entries — iOS
@@ -94,6 +98,9 @@ export const Toolbar = ({
   onCloseSearch,
   onToggleKeyThemes,
   onShowSessions,
+  onShowArtifactStudio,
+  spherePreviewEnabled = false,
+  onRequestSpherePreview,
   onExportSession,
   onImportSession,
   onShare,
@@ -332,6 +339,38 @@ export const Toolbar = ({
                   >
                     <FolderOpen className="w-4 h-4 text-muted-foreground" />
                     Sessions
+                  </button>
+                  {onShowArtifactStudio && (
+                    <button
+                      onClick={() => {
+                        onShowArtifactStudio();
+                        setFilesMenuOpen(false);
+                      }}
+                      className="w-full flex items-center gap-3 px-4 py-2.5 text-sm hover:bg-accent text-foreground"
+                    >
+                      <Sparkles className="w-4 h-4 text-muted-foreground" />
+                      Artifact Studio
+                    </button>
+                  )}
+                  <button
+                    type="button"
+                    disabled={!spherePreviewEnabled || !onRequestSpherePreview}
+                    onClick={() => {
+                      onRequestSpherePreview?.();
+                      setFilesMenuOpen(false);
+                    }}
+                    className="w-full flex items-center gap-3 px-4 py-2.5 text-sm hover:bg-accent text-foreground disabled:opacity-45 disabled:cursor-not-allowed"
+                    title={
+                      spherePreviewEnabled
+                        ? "Sphere renderer preview"
+                        : "Sphere mode is not enabled in this build"
+                    }
+                  >
+                    <Map className="w-4 h-4 text-muted-foreground" />
+                    <span className="flex-1 text-left">Sphere workspace</span>
+                    <span className="text-[10px] uppercase tracking-wide text-muted-foreground">
+                      Preview
+                    </span>
                   </button>
                   <div className="h-px bg-border my-1" />
                   <button

@@ -41,6 +41,10 @@ export type NodeType =
  * Nodes can be expanded via AI to generate 6 contextual neighbors.
  */
 export interface HexNode {
+  /** Stable semantic identity, independent of the current tile coordinates. */
+  semanticId?: string;
+  /** Image artifact attached to this tile by the native Mac host. */
+  imageAttachment?: import("@shared/macArtifacts").ArtifactImageAttachment;
   /** Axial coordinate: column position */
   q: number;
 

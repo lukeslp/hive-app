@@ -1,0 +1,58 @@
+import SwiftUI
+
+@MainActor
+@main
+struct IdeaTilesApp: App {
+    private let runtime: MacRuntime?
+    private let startupError: String?
+
+    init() {
+        do {
+            runtime = try MacRuntime()
+            startupError = nil
+        } catch {
+            runtime = nil
+            startupError = error.localizedDescription
+        }
+    }
+
+    var body: some Scene {
+        WindowGroup("Idea Tiles") {
+            if let runtime {
+                AppWebView(runtime: runtime)
+                    .frame(minWidth: 900, minHeight: 640)
+                    .onOpenURL { url in
+                        Task { await runtime.importPackage(at: url) }
+                    }
+            } else {
+                ContentUnavailableView(
+                    "Idea Tiles could not start",
+                    systemImage: "exclamationmark.triangle",
+                    description: Text(startupError ?? "Unknown startup error")
+                )
+                .frame(minWidth: 900, minHeight: 640)
+            }
+        }
+        .commands {
+            CommandGroup(after: .newItem) {
+                Button("Import Idea Tiles Package…") {
+                    Task { await runtime?.importPackage() }
+                }
+                .keyboardShortcut("o", modifiers: [.command, .shift])
+                .disabled(runtime == nil)
+            }
+        }
+        Settings {
+            if let runtime {
+                GenerationSettingsView(
+                    preferences: runtime.generationPreferences,
+                    credentials: runtime.credentialStore,
+                    dreamer: runtime.dreamerAccess
+                )
+            } else {
+                ContentUnavailableView("Settings unavailable", systemImage: "exclamationmark.triangle")
+                    .frame(width: 420, height: 240)
+            }
+        }
+    }
+}

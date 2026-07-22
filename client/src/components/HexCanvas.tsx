@@ -355,7 +355,15 @@ const HexTile = React.memo<{
             ) : (
               <>
                 <div className="relative inline-block">
-                  <IconComponent className={iconClasses} />
+                  {node.imageAttachment ? (
+                    <img
+                      src={node.imageAttachment.dataURL}
+                      alt=""
+                      className="h-12 w-12 rounded-md object-cover"
+                    />
+                  ) : (
+                    <IconComponent className={iconClasses} />
+                  )}
                   {/* Key theme sparkle overlay */}
                   {node.isKeyTheme && (
                     <Sparkles

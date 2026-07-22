@@ -14,11 +14,28 @@ import { useState, useEffect, useCallback, useRef } from "react";
 import { toast } from "sonner";
 import { trpc } from "@/lib/trpc";
 import { buildApiUrl } from "@/lib/api";
-import { getPublicWebAppOrigin, isCapacitor } from "@/lib/platform";
+import { subscribeToNativeWorkspaceImports } from "@/lib/macGeneration";
+import { getPublicWebAppUrl, isCapacitor } from "@/lib/platform";
 import { STORAGE_KEY, AUTOSAVE_KEY } from "@/lib/hexConstants";
 import { generateThumbnail } from "@/lib/canvasSnapshot";
 import { saveBlob } from "@/lib/saveBlob";
+import { buildShareSnapshot } from "@/lib/shareSnapshot";
+import {
+  boardIdForLocalSession,
+  createLocalBoardId,
+  readAutosaveBoardId,
+} from "@/lib/boardIdentity";
 import type { HexNode, ViewState } from "@/types/hivemind";
+import {
+  mergeTilesSessionIntoWorkspace,
+  migrateTilesSession,
+  parseWorkspaceTransport,
+  workspaceEnvelopeForBoard,
+  workspaceImportFileSizeAllowed,
+  workspaceToLegacyTilesSession,
+  workspaceTransportForCloud,
+  type WorkspaceDocument,
+} from "@shared/workspaceDocument";
 import {
   APP_DISPLAY_NAME,
   APP_EXPORT_FILE_PREFIX,
@@ -69,6 +86,13 @@ export function useSessionManagement({
   const [shareUrl, setShareUrl] = useState("");
   const [iosShareUrl, setIosShareUrl] = useState("");
   const [copied, setCopied] = useState(false);
+  const [localBoardId, setLocalBoardId] = useState(() =>
+    readAutosaveBoardId(
+      typeof localStorage === "undefined"
+        ? null
+        : localStorage.getItem(AUTOSAVE_KEY)
+    )
+  );
 
   /** The cloud session currently being worked on (for auto-save & overwrite) */
   const [activeCloudSessionId, setActiveCloudSessionId] = useState<
@@ -79,7 +103,119 @@ export function useSessionManagement({
 
   // Refs for cloud auto-save debounce
   const cloudAutoSaveTimer = useRef<NodeJS.Timeout | null>(null);
+  const nativeWorkspaceSaveTimer = useRef<NodeJS.Timeout | null>(null);
+  const nativeWorkspaceSaveInFlight = useRef<Promise<void>>(Promise.resolve());
   const lastCloudSaveRef = useRef<number>(0);
+  const workspaceRef = useRef<WorkspaceDocument | null>(null);
+  const localAutosaveFailureShown = useRef(false);
+  const cloudAutosaveFailureShown = useRef(false);
+
+  const buildSessionData = useCallback(() => {
+    const legacy = {
+      boardId: localBoardId,
+      nodes,
+      viewState,
+      creativity,
+      keyThemes: Object.keys(nodes).filter(key => nodes[key].isKeyTheme),
+    };
+    const workspace = workspaceRef.current
+      ? mergeTilesSessionIntoWorkspace(workspaceRef.current, legacy)
+      : migrateTilesSession(legacy);
+    workspaceRef.current = workspace;
+    return workspaceTransportForCloud(workspace);
+  }, [creativity, localBoardId, nodes, viewState]);
+
+  const decodeSessionData = useCallback((raw: unknown) => {
+    const candidate =
+      typeof raw === "object" && raw !== null && "workspaceEnvelope" in raw
+        ? (raw as { workspaceEnvelope: unknown }).workspaceEnvelope
+        : raw;
+    const envelope = parseWorkspaceTransport(candidate);
+    workspaceRef.current = envelope.workspace;
+    return workspaceToLegacyTilesSession(envelope.workspace);
+  }, []);
+
+  useEffect(
+    () =>
+      subscribeToNativeWorkspaceImports(envelope => {
+        try {
+          const decoded = decodeSessionData(envelope);
+          resetHistory(decoded.nodes);
+          setViewState(decoded.viewState);
+          setCreativity(decoded.creativity);
+          setShowWelcome(false);
+          setShowSessionsModal(false);
+          setActiveCloudSessionId(null);
+          setActiveCloudSessionName("");
+          setLocalBoardId(decoded.boardId);
+          toast.success("Idea Tiles package opened");
+        } catch (error) {
+          console.error("Failed to open native workspace package:", error);
+          toast.error("The Idea Tiles package could not be opened");
+        }
+      }),
+    [
+      decodeSessionData,
+      resetHistory,
+      setCreativity,
+      setShowWelcome,
+      setViewState,
+    ]
+  );
+
+  const persistNativeWorkspace = useCallback(async () => {
+    const persistence = window.ideaTilesMac?.workspacePersistence;
+    if (!persistence || Object.keys(nodes).length === 0) return;
+    const sessionData = buildSessionData();
+    const boardId = activeCloudSessionId
+      ? `board:cloud:${activeCloudSessionId}`
+      : localBoardId;
+    const envelope = workspaceEnvelopeForBoard(sessionData, boardId);
+    const previous = nativeWorkspaceSaveInFlight.current.catch(() => undefined);
+    const operation = previous.then(async () => {
+      await persistence.saveBoard({
+        boardId,
+        title: activeCloudSessionName || `${APP_DISPLAY_NAME} Board`,
+        envelope,
+      });
+    });
+    nativeWorkspaceSaveInFlight.current = operation;
+    await operation;
+  }, [
+    activeCloudSessionId,
+    activeCloudSessionName,
+    buildSessionData,
+    localBoardId,
+    nodes,
+  ]);
+
+  const flushNativeWorkspace = useCallback(async () => {
+    if (nativeWorkspaceSaveTimer.current) {
+      clearTimeout(nativeWorkspaceSaveTimer.current);
+      nativeWorkspaceSaveTimer.current = null;
+    }
+    await persistNativeWorkspace();
+  }, [persistNativeWorkspace]);
+
+  // Keep the opaque board payload behind native `.ideatiles` export current.
+  // Export calls `flushNativeWorkspace` and awaits the same serialized queue.
+  useEffect(() => {
+    if (!window.ideaTilesMac?.workspacePersistence) return;
+    if (nativeWorkspaceSaveTimer.current) {
+      clearTimeout(nativeWorkspaceSaveTimer.current);
+    }
+    nativeWorkspaceSaveTimer.current = setTimeout(() => {
+      void persistNativeWorkspace().catch(error => {
+        console.warn("Native workspace persistence failed:", error);
+      });
+    }, 500);
+
+    return () => {
+      if (nativeWorkspaceSaveTimer.current) {
+        clearTimeout(nativeWorkspaceSaveTimer.current);
+      }
+    };
+  }, [persistNativeWorkspace]);
 
   // ── tRPC hooks (only fire when authenticated) ──────────────────────────
   const utils = trpc.useUtils();
@@ -133,18 +269,17 @@ export function useSessionManagement({
   useEffect(() => {
     if (Object.keys(nodes).length > 0 && enableAutoSave) {
       try {
-        const autosave = {
-          nodes,
-          viewState,
-          creativity,
-          timestamp: Date.now(),
-        };
-        localStorage.setItem(AUTOSAVE_KEY, JSON.stringify(autosave));
-      } catch {
-        // ignore
+        localStorage.setItem(AUTOSAVE_KEY, JSON.stringify(buildSessionData()));
+        localAutosaveFailureShown.current = false;
+      } catch (error) {
+        console.warn("Local autosave failed:", error);
+        if (!localAutosaveFailureShown.current) {
+          localAutosaveFailureShown.current = true;
+          toast.error("Autosave could not store this board locally");
+        }
       }
     }
-  }, [nodes, viewState, creativity, enableAutoSave]);
+  }, [nodes, enableAutoSave, buildSessionData]);
 
   // ── Auto-save to cloud (debounced) ────────────────────────────────────
   useEffect(() => {
@@ -162,28 +297,35 @@ export function useSessionManagement({
       if (now - lastCloudSaveRef.current < CLOUD_AUTOSAVE_INTERVAL * 0.8)
         return;
 
-      const sessionData = {
-        nodes,
-        viewState,
-        creativity,
-        keyThemes: Object.keys(nodes).filter(k => nodes[k].isKeyTheme),
-      };
-
-      updateMutation.mutate(
-        {
-          id: activeCloudSessionId,
-          data: sessionData,
-          nodeCount: Object.keys(nodes).length,
-        },
-        {
-          onSuccess: () => {
-            lastCloudSaveRef.current = Date.now();
+      try {
+        const sessionData = buildSessionData();
+        updateMutation.mutate(
+          {
+            id: activeCloudSessionId,
+            data: sessionData,
+            nodeCount: Object.keys(nodes).length,
           },
-          onError: err => {
-            console.warn("Cloud auto-save failed:", err);
-          },
+          {
+            onSuccess: () => {
+              lastCloudSaveRef.current = Date.now();
+              cloudAutosaveFailureShown.current = false;
+            },
+            onError: err => {
+              console.warn("Cloud auto-save failed:", err);
+              if (!cloudAutosaveFailureShown.current) {
+                cloudAutosaveFailureShown.current = true;
+                toast.error("Cloud autosave failed");
+              }
+            },
+          }
+        );
+      } catch (error) {
+        console.warn("Cloud auto-save could not prepare the board:", error);
+        if (!cloudAutosaveFailureShown.current) {
+          cloudAutosaveFailureShown.current = true;
+          toast.error("Autosave could not store this board");
         }
-      );
+      }
     }, CLOUD_AUTOSAVE_INTERVAL);
 
     return () => {
@@ -198,17 +340,20 @@ export function useSessionManagement({
     isAuthenticated,
     enableAutoSave,
     activeCloudSessionId,
+    buildSessionData,
   ]);
 
   // ── Save (create new or overwrite existing) ───────────────────────────
   const saveSession = useCallback(
     async (name: string, overwriteId?: number) => {
-      const sessionData = {
-        nodes,
-        viewState,
-        creativity,
-        keyThemes: Object.keys(nodes).filter(k => nodes[k].isKeyTheme),
-      };
+      let sessionData: ReturnType<typeof buildSessionData>;
+      try {
+        sessionData = buildSessionData();
+      } catch (error) {
+        console.error("Session is too large or invalid:", error);
+        toast.error("This board cannot be saved in its current form");
+        return;
+      }
       const nodeCount = Object.keys(nodes).length;
       const displayName = name || `Session ${savedSessions.length + 1}`;
 
@@ -292,6 +437,7 @@ export function useSessionManagement({
       isAuthenticated,
       createMutation,
       updateMutation,
+      buildSessionData,
     ]
   );
 
@@ -318,9 +464,10 @@ export function useSessionManagement({
         if (isCloud && typeof sessionId === "number") {
           const session = await utils.sessions.get.fetch({ id: sessionId });
           if (session?.data) {
-            resetHistory(session.data.nodes);
-            setViewState(session.data.viewState || { x: 0, y: 0, zoom: 0.8 });
-            setCreativity(session.data.creativity || 0.5);
+            const data = decodeSessionData(session.data);
+            resetHistory(data.nodes);
+            setViewState(data.viewState);
+            setCreativity(data.creativity);
             setShowWelcome(false);
             setShowSessionsModal(false);
             // Track as active cloud session for auto-save
@@ -336,21 +483,30 @@ export function useSessionManagement({
         const data = localStorage.getItem(String(sessionId));
         if (data) {
           const parsed = JSON.parse(data);
-          resetHistory(parsed.nodes);
-          setViewState(parsed.viewState || { x: 0, y: 0, zoom: 0.8 });
-          setCreativity(parsed.creativity || 0.5);
+          const decoded = decodeSessionData(parsed);
+          resetHistory(decoded.nodes);
+          setViewState(decoded.viewState);
+          setCreativity(decoded.creativity);
           setShowWelcome(false);
           setShowSessionsModal(false);
           // Clear active cloud session when loading a local session
           setActiveCloudSessionId(null);
           setActiveCloudSessionName("");
+          setLocalBoardId(boardIdForLocalSession(String(sessionId), decoded));
         }
       } catch (e) {
         console.error("Failed to load session:", e);
         toast.error("Failed to load session");
       }
     },
-    [resetHistory, setViewState, setCreativity, setShowWelcome, utils]
+    [
+      decodeSessionData,
+      resetHistory,
+      setViewState,
+      setCreativity,
+      setShowWelcome,
+      utils,
+    ]
   );
 
   const loadAutosave = useCallback(() => {
@@ -358,21 +514,31 @@ export function useSessionManagement({
       const autosave = localStorage.getItem(AUTOSAVE_KEY);
       if (autosave) {
         const data = JSON.parse(autosave);
-        if (data.nodes && Object.keys(data.nodes).length > 0) {
-          resetHistory(data.nodes);
-          setViewState(data.viewState || { x: 0, y: 0, zoom: 0.8 });
-          setCreativity(data.creativity || 0.5);
+        const decoded = decodeSessionData(data);
+        if (Object.keys(decoded.nodes).length > 0) {
+          resetHistory(decoded.nodes);
+          setViewState(decoded.viewState);
+          setCreativity(decoded.creativity);
           setShowWelcome(false);
           setShowSessionsModal(false);
           // Not a cloud session
           setActiveCloudSessionId(null);
           setActiveCloudSessionName("");
+          setLocalBoardId(
+            readAutosaveBoardId(JSON.stringify(data), createLocalBoardId)
+          );
         }
       }
     } catch {
       // ignore
     }
-  }, [resetHistory, setViewState, setCreativity, setShowWelcome]);
+  }, [
+    decodeSessionData,
+    resetHistory,
+    setViewState,
+    setCreativity,
+    setShowWelcome,
+  ]);
 
   // ── Delete ─────────────────────────────────────────────────────────────
   const deleteSession = useCallback(
@@ -406,16 +572,10 @@ export function useSessionManagement({
 
   // ── Export / Import ────────────────────────────────────────────────────
   const exportSession = useCallback(async () => {
-    const data = {
-      nodes,
-      viewState,
-      creativity,
-      exportDate: new Date().toISOString(),
-    };
-    const blob = new Blob([JSON.stringify(data, null, 2)], {
-      type: "application/json",
-    });
     try {
+      const blob = new Blob([JSON.stringify(buildSessionData(), null, 2)], {
+        type: "application/json",
+      });
       await saveBlob(blob, `${APP_EXPORT_FILE_PREFIX}_${Date.now()}.json`, {
         dialogTitle: `Share ${APP_DISPLAY_NAME} session`,
       });
@@ -424,18 +584,29 @@ export function useSessionManagement({
         `Session export failed: ${err instanceof Error ? err.message : "unknown error"}`
       );
     }
-  }, [nodes, viewState, creativity]);
+  }, [buildSessionData]);
 
   const importSession = useCallback(
     (file: File) => {
+      if (!workspaceImportFileSizeAllowed(file.size)) {
+        toast.error("This session exceeds the 16 MB import limit");
+        return;
+      }
       const reader = new FileReader();
       reader.onload = e => {
         try {
-          const data = JSON.parse(e.target?.result as string);
-          if (data.nodes) {
-            resetHistory(data.nodes);
-            setViewState(data.viewState || { x: 0, y: 0, zoom: 0.8 });
-            setCreativity(data.creativity || 0.5);
+          const raw = e.target?.result;
+          if (typeof raw !== "string") throw new Error("Invalid session file");
+          const decoded = decodeSessionData(raw);
+          if (Object.keys(decoded.nodes).length > 0) {
+            setLocalBoardId(
+              typeof decoded.boardId === "string"
+                ? boardIdForLocalSession("imported", decoded)
+                : createLocalBoardId()
+            );
+            resetHistory(decoded.nodes);
+            setViewState(decoded.viewState);
+            setCreativity(decoded.creativity);
             setShowWelcome(false);
           }
         } catch {
@@ -444,12 +615,18 @@ export function useSessionManagement({
       };
       reader.readAsText(file);
     },
-    [resetHistory, setViewState, setCreativity, setShowWelcome]
+    [
+      decodeSessionData,
+      resetHistory,
+      setViewState,
+      setCreativity,
+      setShowWelcome,
+    ]
   );
 
   // ── Share ──────────────────────────────────────────────────────────────
   const generateShareUrl = useCallback(async () => {
-    const data = { nodes, viewState, creativity };
+    const data = buildShareSnapshot({ nodes, viewState, creativity }, []);
     try {
       const res = await fetch(buildApiUrl("share"), {
         method: "POST",
@@ -464,9 +641,8 @@ export function useSessionManagement({
         );
       }
       const { id } = await res.json();
-      const path = window.location.pathname || "/";
-      const url = `${getPublicWebAppOrigin()}${path}?s=${id}`;
-      const iosUrl = `${APP_PUBLIC_WEB_ORIGIN}${path}?s=${id}`;
+      const url = getPublicWebAppUrl({ s: id });
+      const iosUrl = `${APP_PUBLIC_WEB_ORIGIN}/?s=${encodeURIComponent(id)}`;
       setShareUrl(url);
       setIosShareUrl(iosUrl);
       setShowShareModal(true);
@@ -519,6 +695,7 @@ export function useSessionManagement({
         if (!res.ok) throw new Error("Share not found");
         const decoded = await res.json();
         if (decoded.nodes && Object.keys(decoded.nodes).length > 0) {
+          setLocalBoardId(createLocalBoardId());
           resetHistory(decoded.nodes);
           if (decoded.viewState) setViewState(decoded.viewState);
           if (decoded.creativity !== undefined)
@@ -536,6 +713,7 @@ export function useSessionManagement({
       try {
         const decoded = JSON.parse(atob(decodeURIComponent(shareData)));
         if (decoded.nodes && Object.keys(decoded.nodes).length > 0) {
+          setLocalBoardId(createLocalBoardId());
           resetHistory(decoded.nodes);
           if (decoded.viewState) setViewState(decoded.viewState);
           if (decoded.creativity !== undefined)
@@ -547,6 +725,17 @@ export function useSessionManagement({
       }
     }
   }, [resetHistory, setViewState, setCreativity, setShowWelcome]);
+
+  const beginNewBoard = useCallback(() => {
+    setActiveCloudSessionId(null);
+    setActiveCloudSessionName("");
+    setLocalBoardId(createLocalBoardId());
+    workspaceRef.current = null;
+  }, []);
+
+  const artifactBoardId = activeCloudSessionId
+    ? `board:cloud:${activeCloudSessionId}`
+    : localBoardId;
 
   return {
     savedSessions,
@@ -574,5 +763,8 @@ export function useSessionManagement({
     isDeleting: deleteMutation.isPending,
     activeCloudSessionId,
     activeCloudSessionName,
+    artifactBoardId,
+    flushNativeWorkspace,
+    beginNewBoard,
   };
 }

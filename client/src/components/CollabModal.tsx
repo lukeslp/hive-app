@@ -22,6 +22,7 @@ import {
 import type { CollabParticipant } from "@/hooks/useCollaboration";
 import { haptics } from "@/lib/haptics";
 import { APP_DISPLAY_NAME } from "@shared/appBrand";
+import { getPublicWebAppUrl } from "@/lib/platform";
 
 interface CollabModalProps {
   isOpen: boolean;
@@ -39,11 +40,7 @@ interface CollabModalProps {
 
 /** Build a shareable invite link for a room */
 function getInviteLink(roomId: string): string {
-  const url = new URL(window.location.href);
-  // Clean any existing params
-  url.search = "";
-  url.searchParams.set("collab", roomId);
-  return url.toString();
+  return getPublicWebAppUrl({ collab: roomId });
 }
 
 /** Check URL for a collab room code on mount */

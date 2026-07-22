@@ -3,6 +3,9 @@
  */
 
 export interface HexNode {
+  /** Stable semantic identity, independent of the current tile coordinates. */
+  semanticId?: string;
+  imageAttachment?: import("@shared/macArtifacts").ArtifactImageAttachment;
   q: number;
   r: number;
   text: string;

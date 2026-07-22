@@ -3,6 +3,8 @@ import type { Express, Request, Response } from "express";
 import * as db from "../db";
 import { getSessionCookieOptions } from "./cookies";
 import { sdk } from "./sdk";
+import { ENV } from "./env";
+import { APP_PUBLIC_WEB_ORIGIN } from "../../shared/appBrand";
 
 function getQueryParam(req: Request, key: string): string | undefined {
   const value = req.query[key];
@@ -10,6 +12,17 @@ function getQueryParam(req: Request, key: string): string | undefined {
 }
 
 export function registerOAuthRoutes(app: Express) {
+  app.get("/api/oauth/native-start", (_req: Request, res: Response) => {
+    try {
+      res.redirect(
+        302,
+        buildNativeOAuthStartURL(ENV.oAuthPortalUrl, ENV.appId)
+      );
+    } catch {
+      res.status(503).json({ error: "Native sign-in is not configured" });
+    }
+  });
+
   app.get("/api/oauth/callback", async (req: Request, res: Response) => {
     const code = getQueryParam(req, "code");
     const state = getQueryParam(req, "state");
@@ -53,4 +66,30 @@ export function registerOAuthRoutes(app: Express) {
       res.status(500).json({ error: "OAuth callback failed" });
     }
   });
+}
+
+export function buildNativeOAuthStartURL(
+  portalOrigin: string,
+  appId: string
+): string {
+  if (!portalOrigin || !appId) throw new Error("OAuth is not configured");
+  const portal = new URL(portalOrigin);
+  if (
+    portal.protocol !== "https:" ||
+    portal.username ||
+    portal.password ||
+    portal.port ||
+    portal.pathname !== "/" ||
+    portal.search ||
+    portal.hash
+  ) {
+    throw new Error("OAuth portal must be a clean HTTPS origin");
+  }
+  const redirectUri = `${APP_PUBLIC_WEB_ORIGIN}/api/oauth/callback`;
+  const url = new URL("app-auth", `${portal.toString().replace(/\/+$/, "")}/`);
+  url.searchParams.set("appId", appId);
+  url.searchParams.set("redirectUri", redirectUri);
+  url.searchParams.set("state", Buffer.from(redirectUri).toString("base64"));
+  url.searchParams.set("type", "signIn");
+  return url.toString();
 }

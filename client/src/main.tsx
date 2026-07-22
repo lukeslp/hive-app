@@ -15,7 +15,7 @@ import { createRoot } from "react-dom/client";
 import superjson from "superjson";
 import App from "./App";
 import { getLoginUrl } from "./const";
-import { getTrpcUrl, isCapacitor } from "@/lib/platform";
+import { getTrpcUrl, isCapacitor, isNativeMac } from "@/lib/platform";
 import { BootErrorBoundary } from "@/lib/BootErrorBoundary";
 import "./index.css";
 
@@ -24,6 +24,7 @@ const analyticsEndpoint = import.meta.env.VITE_ANALYTICS_ENDPOINT;
 const analyticsWebsiteId = import.meta.env.VITE_ANALYTICS_WEBSITE_ID;
 if (
   !isCapacitor() &&
+  !isNativeMac() &&
   typeof analyticsEndpoint === "string" &&
   analyticsEndpoint.length > 0 &&
   typeof analyticsWebsiteId === "string" &&
@@ -79,6 +80,7 @@ if (isCapacitor()) {
 cp("main.tsx: bootstrap");
 
 const queryClient = new QueryClient();
+let nativeSignInInFlight: Promise<boolean> | null = null;
 
 const redirectToLoginIfUnauthorized = (error: unknown) => {
   if (!(error instanceof TRPCClientError)) return;
@@ -90,6 +92,22 @@ const redirectToLoginIfUnauthorized = (error: unknown) => {
 
   const target = getLoginUrl();
   if (!target) return; // No OAuth portal configured (Capacitor build) — don't reload onto "".
+  if (isNativeMac() && window.ideaTilesMac?.auth) {
+    nativeSignInInFlight ??= window.ideaTilesMac.auth
+      .signIn(target)
+      .then(authenticated => {
+        if (authenticated) void queryClient.invalidateQueries();
+        return authenticated;
+      })
+      .catch(error => {
+        console.error("[Native Sign-In]", describeError(error));
+        return false;
+      })
+      .finally(() => {
+        nativeSignInInFlight = null;
+      });
+    return;
+  }
   window.location.href = target;
 };
 
@@ -252,7 +270,7 @@ if (isCapacitor()) {
 function registerMinimalServiceWorker() {
   if (typeof navigator === "undefined" || !("serviceWorker" in navigator))
     return;
-  if (isCapacitor()) return;
+  if (isCapacitor() || isNativeMac()) return;
   window.addEventListener("load", () => {
     const baseRaw = import.meta.env.BASE_URL;
     const baseNorm =

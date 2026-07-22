@@ -27,6 +27,7 @@ import {
   Shield,
   Check,
   Trash2,
+  Map,
 } from "@/lib/icons";
 import type {
   Provider,
@@ -34,12 +35,9 @@ import type {
   ServerProviderInfo,
   ProviderConfig,
 } from "@/hooks/useProviderSettings";
-import type {
-  GemmaDownloadResult,
-  GemmaModelStatus,
-} from "@/lib/gemmaPlugin";
+import type { GemmaDownloadResult, GemmaModelStatus } from "@/lib/gemmaPlugin";
 import type { AICoreStatus } from "@/lib/aicorePlugin";
-import { getPlatform, isCapacitor, isIos } from "@/lib/platform";
+import { getPlatform, isCapacitor, isIos, isNativeMac } from "@/lib/platform";
 import { APP_DISPLAY_NAME } from "@shared/appBrand";
 
 export interface SettingsModalProps {
@@ -73,12 +71,21 @@ export interface SettingsModalProps {
   serverProviders: ServerProviderInfo | null;
   appleIntelligenceAvailable: boolean;
   visibleProviders: ProviderConfig[];
-  androidGemmaStatus: GemmaModelStatus | null;
-  androidAICoreStatus: AICoreStatus | null;
-  androidGemmaDownload: GemmaDownloadResult | null;
-  isDownloadingAndroidModel: boolean;
-  downloadAndroidModel: () => Promise<void>;
+  androidGemmaStatus?: GemmaModelStatus | null;
+  androidAICoreStatus?: AICoreStatus | null;
+  androidGemmaDownload?: GemmaDownloadResult | null;
+  isDownloadingAndroidModel?: boolean;
+  downloadAndroidModel?: () => Promise<void>;
+  spherePreviewEnabled?: boolean;
+  onRequestSpherePreview?: () => void;
   onDeleteBoard: () => void;
+}
+
+export async function openNativeMacGenerationSettings(): Promise<boolean> {
+  const settings = window.ideaTilesMac?.settings;
+  if (!settings) return false;
+  await settings.open();
+  return true;
 }
 
 export const SettingsModal = ({
@@ -111,19 +118,27 @@ export const SettingsModal = ({
   serverProviders,
   appleIntelligenceAvailable,
   visibleProviders,
-  androidGemmaStatus,
-  androidAICoreStatus,
-  androidGemmaDownload,
-  isDownloadingAndroidModel,
+  androidGemmaStatus = null,
+  androidAICoreStatus = null,
+  androidGemmaDownload = null,
+  isDownloadingAndroidModel = false,
   downloadAndroidModel,
+  spherePreviewEnabled = false,
+  onRequestSpherePreview,
   onDeleteBoard,
 }: SettingsModalProps) => {
   const iosOnly = isIos();
   const androidNative = isCapacitor() && getPlatform() === "android";
+  const nativeMac = isNativeMac();
 
-  const aiControlsAvailable = iosOnly
-    ? appleIntelligenceAvailable
-    : isProviderConfigured;
+  const androidLocalAvailable =
+    androidNative &&
+    (androidAICoreStatus?.available === true ||
+      androidGemmaStatus?.ready === true);
+  const generationControlsAvailable =
+    nativeMac ||
+    androidLocalAvailable ||
+    (iosOnly ? appleIntelligenceAvailable : isProviderConfigured);
   const accessibilityFonts = [
     { id: "system", label: "System" },
     { id: "atkinson", label: "Atkinson" },
@@ -261,14 +276,62 @@ export const SettingsModal = ({
             </div>
           </section>
 
-          {/* AI setup/status */}
+          <section className="space-y-3 border-t border-border/60 pt-5">
+            <div className="space-y-1">
+              <h3 className="text-sm font-semibold text-foreground">
+                Workspace mode
+              </h3>
+              <p className="text-xs text-muted-foreground">
+                Layout changes never alter the underlying ideas.
+              </p>
+            </div>
+            <div className="grid grid-cols-2 gap-2">
+              <Button variant="default" className="h-11" disabled>
+                Tiles
+              </Button>
+              <Button
+                variant="outline"
+                className="h-11 gap-2"
+                disabled={!spherePreviewEnabled || !onRequestSpherePreview}
+                onClick={onRequestSpherePreview}
+                title={
+                  spherePreviewEnabled
+                    ? "Open the Sphere renderer preview"
+                    : "Sphere mode is preserved in files but its renderer is not enabled"
+                }
+              >
+                <Map className="w-4 h-4" />
+                Sphere preview
+              </Button>
+            </div>
+          </section>
+
+          {/* Generation setup and status */}
           <section className="space-y-4 border-t border-border/60 pt-5">
             <div className="space-y-1">
-              <h3 className="text-sm font-semibold text-foreground">AI</h3>
-              <p className="text-xs text-muted-foreground">Managed AI path</p>
+              <h3 className="text-sm font-semibold text-foreground">
+                Generation
+              </h3>
+              <p className="text-xs text-muted-foreground">
+                Language model settings
+              </p>
             </div>
 
-            {androidNative && (androidAICoreStatus || androidGemmaStatus) && (
+            {nativeMac ? (
+              <div className="space-y-3 rounded-lg border border-border bg-muted/30 p-3">
+                <p className="text-xs text-muted-foreground">
+                  Provider, BYOK, and Dreamer access are managed securely in the
+                  native Mac settings window.
+                </p>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => void openNativeMacGenerationSettings()}
+                >
+                  Open Generation Settings
+                </Button>
+              </div>
+            ) : androidNative && (androidAICoreStatus || androidGemmaStatus) ? (
               <div
                 className={`space-y-3 rounded-lg border p-3 text-xs ${
                   androidAICoreStatus?.available || androidGemmaStatus?.ready
@@ -293,8 +356,10 @@ export const SettingsModal = ({
                       type="button"
                       size="sm"
                       className="h-11"
-                      disabled={isDownloadingAndroidModel}
-                      onClick={() => void downloadAndroidModel()}
+                      disabled={
+                        isDownloadingAndroidModel || !downloadAndroidModel
+                      }
+                      onClick={() => void downloadAndroidModel?.()}
                     >
                       {isDownloadingAndroidModel
                         ? "Downloading…"
@@ -309,9 +374,7 @@ export const SettingsModal = ({
                   </p>
                 )}
               </div>
-            )}
-
-            {iosOnly ? (
+            ) : iosOnly ? (
               <div
                 className={`flex items-start gap-2 text-xs rounded-lg p-3 ${
                   appleIntelligenceAvailable
@@ -350,13 +413,13 @@ export const SettingsModal = ({
               </div>
             )}
 
-            {/* AI controls: only when AI path is actually usable on this device. */}
-            {aiControlsAvailable ? (
+            {/* Generation controls appear only when a model path is usable. */}
+            {generationControlsAvailable ? (
               <div className="space-y-5 border-t border-border/70 pt-4">
                 <div className="space-y-3">
                   <Label className="text-sm font-medium text-foreground flex items-center gap-2">
                     <Sparkles className="w-4 h-4" />
-                    AI Creativity
+                    Generation Creativity
                   </Label>
                   <div className="space-y-2">
                     <Slider
@@ -395,8 +458,8 @@ export const SettingsModal = ({
                       <span>Bridge</span>
                     </div>
                     <p className="text-xs text-muted-foreground/60">
-                      How aggressively the AI connects ideas across distant
-                      clusters
+                      How aggressively the language model connects ideas across
+                      distant clusters
                     </p>
                   </div>
                 </div>
@@ -419,8 +482,8 @@ export const SettingsModal = ({
               </div>
             ) : (
               <p className="text-xs text-muted-foreground">
-                AI controls are hidden until an AI path is available on this
-                device.
+                Generation controls are hidden until a language model path is
+                available on this device.
               </p>
             )}
           </section>

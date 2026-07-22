@@ -16,6 +16,7 @@ import { serveStatic, setupVite } from "./vite";
 import { createLlmProxyRouter } from "../llmProxy";
 import { setupCollabWebSocket } from "../collab";
 import { createOGRouter } from "../ogRoute";
+import { nativeOriginMiddleware } from "../nativeOrigin";
 
 const DEFAULT_LISTEN_HOST = "127.0.0.1";
 
@@ -44,6 +45,7 @@ async function findAvailablePort(
 async function startServer() {
   const app = express();
   const server = createServer(app);
+  app.use(nativeOriginMiddleware);
   // Configure body parser with larger size limit for file uploads.
   // /api/generate is deliberately excluded: it parses its own body under a
   // tight 64 KB cap inside createLlmProxyRouter, so an unauthenticated LLM

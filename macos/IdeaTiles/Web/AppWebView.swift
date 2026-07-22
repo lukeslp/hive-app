@@ -1,0 +1,315 @@
+import AppKit
+import Foundation
+import ImagePlayground
+import SwiftUI
+@preconcurrency import WebKit
+
+struct AppNavigationPolicy: Sendable {
+    func allows(_ url: URL) -> Bool {
+        url.scheme == "ideatiles" && url.host == "app" && url.user == nil && url.password == nil && url.port == nil
+    }
+}
+
+struct BridgeMessageOriginPolicy: Sendable {
+    func allows(isMainFrame: Bool, sourceURL: URL?) -> Bool {
+        isMainFrame && sourceURL.map(AppNavigationPolicy().allows) == true
+    }
+}
+
+enum AppContentSecurityPolicy {
+    static let contentSecurityPolicy = [
+        "default-src 'self'",
+        "base-uri 'self'",
+        "connect-src 'self' https://ideatiles.app wss://ideatiles.app",
+        "form-action 'self'",
+        "frame-src 'none'",
+        "object-src 'none'",
+        "script-src 'self'",
+        "style-src 'self' 'unsafe-inline'",
+        "img-src 'self' https://ideatiles.app data: blob:",
+        "font-src 'self' data:",
+        "worker-src 'self' blob:",
+    ].joined(separator: "; ")
+
+    static let contentBlockerRules = #"""
+    [
+      {"trigger":{"url-filter":"^https?://.*","unless-domain":["ideatiles.app"]},"action":{"type":"block"}},
+      {"trigger":{"url-filter":"^wss?://.*","unless-domain":["ideatiles.app"]},"action":{"type":"block"}}
+    ]
+    """#
+
+    static func allowsExternalRequest(_ url: URL) -> Bool {
+        (url.scheme == "https" || url.scheme == "wss")
+            && url.host == "ideatiles.app"
+            && url.user == nil
+            && url.password == nil
+            && url.port == nil
+    }
+}
+
+@MainActor
+fileprivate final class AppNavigationDelegate: NSObject, WKNavigationDelegate {
+    private let policy = AppNavigationPolicy()
+    private weak var runtime: MacRuntime?
+
+    init(runtime: MacRuntime) { self.runtime = runtime }
+
+    func webView(_ webView: WKWebView, decidePolicyFor navigationAction: WKNavigationAction) async -> WKNavigationActionPolicy {
+        guard let url = navigationAction.request.url else { return .cancel }
+        if policy.allows(url) { return .allow }
+        if navigationAction.navigationType == .linkActivated,
+           url.scheme == "https" || url.scheme == "http" {
+            NSWorkspace.shared.open(url)
+        }
+        return .cancel
+    }
+
+    func webView(_ webView: WKWebView, didFinish navigation: WKNavigation!) {
+        runtime?.attach(webView: webView)
+    }
+}
+
+@MainActor
+fileprivate final class MacScriptMessageHandler: NSObject, WKScriptMessageHandlerWithReply {
+    let dispatcher: BridgeDispatcher
+
+    init(dispatcher: BridgeDispatcher) { self.dispatcher = dispatcher }
+
+    func userContentController(
+        _ userContentController: WKUserContentController,
+        didReceive message: WKScriptMessage,
+        replyHandler: @escaping @MainActor @Sendable (Any?, String?) -> Void
+    ) {
+        guard BridgeMessageOriginPolicy().allows(
+            isMainFrame: message.frameInfo.isMainFrame,
+            sourceURL: message.frameInfo.request.url
+        ) else {
+            replyHandler(nil, "Native bridge messages are accepted only from the Idea Tiles main frame.")
+            return
+        }
+        let data: Data
+        if JSONSerialization.isValidJSONObject(message.body),
+           let encoded = try? JSONSerialization.data(withJSONObject: message.body) {
+            data = encoded
+        } else {
+            data = Data("null".utf8)
+        }
+        Task {
+            let responseData = await dispatcher.dispatch(data)
+            let response = try? JSONSerialization.jsonObject(with: responseData)
+            replyHandler(response, nil)
+        }
+    }
+}
+
+@MainActor
+final class MacRuntime {
+    nonisolated static let workspaceImportJavaScript = "if (!window.ideaTilesMac?.workspaceImports) return false; window.dispatchEvent(new CustomEvent('ideatiles:nativeWorkspaceImport', { detail: envelope })); return true;"
+    let repository: ArtifactRepository
+    let generationPreferences: UserDefaultsGenerationPreferences
+    let credentialStore: KeychainCredentialStore
+    let dreamerAccess: DreamerAccessService
+    let capabilities: MacRuntimeCapabilities
+    fileprivate let dispatcher: BridgeDispatcher
+    fileprivate let messageHandler: MacScriptMessageHandler
+    fileprivate let schemeHandler: BundleSchemeHandler
+    fileprivate lazy var navigationDelegate = AppNavigationDelegate(runtime: self)
+    private weak var activeWebView: WKWebView?
+    private var pendingWorkspaceImports: [Data] = []
+    private var isFlushingWorkspaceImports = false
+    private var workspaceImportFlushRequested = false
+
+    init() throws {
+        guard let resourceRoot = Bundle.main.url(forResource: "WebApp", withExtension: nil) else {
+            throw ResourceServingError.missingResource
+        }
+        let repository = try ArtifactRepository.applicationSupport()
+        let generationPreferences = UserDefaultsGenerationPreferences()
+        let credentialStore = KeychainCredentialStore()
+        let dreamerAccess = DreamerAccessService(
+            transport: URLSessionHTTPTransport(),
+            credentials: credentialStore
+        )
+        let engine = GenerationEngine(
+            preferences: generationPreferences,
+            credentials: credentialStore,
+            appleGenerator: DeadlineTextGenerator(
+                base: FoundationModelsTextGenerator(),
+                timeout: GenerationDeadlines.foundationModels
+            ),
+            cloudGenerator: DirectProviderClient(transport: URLSessionHTTPTransport()),
+            dreamer: dreamerAccess
+        )
+        let imageGenerator = ImageArtifactGenerator(
+            presenter: AppKitImagePlaygroundPresenter(),
+            repository: repository
+        )
+        let generationCoordinator = ArtifactGenerationCoordinator(
+            engine: engine,
+            imageGenerator: imageGenerator
+        )
+        let capabilities = MacRuntimeCapabilities.configured(
+            artifactGeneration: true,
+            imagePlayground: ImagePlaygroundViewController.isAvailable,
+            keychain: true
+        )
+        let router = NativeBridgeRouter(
+            repository: repository,
+            generationCoordinator: generationCoordinator,
+            textGenerator: engine,
+            generationPreferences: generationPreferences,
+            credentialStore: credentialStore,
+            capabilities: capabilities,
+            authenticator: { loginURL in
+                try await MacAuthenticationService.signIn(loginURL: loginURL)
+            },
+            dreamer: dreamerAccess,
+            urlOpener: { url in await MainActor.run { NSWorkspace.shared.open(url) } },
+            fileSaver: { filename, mimeType, data in
+                try await FilePanelService.saveExport(filename: filename, mimeType: mimeType, data: data)
+            },
+            settingsOpener: {
+                await MainActor.run {
+                    NSApp.sendAction(Selector(("showSettingsWindow:")), to: nil, from: nil)
+                }
+            }
+        ) { manifest in
+            let boardPayload = try await repository.boardPayload(id: manifest.provenance.sourceBoardId)
+            return try await FilePanelService.export(manifest, boardPayload: boardPayload)
+        }
+        let dispatcher = BridgeDispatcher(operation: router.execute)
+        self.repository = repository
+        self.generationPreferences = generationPreferences
+        self.credentialStore = credentialStore
+        self.dreamerAccess = dreamerAccess
+        self.capabilities = capabilities
+        self.dispatcher = dispatcher
+        messageHandler = MacScriptMessageHandler(dispatcher: dispatcher)
+        schemeHandler = BundleSchemeHandler(root: resourceRoot)
+    }
+
+    func attach(webView: WKWebView) {
+        activeWebView = webView
+        Task { await flushPendingWorkspaceImports() }
+    }
+
+    func importPackage() async {
+        do {
+            guard let package = try await FilePanelService.openPackage() else { return }
+            try await accept(package)
+        } catch {
+            showImportError(error)
+        }
+    }
+
+    func importPackage(at url: URL) async {
+        let scoped = url.startAccessingSecurityScopedResource()
+        defer { if scoped { url.stopAccessingSecurityScopedResource() } }
+        do {
+            try await accept(try IdeaTilesPackageCodec().importContents(at: url))
+        } catch {
+            showImportError(error)
+        }
+    }
+
+    private func accept(_ package: ImportedIdeaTilesPackage) async throws {
+        _ = try await repository.saveBoard(
+            id: package.boardID,
+            title: "Imported Idea Tiles Board",
+            payload: package.boardPayload
+        )
+        _ = try await repository.saveArtifact(package.manifest, payloads: package.payloads)
+        pendingWorkspaceImports.append(package.boardPayload)
+        await flushPendingWorkspaceImports()
+    }
+
+    private func flushPendingWorkspaceImports() async {
+        if isFlushingWorkspaceImports {
+            workspaceImportFlushRequested = true
+            return
+        }
+        guard let activeWebView else { return }
+        isFlushingWorkspaceImports = true
+        defer {
+            isFlushingWorkspaceImports = false
+            if workspaceImportFlushRequested {
+                workspaceImportFlushRequested = false
+                Task { await flushPendingWorkspaceImports() }
+            }
+        }
+        while let payload = pendingWorkspaceImports.first {
+            guard let envelope = try? JSONSerialization.jsonObject(with: payload) else {
+                pendingWorkspaceImports.removeFirst()
+                continue
+            }
+            do {
+                let delivered = try await activeWebView.callAsyncJavaScript(
+                    Self.workspaceImportJavaScript,
+                    arguments: ["envelope": envelope],
+                    in: nil,
+                    contentWorld: .page
+                ) as? Bool
+                guard delivered == true else { return }
+                pendingWorkspaceImports.removeFirst()
+            } catch {
+                return
+            }
+        }
+    }
+
+    private func showImportError(_ error: Error) {
+        let alert = NSAlert(error: error)
+        alert.messageText = "The Idea Tiles package could not be imported."
+        alert.runModal()
+    }
+}
+
+struct AppWebView: NSViewRepresentable {
+    let runtime: MacRuntime
+
+    func makeNSView(context: Context) -> WKWebView {
+        let configuration = WKWebViewConfiguration()
+        configuration.websiteDataStore = .default()
+        configuration.defaultWebpagePreferences.allowsContentJavaScript = true
+        configuration.setURLSchemeHandler(runtime.schemeHandler, forURLScheme: "ideatiles")
+        let contentController = WKUserContentController()
+        contentController.addUserScript(WKUserScript(
+            source: MacBridgeBootstrap.javaScript(capabilities: runtime.capabilities),
+            injectionTime: .atDocumentStart,
+            forMainFrameOnly: true,
+            in: .page
+        ))
+        contentController.addScriptMessageHandler(
+            runtime.messageHandler,
+            contentWorld: .page,
+            name: "ideaTilesBridge"
+        )
+        configuration.userContentController = contentController
+
+        let webView = WKWebView(frame: .zero, configuration: configuration)
+        runtime.attach(webView: webView)
+        webView.navigationDelegate = runtime.navigationDelegate
+        webView.allowsMagnification = true
+
+        WKContentRuleListStore.default().compileContentRuleList(
+            forIdentifier: "app.ideatiles.main.network-allowlist-v1",
+            encodedContentRuleList: AppContentSecurityPolicy.contentBlockerRules
+        ) { ruleList, error in
+            if let ruleList {
+                contentController.add(ruleList)
+            } else {
+                NSLog("Idea Tiles content-rule compilation failed; the document CSP remains active: %@", error?.localizedDescription ?? "unknown error")
+            }
+            webView.load(URLRequest(url: URL(string: "ideatiles://app/index.html")!))
+        }
+        return webView
+    }
+
+    func updateNSView(_ webView: WKWebView, context: Context) {}
+
+    static func dismantleNSView(_ webView: WKWebView, coordinator: Void) {
+        webView.stopLoading()
+        webView.navigationDelegate = nil
+        webView.configuration.userContentController.removeScriptMessageHandler(forName: "ideaTilesBridge", contentWorld: .page)
+    }
+}

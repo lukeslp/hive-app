@@ -1,9 +1,13 @@
 import {
+  boolean,
+  index,
   int,
+  mediumtext,
   mysqlEnum,
   mysqlTable,
   text,
   timestamp,
+  uniqueIndex,
   varchar,
 } from "drizzle-orm/mysql-core";
 
@@ -40,8 +44,8 @@ export const sessions = mysqlTable("sessions", {
   id: int("id").autoincrement().primaryKey(),
   userId: int("userId").notNull(),
   name: varchar("name", { length: 255 }).notNull(),
-  /** Full JSON blob: { nodes, viewState, creativity, keyThemes } */
-  data: text("data").notNull(),
+  /** Canonical workspace transport envelope, bounded below MEDIUMTEXT's limit. */
+  data: mediumtext("data").notNull(),
   nodeCount: int("nodeCount").notNull().default(0),
   /** CDN URL to a small canvas snapshot used as thumbnail */
   thumbnailUrl: text("thumbnailUrl"),
@@ -51,3 +55,67 @@ export const sessions = mysqlTable("sessions", {
 
 export type Session = typeof sessions.$inferSelect;
 export type InsertSession = typeof sessions.$inferInsert;
+
+/** Cloud-synced artifact metadata. Payloads are stored in artifactFiles. */
+export const artifacts = mysqlTable(
+  "artifacts",
+  {
+    id: varchar("id", { length: 128 }).primaryKey(),
+    userId: int("userId")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    sessionId: int("sessionId")
+      .notNull()
+      .references(() => sessions.id, { onDelete: "cascade" }),
+    schemaVersion: int("schemaVersion").notNull(),
+    title: varchar("title", { length: 256 }).notNull(),
+    kind: varchar("kind", { length: 32 }).notNull(),
+    recipeId: varchar("recipeId", { length: 128 }).notNull(),
+    scope: text("scope").notNull(),
+    provenance: text("provenance").notNull(),
+    manifestCreatedAt: varchar("manifestCreatedAt", { length: 40 }).notNull(),
+    manifestUpdatedAt: varchar("manifestUpdatedAt", { length: 40 }).notNull(),
+    createdAt: timestamp("createdAt").defaultNow().notNull(),
+    updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+  },
+  table => [
+    index("artifacts_user_session_idx").on(table.userId, table.sessionId),
+  ]
+);
+
+export type Artifact = typeof artifacts.$inferSelect;
+export type InsertArtifact = typeof artifacts.$inferInsert;
+
+/**
+ * Artifact file metadata and bounded inline cloud content. Image content is
+ * null until the user opts in for that exact image file.
+ */
+export const artifactFiles = mysqlTable(
+  "artifactFiles",
+  {
+    id: int("id").autoincrement().primaryKey(),
+    artifactId: varchar("artifactId", { length: 128 })
+      .notNull()
+      .references(() => artifacts.id, { onDelete: "cascade" }),
+    fileId: varchar("fileId", { length: 128 }).notNull(),
+    path: varchar("path", { length: 512 }).notNull(),
+    mimeType: varchar("mimeType", { length: 128 }).notNull(),
+    sizeBytes: int("sizeBytes").notNull(),
+    checksum: varchar("checksum", { length: 64 }).notNull(),
+    encoding: varchar("encoding", { length: 16 }),
+    content: mediumtext("content"),
+    contentSynced: boolean("contentSynced").notNull().default(false),
+    fileCreatedAt: varchar("fileCreatedAt", { length: 40 }).notNull(),
+    fileUpdatedAt: varchar("fileUpdatedAt", { length: 40 }).notNull(),
+  },
+  table => [
+    index("artifact_files_artifact_idx").on(table.artifactId),
+    uniqueIndex("artifact_files_identity_idx").on(
+      table.artifactId,
+      table.fileId
+    ),
+  ]
+);
+
+export type ArtifactFileRecord = typeof artifactFiles.$inferSelect;
+export type InsertArtifactFileRecord = typeof artifactFiles.$inferInsert;

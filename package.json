@@ -1,6 +1,6 @@
 {
   "name": "hexmind-app",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "type": "module",
   "license": "MIT",
   "scripts": {
@@ -19,6 +19,21 @@
     "android:release": "pnpm cap:sync:android && cd android && ANDROID_HOME=${ANDROID_HOME:-$HOME/Library/Android/sdk} JAVA_HOME=$(/usr/libexec/java_home -v 21) ./gradlew clean assembleRelease bundleRelease",
     "android:stage": "bash scripts/stage-android-release.sh",
     "cap:sync:ios": "pnpm build && npx cap sync ios",
+    "ios:build:simulator": "pnpm cap:sync:ios && xcodebuild build -workspace IdeaTiles.xcworkspace -scheme 'Idea Tiles' -destination 'generic/platform=iOS Simulator' IDEATILES_SKIP_CAP_SYNC=1 CODE_SIGNING_ALLOWED=NO",
+    "mac:build": "vite build --config vite.mac.config.ts",
+    "mac:generate": "xcodegen generate --spec macos/project.yml",
+    "mac:open": "pnpm mac:generate && open IdeaTiles.xcworkspace",
+    "mac:test": "pnpm mac:generate && xcodebuild test -workspace IdeaTiles.xcworkspace -scheme IdeaTiles -destination 'platform=macOS,arch=arm64' CODE_SIGNING_ALLOWED=NO",
+    "mac:build:native": "pnpm mac:generate && xcodebuild build -workspace IdeaTiles.xcworkspace -scheme IdeaTiles -destination 'platform=macOS,arch=arm64' CODE_SIGNING_ALLOWED=NO",
+    "mac:archive:app-store": "bash scripts/archive-mac-app-store.sh",
+    "mac:archive:app-store:unsigned": "bash scripts/archive-mac-app-store.sh --unsigned",
+    "mac:release:direct": "bash scripts/release-mac-direct.sh",
+    "mac:release:direct:archive-only": "bash scripts/release-mac-direct.sh --archive-only",
+    "mac:release:direct:preflight": "bash scripts/release-mac-direct.sh --preflight",
+    "release:tools:test": "node --test scripts/release-tools.test.mjs",
+    "workspace:list": "xcodebuild -list -workspace IdeaTiles.xcworkspace",
+    "workspace:open": "pnpm mac:generate && open IdeaTiles.xcworkspace",
+    "versions:check": "node scripts/check-apple-versions.mjs",
     "verify:canonical": "bash scripts/check-aasa.sh && bash scripts/verify-canonical-endpoints.sh"
   },
   "dependencies": {
