@@ -18,7 +18,7 @@
                BlueprintIdentifier = "504EC3031FED79650016851F"
                BuildableName = "hexmind.app"
                BlueprintName = "App"
-               ReferencedContainer = "container:App.xcodeproj">
+               ReferencedContainer = "container:IdeaTiles.xcodeproj">
             </BuildableReference>
          </BuildActionEntry>
       </BuildActionEntries>
@@ -48,7 +48,7 @@
             BlueprintIdentifier = "504EC3031FED79650016851F"
             BuildableName = "hexmind.app"
             BlueprintName = "App"
-            ReferencedContainer = "container:App.xcodeproj">
+            ReferencedContainer = "container:IdeaTiles.xcodeproj">
          </BuildableReference>
       </BuildableProductRunnable>
    </LaunchAction>
@@ -65,7 +65,7 @@
             BlueprintIdentifier = "504EC3031FED79650016851F"
             BuildableName = "hexmind.app"
             BlueprintName = "App"
-            ReferencedContainer = "container:App.xcodeproj">
+            ReferencedContainer = "container:IdeaTiles.xcodeproj">
          </BuildableReference>
       </BuildableProductRunnable>
    </ProfileAction>

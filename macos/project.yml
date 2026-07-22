@@ -12,7 +12,7 @@ settings:
     SWIFT_STRICT_CONCURRENCY: complete
     MACOSX_DEPLOYMENT_TARGET: "26.0"
     MARKETING_VERSION: 1.1.0
-    CURRENT_PROJECT_VERSION: 1
+    CURRENT_PROJECT_VERSION: 2
     ENABLE_HARDENED_RUNTIME: true
     ENABLE_USER_SCRIPT_SANDBOXING: true
 targets:
@@ -55,7 +55,7 @@ targets:
           /usr/bin/rsync -a --delete "$web_output/" "$resource_destination/"
     settings:
       base:
-        PRODUCT_BUNDLE_IDENTIFIER: app.ideatiles.macos
+        PRODUCT_BUNDLE_IDENTIFIER: app.hexmind.ios
         PRODUCT_NAME: IdeaTiles
         PRODUCT_MODULE_NAME: IdeaTiles
         GENERATE_INFOPLIST_FILE: false
@@ -81,7 +81,7 @@ targets:
       - target: IdeaTiles
     settings:
       base:
-        PRODUCT_BUNDLE_IDENTIFIER: app.ideatiles.macos.tests
+        PRODUCT_BUNDLE_IDENTIFIER: app.hexmind.ios.macos.tests
         GENERATE_INFOPLIST_FILE: true
         CODE_SIGNING_ALLOWED: false
 schemes:

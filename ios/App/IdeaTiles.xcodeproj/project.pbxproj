@@ -185,7 +185,7 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 			shellPath = /bin/sh;
-			shellScript = "# Auto-rebuild + sync the web bundle into the iOS app before each\n# Xcode build, so editing JS doesn't require remembering 'pnpm cap:sync:ios'.\n# Falls through with a loud warning when the toolchain isn't present\n# (CI, fresh checkout). The native build still runs whatever's already\n# in public/, but you'll see the warning in the build log instead of\n# silently shipping stale assets.\nset -e\nexport PATH=\"/opt/homebrew/bin:/usr/local/bin:$HOME/.nvm/versions/node/$(ls -1 \"$HOME/.nvm/versions/node\" 2>/dev/null | tail -1)/bin:$PATH\"\n# SRCROOT for the App target is <repo>/ios/App, so the repo root is two\n# directories up. Walk up until we find package.json so this stays\n# robust if the project is moved.\nREPO_ROOT=\"${SRCROOT}/../..\"\nif [ ! -f \"$REPO_ROOT/package.json\" ]; then\n  CANDIDATE=\"${SRCROOT}/..\"\n  if [ -f \"$CANDIDATE/package.json\" ]; then REPO_ROOT=\"$CANDIDATE\"; fi\nfi\necho \"Sync web assets: SRCROOT=$SRCROOT REPO_ROOT=$REPO_ROOT\"\nif command -v pnpm >/dev/null 2>&1 && [ -f \"$REPO_ROOT/package.json\" ] && [ -d \"$REPO_ROOT/node_modules\" ]; then\n  cd \"$REPO_ROOT\"\n  echo \"Running pnpm cap:sync:ios from $PWD\"\n  pnpm cap:sync:ios\n  # Touch every synced asset so Xcode's dependency tracker definitely\n  # sees the change and re-copies into App.app — without this, Xcode\n  # has been ignoring web-bundle updates that have the same byte length\n  # as a previous build.\n  find \"${SRCROOT}/App/public\" -type f -exec touch {} + 2>/dev/null || true\nelse\n  echo \"WARNING: pnpm not found or no node_modules at $REPO_ROOT — skipping web-asset sync. Run 'pnpm install && pnpm cap:sync:ios' manually if web changes don't appear.\"\nfi\n";
+			shellScript = "# Auto-rebuild + sync the web bundle into the iOS app before each\n# Xcode build, so editing JS doesn't require remembering 'pnpm cap:sync:ios'.\n# Falls through with a loud warning when the toolchain isn't present\n# (CI, fresh checkout). The native build still runs whatever's already\n# in public/, but you'll see the warning in the build log instead of\n# silently shipping stale assets.\nset -e\nif [ \"${IDEATILES_SKIP_CAP_SYNC:-0}\" = \"1\" ]; then\n  echo \"Sync web assets: skipped because IDEATILES_SKIP_CAP_SYNC=1\"\n  exit 0\nfi\nexport PATH=\"/opt/homebrew/bin:/usr/local/bin:$HOME/.nvm/versions/node/$(ls -1 \"$HOME/.nvm/versions/node\" 2>/dev/null | tail -1)/bin:$PATH\"\n# SRCROOT for the App target is <repo>/ios/App, so the repo root is two\n# directories up. Walk up until we find package.json so this stays\n# robust if the project is moved.\nREPO_ROOT=\"${SRCROOT}/../..\"\nif [ ! -f \"$REPO_ROOT/package.json\" ]; then\n  CANDIDATE=\"${SRCROOT}/..\"\n  if [ -f \"$CANDIDATE/package.json\" ]; then REPO_ROOT=\"$CANDIDATE\"; fi\nfi\necho \"Sync web assets: SRCROOT=$SRCROOT REPO_ROOT=$REPO_ROOT\"\nif command -v pnpm >/dev/null 2>&1 && [ -f \"$REPO_ROOT/package.json\" ] && [ -d \"$REPO_ROOT/node_modules\" ]; then\n  cd \"$REPO_ROOT\"\n  echo \"Running pnpm cap:sync:ios from $PWD\"\n  pnpm cap:sync:ios\n  # Touch every synced asset so Xcode's dependency tracker definitely\n  # sees the change and re-copies into App.app — without this, Xcode\n  # has been ignoring web-bundle updates that have the same byte length\n  # as a previous build.\n  find \"${SRCROOT}/App/public\" -type f -exec touch {} + 2>/dev/null || true\nelse\n  echo \"WARNING: pnpm not found or no node_modules at $REPO_ROOT — skipping web-asset sync. Run 'pnpm install && pnpm cap:sync:ios' manually if web changes don't appear.\"\nfi\n";
 		};
 /* End PBXShellScriptBuildPhase section */
 
@@ -353,14 +353,14 @@
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CODE_SIGN_ENTITLEMENTS = App/App.entitlements;
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 1;
+				CURRENT_PROJECT_VERSION = 2;
 				INFOPLIST_FILE = App/Info.plist;
 				IPHONEOS_DEPLOYMENT_TARGET = "$(RECOMMENDED_IPHONEOS_DEPLOYMENT_TARGET)";
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
-				MARKETING_VERSION = 1.1;
+				MARKETING_VERSION = 1.1.0;
 				OTHER_SWIFT_FLAGS = "$(inherited) \"-D\" \"COCOAPODS\" \"-DDEBUG\"";
 				PRODUCT_BUNDLE_IDENTIFIER = app.hexmind.ios;
 				PRODUCT_NAME = hexmind;
@@ -379,14 +379,14 @@
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CODE_SIGN_ENTITLEMENTS = App/App.entitlements;
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 1;
+				CURRENT_PROJECT_VERSION = 2;
 				INFOPLIST_FILE = App/Info.plist;
 				IPHONEOS_DEPLOYMENT_TARGET = "$(RECOMMENDED_IPHONEOS_DEPLOYMENT_TARGET)";
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
-				MARKETING_VERSION = 1.1;
+				MARKETING_VERSION = 1.1.0;
 				PRODUCT_BUNDLE_IDENTIFIER = app.hexmind.ios;
 				PRODUCT_NAME = hexmind;
 				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
