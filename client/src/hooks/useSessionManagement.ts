@@ -30,6 +30,7 @@ import {
   migrateTilesSession,
   parseWorkspaceTransport,
   workspaceEnvelopeForBoard,
+  workspaceImportFileSizeAllowed,
   workspaceToLegacyTilesSession,
   workspaceTransportForCloud,
   type WorkspaceDocument,
@@ -105,6 +106,8 @@ export function useSessionManagement({
   const nativeWorkspaceSaveInFlight = useRef<Promise<void>>(Promise.resolve());
   const lastCloudSaveRef = useRef<number>(0);
   const workspaceRef = useRef<WorkspaceDocument | null>(null);
+  const localAutosaveFailureShown = useRef(false);
+  const cloudAutosaveFailureShown = useRef(false);
 
   const buildSessionData = useCallback(() => {
     const legacy = {
@@ -138,10 +141,7 @@ export function useSessionManagement({
     const boardId = activeCloudSessionId
       ? `board:cloud:${activeCloudSessionId}`
       : localBoardId;
-    const envelope = workspaceEnvelopeForBoard(
-      sessionData.workspaceEnvelope,
-      boardId
-    );
+    const envelope = workspaceEnvelopeForBoard(sessionData, boardId);
     const previous = nativeWorkspaceSaveInFlight.current.catch(() => undefined);
     const operation = previous.then(async () => {
       await persistence.saveBoard({
@@ -240,13 +240,14 @@ export function useSessionManagement({
   useEffect(() => {
     if (Object.keys(nodes).length > 0 && enableAutoSave) {
       try {
-        const autosave = {
-          ...buildSessionData(),
-          timestamp: Date.now(),
-        };
-        localStorage.setItem(AUTOSAVE_KEY, JSON.stringify(autosave));
-      } catch {
-        // ignore
+        localStorage.setItem(AUTOSAVE_KEY, JSON.stringify(buildSessionData()));
+        localAutosaveFailureShown.current = false;
+      } catch (error) {
+        console.warn("Local autosave failed:", error);
+        if (!localAutosaveFailureShown.current) {
+          localAutosaveFailureShown.current = true;
+          toast.error("Autosave could not store this board locally");
+        }
       }
     }
   }, [nodes, enableAutoSave, buildSessionData]);
@@ -267,23 +268,35 @@ export function useSessionManagement({
       if (now - lastCloudSaveRef.current < CLOUD_AUTOSAVE_INTERVAL * 0.8)
         return;
 
-      const sessionData = buildSessionData();
-
-      updateMutation.mutate(
-        {
-          id: activeCloudSessionId,
-          data: sessionData,
-          nodeCount: Object.keys(nodes).length,
-        },
-        {
-          onSuccess: () => {
-            lastCloudSaveRef.current = Date.now();
+      try {
+        const sessionData = buildSessionData();
+        updateMutation.mutate(
+          {
+            id: activeCloudSessionId,
+            data: sessionData,
+            nodeCount: Object.keys(nodes).length,
           },
-          onError: err => {
-            console.warn("Cloud auto-save failed:", err);
-          },
+          {
+            onSuccess: () => {
+              lastCloudSaveRef.current = Date.now();
+              cloudAutosaveFailureShown.current = false;
+            },
+            onError: err => {
+              console.warn("Cloud auto-save failed:", err);
+              if (!cloudAutosaveFailureShown.current) {
+                cloudAutosaveFailureShown.current = true;
+                toast.error("Cloud autosave failed");
+              }
+            },
+          }
+        );
+      } catch (error) {
+        console.warn("Cloud auto-save could not prepare the board:", error);
+        if (!cloudAutosaveFailureShown.current) {
+          cloudAutosaveFailureShown.current = true;
+          toast.error("Autosave could not store this board");
         }
-      );
+      }
     }, CLOUD_AUTOSAVE_INTERVAL);
 
     return () => {
@@ -304,7 +317,14 @@ export function useSessionManagement({
   // ── Save (create new or overwrite existing) ───────────────────────────
   const saveSession = useCallback(
     async (name: string, overwriteId?: number) => {
-      const sessionData = buildSessionData();
+      let sessionData: ReturnType<typeof buildSessionData>;
+      try {
+        sessionData = buildSessionData();
+      } catch (error) {
+        console.error("Session is too large or invalid:", error);
+        toast.error("This board cannot be saved in its current form");
+        return;
+      }
       const nodeCount = Object.keys(nodes).length;
       const displayName = name || `Session ${savedSessions.length + 1}`;
 
@@ -523,14 +543,10 @@ export function useSessionManagement({
 
   // ── Export / Import ────────────────────────────────────────────────────
   const exportSession = useCallback(async () => {
-    const data = {
-      ...buildSessionData(),
-      exportDate: new Date().toISOString(),
-    };
-    const blob = new Blob([JSON.stringify(data, null, 2)], {
-      type: "application/json",
-    });
     try {
+      const blob = new Blob([JSON.stringify(buildSessionData(), null, 2)], {
+        type: "application/json",
+      });
       await saveBlob(blob, `${APP_EXPORT_FILE_PREFIX}_${Date.now()}.json`, {
         dialogTitle: `Share ${APP_DISPLAY_NAME} session`,
       });
@@ -543,11 +559,16 @@ export function useSessionManagement({
 
   const importSession = useCallback(
     (file: File) => {
+      if (!workspaceImportFileSizeAllowed(file.size)) {
+        toast.error("This session exceeds the 16 MB import limit");
+        return;
+      }
       const reader = new FileReader();
       reader.onload = e => {
         try {
-          const data = JSON.parse(e.target?.result as string);
-          const decoded = decodeSessionData(data);
+          const raw = e.target?.result;
+          if (typeof raw !== "string") throw new Error("Invalid session file");
+          const decoded = decodeSessionData(raw);
           if (Object.keys(decoded.nodes).length > 0) {
             setLocalBoardId(
               typeof decoded.boardId === "string"

@@ -1,0 +1,1 @@
+ALTER TABLE `sessions` MODIFY COLUMN `data` mediumtext NOT NULL;

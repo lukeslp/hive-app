@@ -189,6 +189,48 @@ struct ArtifactPersistenceTests {
 
 @Suite("Idea Tiles package validation")
 struct IdeaTilesPackageTests {
+    @Test("export rejects a noncanonical board payload")
+    func rejectsNoncanonicalBoardPayload() throws {
+        let root = try TestDirectory.make()
+        let destination = root.appending(path: "Missing.ideatiles")
+        let manifest = try ArtifactFixture.manifest(content: "safe")
+
+        #expect(throws: IdeaTilesPackageError.invalidPackage) {
+            try IdeaTilesPackageCodec().export(
+                manifest: manifest,
+                boardPayload: Data(#"{"id":"board:stable"}"#.utf8),
+                to: destination
+            )
+        }
+        #expect(!FileManager.default.fileExists(atPath: destination.path))
+    }
+
+    @Test("import rejects a canonical envelope whose board ID differs from the index")
+    func rejectsMismatchedEmbeddedBoardID() throws {
+        let root = try TestDirectory.make()
+        let packageURL = root.appending(path: "Mismatch.ideatiles", directoryHint: .isDirectory)
+        let codec = IdeaTilesPackageCodec()
+        try codec.export(
+            manifest: ArtifactFixture.manifest(content: "safe"),
+            boardPayload: ArtifactFixture.boardPayload(),
+            to: packageURL
+        )
+        let boardURL = packageURL.appending(path: "boards/board:stable/board.json")
+        let replacement = try ArtifactFixture.boardPayload(boardID: "board:different")
+        try replacement.write(to: boardURL, options: .atomic)
+        let indexURL = packageURL.appending(path: "package.json")
+        var index = try #require(
+            try JSONSerialization.jsonObject(with: Data(contentsOf: indexURL)) as? [String: Any]
+        )
+        index["boardChecksum"] = SHA256.hash(data: replacement)
+            .map { String(format: "%02x", $0) }.joined()
+        try JSONSerialization.data(withJSONObject: index).write(to: indexURL, options: .atomic)
+
+        #expect(throws: IdeaTilesPackageError.invalidPackage) {
+            try codec.importContents(at: packageURL)
+        }
+    }
+
     @Test("round-trips a validated artifact package with README")
     func roundTrip() throws {
         let root = try TestDirectory.make()
@@ -196,7 +238,7 @@ struct IdeaTilesPackageTests {
         let manifest = try ArtifactFixture.manifest(content: "# Package")
         let codec = IdeaTilesPackageCodec()
 
-        let boardPayload = Data(#"{"tiles":[{"id":"0,0"}]}"#.utf8)
+        let boardPayload = try ArtifactFixture.boardPayload()
         try codec.export(manifest: manifest, boardPayload: boardPayload, to: packageURL)
         let imported = try codec.importContents(at: packageURL)
 
@@ -217,7 +259,7 @@ struct IdeaTilesPackageTests {
         let packageURL = root.appending(path: "Invalid.ideatiles", directoryHint: .isDirectory)
         let manifest = try ArtifactFixture.manifest(content: "safe")
         let codec = IdeaTilesPackageCodec()
-        try codec.export(manifest: manifest, to: packageURL)
+        try codec.export(manifest: manifest, boardPayload: ArtifactFixture.boardPayload(), to: packageURL)
         let indexURL = packageURL.appending(path: "package.json")
         var index = try #require(try JSONSerialization.jsonObject(with: Data(contentsOf: indexURL)) as? [String: Any])
         switch mutation {
@@ -242,7 +284,7 @@ struct IdeaTilesPackageTests {
         let packageURL = root.appending(path: "Tampered.ideatiles", directoryHint: .isDirectory)
         let manifest = try ArtifactFixture.manifest(content: "safe")
         let codec = IdeaTilesPackageCodec()
-        try codec.export(manifest: manifest, to: packageURL)
+        try codec.export(manifest: manifest, boardPayload: ArtifactFixture.boardPayload(), to: packageURL)
         try Data("changed".utf8).write(
             to: packageURL.appending(path: "artifacts/artifact:1/files/index.md"),
             options: .atomic
@@ -259,7 +301,7 @@ struct IdeaTilesPackageTests {
         let packageURL = root.appending(path: "Linked.ideatiles", directoryHint: .isDirectory)
         let manifest = try ArtifactFixture.manifest(content: "safe")
         let codec = IdeaTilesPackageCodec()
-        try codec.export(manifest: manifest, to: packageURL)
+        try codec.export(manifest: manifest, boardPayload: ArtifactFixture.boardPayload(), to: packageURL)
         let link = packageURL.appending(path: "link")
         try FileManager.default.createSymbolicLink(at: link, withDestinationURL: URL(filePath: "/tmp"))
 
@@ -273,7 +315,7 @@ struct IdeaTilesPackageTests {
         let root = try TestDirectory.make()
         let packageURL = root.appending(path: "Large.ideatiles", directoryHint: .isDirectory)
         let manifest = try ArtifactFixture.manifest(content: String(repeating: "x", count: 1_024))
-        try IdeaTilesPackageCodec().export(manifest: manifest, to: packageURL)
+        try IdeaTilesPackageCodec().export(manifest: manifest, boardPayload: ArtifactFixture.boardPayload(), to: packageURL)
 
         #expect(throws: IdeaTilesPackageError.self) {
             try IdeaTilesPackageCodec(maximumTotalBytes: 128).importPackage(at: packageURL)
@@ -289,7 +331,7 @@ struct IdeaTilesPackageTests {
         var fileBacked = manifest
         for index in fileBacked.files.indices { fileBacked.files[index].content = nil }
 
-        try IdeaTilesPackageCodec().export(manifest: fileBacked, payloads: payloads, to: packageURL)
+        try IdeaTilesPackageCodec().export(manifest: fileBacked, boardPayload: ArtifactFixture.boardPayload(), payloads: payloads, to: packageURL)
         let imported = try IdeaTilesPackageCodec().importContents(at: packageURL)
 
         #expect(imported.manifest == fileBacked)
@@ -304,7 +346,7 @@ struct IdeaTilesPackageTests {
     func rejectsSymlinkRoot() throws {
         let root = try TestDirectory.make()
         let realPackage = root.appending(path: "Real.ideatiles", directoryHint: .isDirectory)
-        try IdeaTilesPackageCodec().export(manifest: ArtifactFixture.manifest(content: "safe"), to: realPackage)
+        try IdeaTilesPackageCodec().export(manifest: ArtifactFixture.manifest(content: "safe"), boardPayload: ArtifactFixture.boardPayload(), to: realPackage)
         let link = root.appending(path: "LinkedRoot.ideatiles")
         try FileManager.default.createSymbolicLink(at: link, withDestinationURL: realPackage)
 
@@ -317,7 +359,7 @@ struct IdeaTilesPackageTests {
     func rejectsTooManyEntries() throws {
         let root = try TestDirectory.make()
         let packageURL = root.appending(path: "Many.ideatiles", directoryHint: .isDirectory)
-        try IdeaTilesPackageCodec().export(manifest: ArtifactFixture.manifest(content: "safe"), to: packageURL)
+        try IdeaTilesPackageCodec().export(manifest: ArtifactFixture.manifest(content: "safe"), boardPayload: ArtifactFixture.boardPayload(), to: packageURL)
         try Data().write(to: packageURL.appending(path: "extra"))
 
         #expect(throws: IdeaTilesPackageError.self) {
@@ -333,19 +375,21 @@ struct IdeaTilesPackageTests {
         #expect(throws: IdeaTilesPackageError.self) {
             try IdeaTilesPackageCodec(maximumEntries: 5).export(
                 manifest: manifest,
+                boardPayload: ArtifactFixture.boardPayload(),
                 to: root.appending(path: "TooMany.ideatiles")
             )
         }
         #expect(throws: IdeaTilesPackageError.self) {
             try IdeaTilesPackageCodec(maximumEntryBytes: 16).export(
                 manifest: manifest,
-                boardPayload: Data(repeating: 1, count: 17),
+                boardPayload: ArtifactFixture.boardPayload(),
                 to: root.appending(path: "TooLarge.ideatiles")
             )
         }
         #expect(throws: IdeaTilesPackageError.self) {
             try IdeaTilesPackageCodec(maximumTotalBytes: 32).export(
                 manifest: manifest,
+                boardPayload: ArtifactFixture.boardPayload(),
                 to: root.appending(path: "TooLargeTotal.ideatiles")
             )
         }
@@ -356,12 +400,12 @@ struct IdeaTilesPackageTests {
         let root = try TestDirectory.make()
         let packageURL = root.appending(path: "Existing.ideatiles", directoryHint: .isDirectory)
         let original = try ArtifactFixture.manifest(content: "original")
-        try IdeaTilesPackageCodec().export(manifest: original, to: packageURL)
+        try IdeaTilesPackageCodec().export(manifest: original, boardPayload: ArtifactFixture.boardPayload(), to: packageURL)
 
         var invalid = try ArtifactFixture.manifest(content: "replacement")
         invalid.files[0].checksum.value = String(repeating: "0", count: 64)
         #expect(throws: Error.self) {
-            try IdeaTilesPackageCodec().export(manifest: invalid, to: packageURL)
+            try IdeaTilesPackageCodec().export(manifest: invalid, boardPayload: ArtifactFixture.boardPayload(), to: packageURL)
         }
 
         #expect(try IdeaTilesPackageCodec().importPackage(at: packageURL) == original.withoutInlineContent())
@@ -372,11 +416,11 @@ struct IdeaTilesPackageTests {
         let root = try TestDirectory.make()
         let packageURL = root.appending(path: "Committed.ideatiles", directoryHint: .isDirectory)
         let original = try ArtifactFixture.manifest(content: "original")
-        try IdeaTilesPackageCodec().export(manifest: original, to: packageURL)
+        try IdeaTilesPackageCodec().export(manifest: original, boardPayload: ArtifactFixture.boardPayload(), to: packageURL)
         let failingCodec = IdeaTilesPackageCodec(directoryCommitter: { _, _ in throw SimulatedCommitError.failed })
 
         #expect(throws: SimulatedCommitError.self) {
-            try failingCodec.export(manifest: ArtifactFixture.manifest(content: "replacement"), to: packageURL)
+            try failingCodec.export(manifest: ArtifactFixture.manifest(content: "replacement"), boardPayload: ArtifactFixture.boardPayload(), to: packageURL)
         }
 
         #expect(try IdeaTilesPackageCodec().importPackage(at: packageURL) == original.withoutInlineContent())
@@ -386,10 +430,10 @@ struct IdeaTilesPackageTests {
     func validOverwriteRoundTrip() throws {
         let root = try TestDirectory.make()
         let packageURL = root.appending(path: "Overwrite.ideatiles", directoryHint: .isDirectory)
-        try IdeaTilesPackageCodec().export(manifest: ArtifactFixture.manifest(content: "old"), to: packageURL)
+        try IdeaTilesPackageCodec().export(manifest: ArtifactFixture.manifest(content: "old"), boardPayload: ArtifactFixture.boardPayload(), to: packageURL)
         let replacement = try ArtifactFixture.manifest(content: "new")
 
-        try IdeaTilesPackageCodec().export(manifest: replacement, to: packageURL)
+        try IdeaTilesPackageCodec().export(manifest: replacement, boardPayload: ArtifactFixture.boardPayload(), to: packageURL)
         let imported = try IdeaTilesPackageCodec().importContents(at: packageURL)
 
         #expect(imported.manifest == replacement.withoutInlineContent())
@@ -416,7 +460,7 @@ struct IdeaTilesPackageTests {
         )
 
         #expect(throws: ArtifactContractError.self) {
-            try IdeaTilesPackageCodec().export(manifest: manifest, to: packageURL)
+            try IdeaTilesPackageCodec().export(manifest: manifest, boardPayload: ArtifactFixture.boardPayload(), to: packageURL)
         }
         #expect(!FileManager.default.fileExists(atPath: packageURL.path))
     }
@@ -435,6 +479,39 @@ private enum SimulatedRollbackError: Error {
 }
 
 enum ArtifactFixture {
+    static func boardPayload(boardID: String = "board:stable") throws -> Data {
+        try JSONSerialization.data(withJSONObject: [
+            "format": "app.ideatiles.workspace-envelope",
+            "envelopeVersion": 1,
+            "workspace": [
+                "format": "app.ideatiles.workspace",
+                "schemaVersion": 1,
+                "id": boardID,
+                "activeMode": "tiles",
+                "graph": ["nodes": [], "edges": []],
+                "projections": [
+                    "tiles": [
+                        "nodes": [:],
+                        "viewport": ["x": 0, "y": 0, "zoom": 1],
+                    ],
+                    "sphere": [
+                        "nodes": [:],
+                        "alignments": [],
+                        "camera": [
+                            "position": [0, 0, 15],
+                            "target": [0, 0, 0],
+                            "fov": 60,
+                            "zoom": 1,
+                        ],
+                        "subdivisions": 4,
+                    ],
+                ],
+                "preferences": ["creativity": 0.5],
+                "metadata": [:],
+            ],
+        ])
+    }
+
     static func manifest(content: String) throws -> ArtifactManifest {
         let data = Data(content.utf8)
         let checksum = SHA256.hash(data: data).map { String(format: "%02x", $0) }.joined()

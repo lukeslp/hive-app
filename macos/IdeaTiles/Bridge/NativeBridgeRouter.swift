@@ -323,7 +323,7 @@ struct NativeBridgeRouter: Sendable {
 enum FilePanelService {
     static let packageType = UTType(exportedAs: "app.ideatiles.package", conformingTo: .package)
 
-    static func export(_ manifest: ArtifactManifest, boardPayload: Data? = nil) async throws -> Bool {
+    static func export(_ manifest: ArtifactManifest, boardPayload: Data) async throws -> Bool {
         let panel = NSSavePanel()
         panel.allowedContentTypes = [packageType]
         panel.nameFieldStringValue = sanitizedFilename(manifest.title) + ".ideatiles"

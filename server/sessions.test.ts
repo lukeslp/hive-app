@@ -2,17 +2,15 @@ import { describe, expect, it, vi, beforeEach } from "vitest";
 
 // Mock the database functions
 vi.mock("./db", () => ({
-  listSessions: vi
-    .fn()
-    .mockResolvedValue([
-      {
-        id: 1,
-        name: "Test Session",
-        nodeCount: 5,
-        createdAt: new Date(),
-        updatedAt: new Date(),
-      },
-    ]),
+  listSessions: vi.fn().mockResolvedValue([
+    {
+      id: 1,
+      name: "Test Session",
+      nodeCount: 5,
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    },
+  ]),
   getSession: vi.fn().mockResolvedValue({
     id: 1,
     userId: 1,
@@ -38,6 +36,8 @@ import {
   updateSession,
   deleteSessionById,
 } from "./db";
+import { sessionDataSchema } from "./routers/sessions";
+import { MAX_WORKSPACE_TRANSPORT_BYTES } from "../shared/workspaceDocument";
 
 describe("Sessions DB helpers (mocked)", () => {
   beforeEach(() => {
@@ -85,5 +85,16 @@ describe("Sessions DB helpers (mocked)", () => {
   it("deleteSessionById calls with correct arguments", async () => {
     await deleteSessionById(1, 1);
     expect(deleteSessionById).toHaveBeenCalledWith(1, 1);
+  });
+
+  it("bounds serialized session payloads below the MEDIUMTEXT ceiling", () => {
+    expect(
+      sessionDataSchema.safeParse({ format: "legacy", nodes: {} }).success
+    ).toBe(true);
+    expect(
+      sessionDataSchema.safeParse({
+        payload: "x".repeat(MAX_WORKSPACE_TRANSPORT_BYTES),
+      }).success
+    ).toBe(false);
   });
 });

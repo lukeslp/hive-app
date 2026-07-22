@@ -153,7 +153,7 @@ final class MacRuntime {
             dreamer: dreamerAccess,
             urlOpener: { url in await MainActor.run { NSWorkspace.shared.open(url) } }
         ) { manifest in
-            let boardPayload = try? await repository.boardPayload(id: manifest.provenance.sourceBoardId)
+            let boardPayload = try await repository.boardPayload(id: manifest.provenance.sourceBoardId)
             return try await FilePanelService.export(manifest, boardPayload: boardPayload)
         }
         let dispatcher = BridgeDispatcher(operation: router.execute)

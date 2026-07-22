@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   MAX_WORKSPACE_NODES,
+  MAX_WORKSPACE_TRANSPORT_BYTES,
   createWorkspaceTransportEnvelope,
   importBrainSphereSession,
   mergeTilesSessionIntoWorkspace,
@@ -12,6 +13,7 @@ import {
   workspaceDocumentSchema,
   workspaceModeRegistry,
   workspaceEnvelopeForBoard,
+  workspaceImportFileSizeAllowed,
   workspaceTransportForCloud,
   workspaceToLegacyTilesSession,
 } from "@shared/workspaceDocument";
@@ -137,6 +139,23 @@ describe("canonical workspace document", () => {
     expect(workspace.projections.sphere.nodes).toEqual({});
   });
 
+  it("derives stable distinct board IDs when legacy imports omit boardId", () => {
+    const { boardId: _boardId, ...withoutId } = tilesSession;
+    const first = migrateTilesSession(withoutId);
+    const repeated = migrateTilesSession(withoutId);
+    const changed = migrateTilesSession({
+      ...withoutId,
+      nodes: {
+        ...withoutId.nodes,
+        "0,0": { ...withoutId.nodes["0,0"], text: "Different root" },
+      },
+    });
+
+    expect(first.id).toMatch(/^board:tiles:[a-f0-9]{16}$/);
+    expect(repeated.id).toBe(first.id);
+    expect(changed.id).not.toBe(first.id);
+  });
+
   it("migrates the declared Tiles SessionData shape with view and metadata", () => {
     const workspace = migrateTilesSession({
       nodes: tileNodes,
@@ -205,7 +224,7 @@ describe("canonical workspace document", () => {
     expect(sphere.activeMode).toBe("sphere");
   });
 
-  it("round-trips package and cloud transport envelopes while retaining legacy tiles", () => {
+  it("round-trips canonical package and cloud envelopes", () => {
     const workspace = migrateTilesSession(tilesSession);
     const envelope = createWorkspaceTransportEnvelope(workspace);
     const parsedEnvelope = parseWorkspaceTransport(envelope);
@@ -220,14 +239,99 @@ describe("canonical workspace document", () => {
     expect(legacy.nodes["-1,0"].parentId).toBe("0,0");
     expect(legacy.viewState).toEqual(tilesSession.viewState);
     expect(legacy.keyThemes).toEqual(["0,0"]);
-    expect(cloud.workspaceEnvelope).toEqual(envelope);
-    expect(cloud.nodes["-1,0"].semanticId).toBe("tile:-1:0");
+    expect(cloud).toEqual(envelope);
+    expect(cloud).not.toHaveProperty("nodes");
     const native = workspaceEnvelopeForBoard(envelope, "board:cloud:42");
     expect(native.workspace.id).toBe("board:cloud:42");
     expect(native.workspace.graph).toEqual(envelope.workspace.graph);
     expect(native.workspace.projections).toEqual(
       envelope.workspace.projections
     );
+  });
+
+  it("enforces one UTF-8 byte budget across persisted workspace transports", () => {
+    const envelope = createWorkspaceTransportEnvelope(
+      migrateTilesSession(tilesSession)
+    );
+    const encoded = new TextEncoder().encode(JSON.stringify(envelope));
+
+    expect(encoded.byteLength).toBeLessThan(MAX_WORKSPACE_TRANSPORT_BYTES);
+    expect(workspaceImportFileSizeAllowed(encoded.byteLength)).toBe(true);
+    expect(
+      workspaceImportFileSizeAllowed(MAX_WORKSPACE_TRANSPORT_BYTES + 1)
+    ).toBe(false);
+
+    const nearLimit = {
+      ...envelope,
+      workspace: {
+        ...envelope.workspace,
+        graph: {
+          ...envelope.workspace.graph,
+          nodes: envelope.workspace.graph.nodes.map((node, index) =>
+            index === 0
+              ? {
+                  ...node,
+                  compatibility: {
+                    tiles: {
+                      imageAttachment: {
+                        artifactId: "artifact:large",
+                        targetNodeId: "0,0",
+                        fileId: "file:large",
+                        mimeType: "image/png",
+                        dataURL: `data:image/png;base64,${"A".repeat(
+                          MAX_WORKSPACE_TRANSPORT_BYTES - 20_000
+                        )}`,
+                        checksum: {
+                          algorithm: "sha256",
+                          value: "a".repeat(64),
+                        },
+                      },
+                    },
+                  },
+                }
+              : node
+          ),
+        },
+      },
+    };
+    expect(() =>
+      parseWorkspaceTransport(JSON.stringify(nearLimit))
+    ).not.toThrow();
+    expect(() =>
+      parseWorkspaceTransport(
+        JSON.stringify({ ...nearLimit, padding: "A".repeat(20_000) })
+      )
+    ).toThrow(/size limit|exceeds/i);
+  });
+
+  it("rejects excessive JSON nesting before schema traversal", () => {
+    const deeplyNested = `${"[".repeat(80)}0${"]".repeat(80)}`;
+    expect(() => parseWorkspaceTransport(deeplyNested)).toThrow(/nesting/i);
+  });
+
+  it("uses JavaScript UTF-16 code units for text bounds", () => {
+    const withinLimit = String.fromCodePoint(0x1f9e0).repeat(256);
+    expect(() =>
+      migrateTilesSession({
+        ...tilesSession,
+        nodes: {
+          ...tilesSession.nodes,
+          "0,0": { ...tilesSession.nodes["0,0"], text: withinLimit },
+        },
+      })
+    ).not.toThrow();
+    expect(() =>
+      migrateTilesSession({
+        ...tilesSession,
+        nodes: {
+          ...tilesSession.nodes,
+          "0,0": {
+            ...tilesSession.nodes["0,0"],
+            text: `${withinLimit}x`,
+          },
+        },
+      })
+    ).toThrow();
   });
 
   it("preserves noncanonical tile fields and an existing sphere projection", () => {

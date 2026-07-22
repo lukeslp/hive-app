@@ -4,6 +4,108 @@ import Testing
 
 @Suite("Native RPC validation")
 struct BridgeValidationTests {
+    @Test("workspace validation matches JavaScript string limits and semantic references")
+    func validatesWorkspaceSemantics() throws {
+        var request = workspaceSaveRequest()
+        var params = try #require(request["params"] as? [String: Any])
+        var envelope = try #require(params["envelope"] as? [String: Any])
+        var workspace = try #require(envelope["workspace"] as? [String: Any])
+        let emojiText = String(repeating: "🧠", count: 256) // 512 UTF-16 code units
+        let node: [String: Any] = [
+            "id": "tile:0:0", "text": emojiText, "type": "root", "depth": 0,
+            "parentId": NSNull(), "isKeyTheme": false, "pinned": false,
+            "artifactAttachments": [],
+        ]
+        workspace["graph"] = ["nodes": [node], "edges": []]
+        var projections = try #require(workspace["projections"] as? [String: Any])
+        var tiles = try #require(projections["tiles"] as? [String: Any])
+        tiles["nodes"] = ["tile:0:0": ["q": 0, "r": 0]]
+        projections["tiles"] = tiles
+        workspace["projections"] = projections
+        envelope["workspace"] = workspace
+        params["envelope"] = envelope
+        request["params"] = params
+        _ = try RPCRequestValidator().parse(JSONSerialization.data(withJSONObject: request))
+
+        for mutation in [
+            "date", "compatibility", "attachment", "danglingEdge", "danglingParent",
+            "duplicateNode", "duplicateEdge", "duplicatePosition",
+        ] {
+            var invalid = workspace
+            switch mutation {
+            case "date":
+                invalid["metadata"] = ["createdAt": "not-a-date"]
+            case "compatibility":
+                var malformedNode = node
+                malformedNode["compatibility"] = ["tiles": ["codeSnippet": ["language": "swift"]]]
+                invalid["graph"] = ["nodes": [malformedNode], "edges": []]
+            case "attachment":
+                var malformedNode = node
+                malformedNode["compatibility"] = ["tiles": ["imageAttachment": [
+                    "artifactId": "artifact:1", "targetNodeId": "tile:0:0",
+                    "fileId": "file:1", "mimeType": "image/png",
+                    "dataURL": "data:image/png;base64,AA==",
+                    "checksum": ["algorithm": "sha256", "value": "bad"],
+                ]]]
+                invalid["graph"] = ["nodes": [malformedNode], "edges": []]
+            case "danglingEdge":
+                invalid["graph"] = [
+                    "nodes": [node],
+                    "edges": [["sourceId": "tile:0:0", "targetId": "tile:missing", "kind": "related"]],
+                ]
+            case "danglingParent":
+                var dangling = node
+                dangling["parentId"] = "tile:missing"
+                invalid["graph"] = ["nodes": [dangling], "edges": []]
+            case "duplicateNode":
+                invalid["graph"] = ["nodes": [node, node], "edges": []]
+            case "duplicateEdge":
+                var second = node
+                second["id"] = "tile:1:0"
+                let edge = ["sourceId": "tile:0:0", "targetId": "tile:1:0", "kind": "related"]
+                invalid["graph"] = ["nodes": [node, second], "edges": [edge, edge]]
+                var invalidProjections = projections
+                var invalidTiles = try #require(invalidProjections["tiles"] as? [String: Any])
+                invalidTiles["nodes"] = [
+                    "tile:0:0": ["q": 0, "r": 0],
+                    "tile:1:0": ["q": 1, "r": 0],
+                ]
+                invalidProjections["tiles"] = invalidTiles
+                invalid["projections"] = invalidProjections
+            default:
+                var second = node
+                second["id"] = "tile:1:0"
+                invalid["graph"] = ["nodes": [node, second], "edges": []]
+                var invalidProjections = projections
+                var invalidTiles = try #require(invalidProjections["tiles"] as? [String: Any])
+                invalidTiles["nodes"] = [
+                    "tile:0:0": ["q": 0, "r": 0],
+                    "tile:1:0": ["q": 0, "r": 0],
+                ]
+                invalidProjections["tiles"] = invalidTiles
+                invalid["projections"] = invalidProjections
+            }
+            var invalidEnvelope = envelope
+            invalidEnvelope["workspace"] = invalid
+            var invalidParams = params
+            invalidParams["envelope"] = invalidEnvelope
+            var invalidRequest = request
+            invalidRequest["params"] = invalidParams
+            #expect(throws: RPCValidationError.self) {
+                try RPCRequestValidator().parse(JSONSerialization.data(withJSONObject: invalidRequest))
+            }
+        }
+    }
+
+    @Test("rejects excessive JSON nesting before value conversion")
+    func rejectsExcessiveJSONDepth() {
+        let nested = String(repeating: "[", count: 65) + "0" + String(repeating: "]", count: 65)
+        let data = Data(#"{"id":"rpc:1","method":"platform.getCapabilities","params":{"nested":\#(nested)}}"#.utf8)
+        #expect(throws: RPCValidationError.invalidJSON) {
+            try RPCRequestValidator().parse(data)
+        }
+    }
+
     @Test("accepts only a bounded canonical workspace envelope")
     func validatesWorkspacePersistence() throws {
         let valid = workspaceSaveRequest()
