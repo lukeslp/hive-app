@@ -37,8 +37,8 @@ enum RPCValidationError: Error, Equatable {
 }
 
 struct RPCRequestValidator: Sendable {
-    static let defaultMaximumBytes = 17 * 1_024 * 1_024
-    static let maximumWorkspaceBytes = 16 * 1_024 * 1_024
+    static let defaultMaximumBytes = 16_500_000
+    static let maximumWorkspaceBytes = 16_000_000
     private static let stableID = try! NSRegularExpression(pattern: "^[A-Za-z0-9][A-Za-z0-9._:,-]{0,127}$")
     let maximumBytes: Int
 
@@ -48,6 +48,10 @@ struct RPCRequestValidator: Sendable {
 
     func parse(_ data: Data) throws -> ValidatedRPCRequest {
         guard data.count <= maximumBytes else { throw RPCValidationError.messageTooLarge }
+        // RPC adds the request and params containers around a workspace envelope.
+        guard Self.hasAcceptableJSONDepth(data, maximumDepth: 66) else {
+            throw RPCValidationError.invalidJSON
+        }
         let raw: Any
         do {
             raw = try JSONSerialization.jsonObject(with: data, options: [.fragmentsAllowed])
@@ -77,6 +81,35 @@ struct RPCRequestValidator: Sendable {
         return stableID.firstMatch(in: value, range: range)?.range == range
     }
 
+    static func validateWorkspaceEnvelopeData(_ data: Data, expectedBoardID: String) throws {
+        guard data.count <= maximumWorkspaceBytes, hasAcceptableJSONDepth(data),
+              let envelope = try JSONSerialization.jsonObject(with: data) as? [String: Any]
+        else { throw RPCValidationError.invalidParameters }
+        try RPCRequestValidator().validateWorkspaceEnvelope(envelope, boardID: expectedBoardID)
+    }
+
+    private static func hasAcceptableJSONDepth(_ data: Data, maximumDepth: Int = 64) -> Bool {
+        var depth = 0
+        var inString = false
+        var escaped = false
+        for byte in data {
+            if inString {
+                if escaped { escaped = false }
+                else if byte == 0x5c { escaped = true }
+                else if byte == 0x22 { inString = false }
+            } else if byte == 0x22 {
+                inString = true
+            } else if byte == 0x7b || byte == 0x5b {
+                depth += 1
+                if depth > maximumDepth { return false }
+            } else if byte == 0x7d || byte == 0x5d {
+                depth -= 1
+                if depth < 0 { return false }
+            }
+        }
+        return depth == 0 && !inString
+    }
+
     private func validateParameters(_ params: [String: Any], for method: RPCMethod) throws {
         switch method {
         case .getCapabilities, .getGenerationSettings, .credentialStatus,
@@ -86,7 +119,7 @@ struct RPCRequestValidator: Sendable {
             guard Set(params.keys) == ["inviteCode"],
                   let inviteCode = params["inviteCode"] as? String,
                   inviteCode == inviteCode.trimmingCharacters(in: .whitespacesAndNewlines),
-                  inviteCode.utf8.count <= 256,
+                  inviteCode.utf16.count <= 256,
                   inviteCode.range(of: #"^di_[A-Za-z0-9_-]{7,253}$"#, options: .regularExpression) != nil
             else { throw RPCValidationError.invalidParameters }
         case .saveWorkspace:
@@ -96,7 +129,7 @@ struct RPCRequestValidator: Sendable {
                   let title = params["title"] as? String,
                   title == title.trimmingCharacters(in: .whitespacesAndNewlines),
                   !title.isEmpty,
-                  title.utf8.count <= 255,
+                  title.utf16.count <= 255,
                   let envelope = params["envelope"] as? [String: Any]
             else { throw RPCValidationError.invalidParameters }
             try validateWorkspaceEnvelope(envelope, boardID: boardID)
@@ -113,7 +146,7 @@ struct RPCRequestValidator: Sendable {
                   provider != .dreamer,
                   let credential = params["credential"] as? String,
                   !credential.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty,
-                  credential.trimmingCharacters(in: .whitespacesAndNewlines).utf8.count <= 16_384
+                  credential.trimmingCharacters(in: .whitespacesAndNewlines).utf16.count <= 16_384
             else { throw RPCValidationError.invalidParameters }
         case .removeCredential:
             guard Set(params.keys) == ["provider"],
@@ -125,7 +158,7 @@ struct RPCRequestValidator: Sendable {
         case .beginAuthentication:
             guard Set(params.keys) == ["loginURL"],
                   let rawURL = params["loginURL"] as? String,
-                  rawURL.utf8.count <= 4_096,
+                  rawURL.utf16.count <= 4_096,
                   let url = URL(string: rawURL)
             else { throw RPCValidationError.invalidParameters }
             do { _ = try AuthenticationURLPolicy.validate(url) }
@@ -221,7 +254,7 @@ struct RPCRequestValidator: Sendable {
         if let name = metadata["name"] {
             guard let value = name as? String,
                   !value.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty,
-                  value.utf8.count <= 255
+                  value.utf16.count <= 255
             else { throw RPCValidationError.invalidParameters }
         }
         if let source = metadata["source"] {
@@ -229,18 +262,19 @@ struct RPCRequestValidator: Sendable {
                   ["ideaTiles", "brainSphere"].contains(value)
             else { throw RPCValidationError.invalidParameters }
         }
-        if let createdAt = metadata["createdAt"], !(createdAt is String) {
-            throw RPCValidationError.invalidParameters
+        if let createdAt = metadata["createdAt"] {
+            guard let value = createdAt as? String, validISO8601(value)
+            else { throw RPCValidationError.invalidParameters }
         }
-        try validateWorkspaceNodes(nodes)
-        try validateWorkspaceEdges(edges)
-        try validateWorkspaceProjections(projections)
+        let nodeIDs = try validateWorkspaceNodes(nodes)
+        try validateWorkspaceEdges(edges, nodeIDs: nodeIDs)
+        try validateWorkspaceProjections(projections, nodeIDs: nodeIDs)
         guard let encoded = try? JSONSerialization.data(withJSONObject: envelope),
               encoded.count <= Self.maximumWorkspaceBytes
         else { throw RPCValidationError.invalidParameters }
     }
 
-    private func validateWorkspaceNodes(_ nodes: [Any]) throws {
+    private func validateWorkspaceNodes(_ nodes: [Any]) throws -> Set<String> {
         let required: Set<String> = [
             "id", "text", "type", "depth", "parentId", "isKeyTheme",
             "pinned", "artifactAttachments",
@@ -252,6 +286,8 @@ struct RPCRequestValidator: Sendable {
         let types: Set<String> = [
             "root", "concept", "action", "technical", "question", "risk", "default",
         ]
+        var nodeIDs = Set<String>()
+        var parentIDs: [(String, String)] = []
         for rawNode in nodes {
             guard let node = rawNode as? [String: Any],
                   required.isSubset(of: node.keys),
@@ -259,7 +295,7 @@ struct RPCRequestValidator: Sendable {
                   let id = node["id"] as? String, Self.isStableID(id),
                   let text = node["text"] as? String,
                   !text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty,
-                  text.utf8.count <= 512,
+                  text.utf16.count <= 512,
                   let type = node["type"] as? String, types.contains(type),
                   boundedInteger(node["depth"], minimum: 0, maximum: 512) != nil,
                   node["isKeyTheme"] is Bool,
@@ -267,15 +303,35 @@ struct RPCRequestValidator: Sendable {
                   let attachments = node["artifactAttachments"] as? [Any],
                   attachments.count <= 32
             else { throw RPCValidationError.invalidParameters }
+            guard nodeIDs.insert(id).inserted else { throw RPCValidationError.invalidParameters }
             if !(node["parentId"] is NSNull) {
                 guard let parentID = node["parentId"] as? String,
-                      Self.isStableID(parentID)
+                      Self.isStableID(parentID), parentID != id
                 else { throw RPCValidationError.invalidParameters }
+                parentIDs.append((id, parentID))
             }
             for key in ["description", "contextInfo"] {
-                if let value = node[key], !(value is String) {
-                    throw RPCValidationError.invalidParameters
+                if let raw = node[key] {
+                    guard let value = raw as? String, value.utf16.count <= 8_000
+                    else { throw RPCValidationError.invalidParameters }
                 }
+            }
+            if let hierarchy = node["hierarchyLevel"], boundedInteger(hierarchy, minimum: 1, maximum: 8) == nil {
+                throw RPCValidationError.invalidParameters
+            }
+            for key in ["wasInteracted", "isClusterRoot"] where node[key] != nil && !(node[key] is Bool) {
+                throw RPCValidationError.invalidParameters
+            }
+            if let cluster = node["clusterId"] as? String, !Self.isStableID(cluster) {
+                throw RPCValidationError.invalidParameters
+            } else if node["clusterId"] != nil && !(node["clusterId"] is String) {
+                throw RPCValidationError.invalidParameters
+            }
+            if let compatibility = node["compatibility"] {
+                guard let value = compatibility as? [String: Any],
+                      Set(value.keys).isSubset(of: ["tiles", "sphere"])
+                else { throw RPCValidationError.invalidParameters }
+                try validateCompatibility(value)
             }
             for attachment in attachments {
                 guard let value = attachment as? [String: Any],
@@ -284,7 +340,7 @@ struct RPCRequestValidator: Sendable {
                       let fileID = value["fileId"] as? String,
                       Self.isStableID(artifactID), Self.isStableID(fileID),
                       let mimeType = value["mimeType"] as? String,
-                      !mimeType.isEmpty, mimeType.utf8.count <= 128,
+                      !mimeType.isEmpty, mimeType.utf16.count <= 128,
                       let checksum = value["checksum"] as? [String: Any],
                       Set(checksum.keys) == ["algorithm", "value"],
                       checksum["algorithm"] as? String == "sha256",
@@ -296,22 +352,29 @@ struct RPCRequestValidator: Sendable {
                 else { throw RPCValidationError.invalidParameters }
             }
         }
+        guard parentIDs.allSatisfy({ nodeIDs.contains($0.1) }) else {
+            throw RPCValidationError.invalidParameters
+        }
+        return nodeIDs
     }
 
-    private func validateWorkspaceEdges(_ edges: [Any]) throws {
+    private func validateWorkspaceEdges(_ edges: [Any], nodeIDs: Set<String>) throws {
         let kinds: Set<String> = ["hierarchy", "linkedContext", "related", "bridge"]
+        var seen = Set<String>()
         for rawEdge in edges {
             guard let edge = rawEdge as? [String: Any],
                   Set(edge.keys) == ["sourceId", "targetId", "kind"],
                   let source = edge["sourceId"] as? String,
                   let target = edge["targetId"] as? String,
                   let kind = edge["kind"] as? String,
-                  Self.isStableID(source), Self.isStableID(target), kinds.contains(kind)
+                  Self.isStableID(source), Self.isStableID(target), kinds.contains(kind),
+                  nodeIDs.contains(source), nodeIDs.contains(target),
+                  seen.insert("\(kind)\u{0}\(source)\u{0}\(target)").inserted
             else { throw RPCValidationError.invalidParameters }
         }
     }
 
-    private func validateWorkspaceProjections(_ projections: [String: Any]) throws {
+    private func validateWorkspaceProjections(_ projections: [String: Any], nodeIDs: Set<String>) throws {
         guard let tiles = projections["tiles"] as? [String: Any],
               Set(tiles.keys) == ["nodes", "viewport"],
               let tileNodes = tiles["nodes"] as? [String: Any],
@@ -322,12 +385,14 @@ struct RPCRequestValidator: Sendable {
               boundedNumber(viewport["y"], minimum: -1_000_000, maximum: 1_000_000) != nil,
               boundedNumber(viewport["zoom"], minimum: 0.05, maximum: 20) != nil
         else { throw RPCValidationError.invalidParameters }
+        var tileCoordinates = Set<String>()
         for (id, rawPosition) in tileNodes {
-            guard Self.isStableID(id),
+            guard Self.isStableID(id), nodeIDs.contains(id),
                   let position = rawPosition as? [String: Any],
                   Set(position.keys) == ["q", "r"],
-                  boundedInteger(position["q"], minimum: -1_000_000, maximum: 1_000_000) != nil,
-                  boundedInteger(position["r"], minimum: -1_000_000, maximum: 1_000_000) != nil
+                  let q = boundedInteger(position["q"], minimum: -1_000_000, maximum: 1_000_000),
+                  let r = boundedInteger(position["r"], minimum: -1_000_000, maximum: 1_000_000),
+                  tileCoordinates.insert("\(q),\(r)").inserted
             else { throw RPCValidationError.invalidParameters }
         }
 
@@ -344,17 +409,20 @@ struct RPCRequestValidator: Sendable {
               boundedNumber(camera["zoom"], minimum: 0.05, maximum: 20) != nil,
               boundedInteger(sphere["subdivisions"], minimum: 1, maximum: 32) != nil
         else { throw RPCValidationError.invalidParameters }
+        var tileIndices = Set<Int>()
         for (id, rawPosition) in sphereNodes {
-            guard Self.isStableID(id),
+            guard Self.isStableID(id), nodeIDs.contains(id),
                   let position = rawPosition as? [String: Any],
                   Set(position.keys) == ["tileIndex", "position"],
-                  boundedInteger(position["tileIndex"], minimum: 0, maximum: 1_000_000) != nil,
+                  let tileIndex = boundedInteger(position["tileIndex"], minimum: 0, maximum: 1_000_000),
+                  tileIndices.insert(tileIndex).inserted,
                   validVector(position["position"])
             else { throw RPCValidationError.invalidParameters }
         }
         let categories: Set<String> = [
             "thematic", "causal", "complementary", "contrasting", "dependent",
         ]
+        var alignmentKeys = Set<String>()
         for rawAlignment in alignments {
             guard let alignment = rawAlignment as? [String: Any],
                   Set(alignment.keys) == ["sourceId", "targetId", "score", "reason", "category"],
@@ -363,11 +431,113 @@ struct RPCRequestValidator: Sendable {
                   let reason = alignment["reason"] as? String,
                   let category = alignment["category"] as? String,
                   Self.isStableID(source), Self.isStableID(target),
-                  !reason.isEmpty, reason.utf8.count <= 1_000,
+                  source != target, nodeIDs.contains(source), nodeIDs.contains(target),
+                  alignmentKeys.insert("\(source)\u{0}\(target)\u{0}\(category)").inserted,
+                  !reason.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty,
+                  reason.utf16.count <= 1_000,
                   categories.contains(category),
                   boundedNumber(alignment["score"], minimum: 0, maximum: 1) != nil
             else { throw RPCValidationError.invalidParameters }
         }
+        guard nodeIDs.allSatisfy({ tileNodes[$0] != nil || sphereNodes[$0] != nil }) else {
+            throw RPCValidationError.invalidParameters
+        }
+    }
+
+    private func validateCompatibility(_ compatibility: [String: Any]) throws {
+        if let rawTiles = compatibility["tiles"] {
+            guard let tiles = rawTiles as? [String: Any], Set(tiles.keys).isSubset(of: [
+                "clarifyingQuestion", "shouldAskClarifyingQuestion", "clarificationReasoning",
+                "userInputCategory", "suggestedAnswers", "codeSnippet", "visualization", "isBridge",
+                "bridgeTargetCluster", "imageAttachment",
+            ]) else { throw RPCValidationError.invalidParameters }
+            for key in ["clarifyingQuestion", "clarificationReasoning"] {
+                if let raw = tiles[key] {
+                    guard let value = raw as? String, value.utf16.count <= 8_000
+                    else { throw RPCValidationError.invalidParameters }
+                }
+            }
+            for key in ["shouldAskClarifyingQuestion", "isBridge"] where tiles[key] != nil && !(tiles[key] is Bool) {
+                throw RPCValidationError.invalidParameters
+            }
+            if let answers = tiles["suggestedAnswers"] as? [String] {
+                guard answers.count <= 5, answers.allSatisfy({ $0.utf16.count <= 512 })
+                else { throw RPCValidationError.invalidParameters }
+            } else if tiles["suggestedAnswers"] != nil { throw RPCValidationError.invalidParameters }
+            if let category = tiles["userInputCategory"] as? String,
+               !["preference", "constraint", "situation", "goal"].contains(category) {
+                throw RPCValidationError.invalidParameters
+            } else if tiles["userInputCategory"] != nil && !(tiles["userInputCategory"] is String) {
+                throw RPCValidationError.invalidParameters
+            }
+            if let rawTarget = tiles["bridgeTargetCluster"] {
+                guard let target = rawTarget as? String, target.utf16.count <= 128
+                else { throw RPCValidationError.invalidParameters }
+            }
+            if let snippet = tiles["codeSnippet"] { try validateCodeSnippet(snippet) }
+            if let visualization = tiles["visualization"] { try validateVisualization(visualization) }
+            if let attachment = tiles["imageAttachment"] {
+                guard let image = attachment as? [String: Any],
+                      Set(image.keys) == ["artifactId", "targetNodeId", "fileId", "mimeType", "dataURL", "checksum"],
+                      let artifactID = image["artifactId"] as? String, Self.isStableID(artifactID),
+                      let fileID = image["fileId"] as? String, Self.isStableID(fileID),
+                      let targetNodeID = image["targetNodeId"] as? String,
+                      !targetNodeID.isEmpty, targetNodeID.utf16.count <= 128,
+                      image["mimeType"] as? String == "image/png",
+                      let dataURL = image["dataURL"] as? String,
+                      dataURL.utf16.count <= Self.maximumWorkspaceBytes,
+                      dataURL.range(of: #"^data:image/png;base64,[A-Za-z0-9+/]+={0,2}$"#, options: .regularExpression) != nil,
+                      validChecksum(image["checksum"])
+                else { throw RPCValidationError.invalidParameters }
+            }
+        }
+        if let rawSphere = compatibility["sphere"] {
+            guard let sphere = rawSphere as? [String: Any],
+                  Set(sphere.keys).isSubset(of: ["hasDeepDive", "contextPrompt", "codeSnippet", "visualization"])
+            else { throw RPCValidationError.invalidParameters }
+            if sphere["hasDeepDive"] != nil && !(sphere["hasDeepDive"] is Bool) {
+                throw RPCValidationError.invalidParameters
+            }
+            if let raw = sphere["contextPrompt"] {
+                guard let value = raw as? String, value.utf16.count <= 8_000
+                else { throw RPCValidationError.invalidParameters }
+            }
+            if let snippet = sphere["codeSnippet"] { try validateCodeSnippet(snippet) }
+            if let visualization = sphere["visualization"] { try validateVisualization(visualization) }
+        }
+    }
+
+    private func validateCodeSnippet(_ raw: Any) throws {
+        guard let snippet = raw as? [String: Any],
+              Set(snippet.keys) == ["language", "code"],
+              let language = snippet["language"] as? String, language.utf16.count <= 128,
+              let code = snippet["code"] as? String, code.utf16.count <= 8_000
+        else { throw RPCValidationError.invalidParameters }
+    }
+
+    private func validateVisualization(_ raw: Any) throws {
+        guard let visualization = raw as? [String: Any],
+              Set(visualization.keys).isSubset(of: ["type", "data", "config"]),
+              Set(["type", "data"]).isSubset(of: visualization.keys),
+              let type = visualization["type"] as? String,
+              ["chart", "map", "timeline", "diagram"].contains(type)
+        else { throw RPCValidationError.invalidParameters }
+    }
+
+    private func validChecksum(_ raw: Any?) -> Bool {
+        guard let checksum = raw as? [String: Any],
+              Set(checksum.keys) == ["algorithm", "value"],
+              checksum["algorithm"] as? String == "sha256",
+              let value = checksum["value"] as? String
+        else { return false }
+        return value.range(of: "^[a-f0-9]{64}$", options: .regularExpression) != nil
+    }
+
+    private func validISO8601(_ value: String) -> Bool {
+        let formatter = ISO8601DateFormatter()
+        if formatter.date(from: value) != nil { return true }
+        formatter.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
+        return formatter.date(from: value) != nil
     }
 
     private func validVector(_ value: Any?) -> Bool {
@@ -437,7 +607,7 @@ struct RPCRequestValidator: Sendable {
         else { throw RPCValidationError.invalidParameters }
         let baseURL: String?
         if let value = settings["ollamaBaseURL"] {
-            guard let string = value as? String, string.utf8.count <= 2_048 else {
+            guard let string = value as? String, string.utf16.count <= 2_048 else {
                 throw RPCValidationError.invalidParameters
             }
             baseURL = string

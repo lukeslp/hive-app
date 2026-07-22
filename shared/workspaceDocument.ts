@@ -9,7 +9,10 @@ export const IDEATILES_PACKAGE_EXTENSION = ".ideatiles" as const;
 export const IDEATILES_PACKAGE_BOARD_FILENAME = "board.json" as const;
 export const MAX_WORKSPACE_NODES = 4_096;
 export const MAX_WORKSPACE_EDGES = 32_768;
-export const MAX_WORKSPACE_IMPORT_BYTES = 16 * 1_024 * 1_024;
+/** Common web/native/package transport ceiling (UTF-8 bytes). */
+export const MAX_WORKSPACE_TRANSPORT_BYTES = 16_000_000;
+export const MAX_WORKSPACE_IMPORT_BYTES = MAX_WORKSPACE_TRANSPORT_BYTES;
+export const MAX_WORKSPACE_JSON_DEPTH = 64;
 
 const MAX_COORDINATE = 1_000_000;
 const MAX_DEPTH = 512;
@@ -316,6 +319,18 @@ const sphereProjectionSchema = z
       }
       tileIndices.add(position.tileIndex);
     }
+    const alignmentKeys = new Set<string>();
+    projection.alignments.forEach((alignment, index) => {
+      const key = `${alignment.sourceId}\0${alignment.targetId}\0${alignment.category}`;
+      if (alignment.sourceId === alignment.targetId || alignmentKeys.has(key)) {
+        context.addIssue({
+          code: "custom",
+          path: ["alignments", index],
+          message: "Sphere alignments must be unique between distinct nodes",
+        });
+      }
+      alignmentKeys.add(key);
+    });
   });
 
 export const workspaceDocumentSchema = z
@@ -649,6 +664,42 @@ const brainSphereSessionSchema = z
     }
   });
 
+function utf8ByteLength(value: string): number {
+  return new TextEncoder().encode(value).byteLength;
+}
+
+function assertJsonDepth(serialized: string): void {
+  let depth = 0;
+  let inString = false;
+  let escaped = false;
+  for (const character of serialized) {
+    if (inString) {
+      if (escaped) escaped = false;
+      else if (character === "\\") escaped = true;
+      else if (character === '"') inString = false;
+      continue;
+    }
+    if (character === '"') inString = true;
+    else if (character === "{" || character === "[") {
+      depth += 1;
+      if (depth > MAX_WORKSPACE_JSON_DEPTH) {
+        throw new Error("Workspace import exceeds the nesting limit");
+      }
+    } else if (character === "}" || character === "]") {
+      depth -= 1;
+      if (depth < 0) throw new Error("Workspace import is not valid JSON");
+    }
+  }
+}
+
+export function workspaceImportFileSizeAllowed(size: number): boolean {
+  return (
+    Number.isSafeInteger(size) &&
+    size >= 0 &&
+    size <= MAX_WORKSPACE_IMPORT_BYTES
+  );
+}
+
 function assertImportBudget(input: unknown): unknown {
   let serialized: string;
   try {
@@ -656,11 +707,10 @@ function assertImportBudget(input: unknown): unknown {
   } catch {
     throw new Error("Workspace import must be JSON serializable");
   }
-  if (
-    new TextEncoder().encode(serialized).byteLength > MAX_WORKSPACE_IMPORT_BYTES
-  ) {
+  if (utf8ByteLength(serialized) > MAX_WORKSPACE_IMPORT_BYTES) {
     throw new Error("Workspace import exceeds the size limit");
   }
+  assertJsonDepth(serialized);
   if (typeof input !== "string") return input;
   try {
     return JSON.parse(input) as unknown;
@@ -685,6 +735,43 @@ function stableBrainSphereBoardId(sourceId: string): string {
     hash = Math.imul(hash, 16_777_619);
   }
   return `board:brainsphere:${(hash >>> 0).toString(16).padStart(8, "0")}`;
+}
+
+function stableTilesBoardId(session: {
+  nodes: Record<string, unknown>;
+  viewState: unknown;
+  creativity: unknown;
+}): string {
+  const canonicalize = (value: unknown): unknown => {
+    if (Array.isArray(value)) return value.map(canonicalize);
+    if (value && typeof value === "object") {
+      return Object.fromEntries(
+        Object.entries(value)
+          .sort(([left], [right]) => left.localeCompare(right))
+          .map(([key, nested]) => [key, canonicalize(nested)])
+      );
+    }
+    return value;
+  };
+  const canonical = JSON.stringify(
+    canonicalize({
+      nodes: session.nodes,
+      viewState: session.viewState,
+      creativity: session.creativity,
+    })
+  );
+  let first = 2_166_136_261;
+  let second = 2_166_136_261 ^ 0x9e3779b9;
+  for (let index = 0; index < canonical.length; index += 1) {
+    const code = canonical.charCodeAt(index);
+    first = Math.imul(first ^ code, 16_777_619);
+    second = Math.imul(second ^ (code + index), 16_777_619);
+  }
+  return `board:tiles:${(first >>> 0).toString(16).padStart(8, "0")}${(
+    second >>> 0
+  )
+    .toString(16)
+    .padStart(8, "0")}`;
 }
 
 function emptySphereProjection() {
@@ -806,7 +893,7 @@ export function migrateTilesSession(input: unknown): WorkspaceDocument {
   return workspaceDocumentSchema.parse({
     format: WORKSPACE_FORMAT,
     schemaVersion: WORKSPACE_SCHEMA_VERSION,
-    id: session.boardId ?? "board:imported:tiles",
+    id: session.boardId ?? stableTilesBoardId(session),
     activeMode: "tiles",
     graph: { nodes, edges: dedupeEdges(edges) },
     projections: {
@@ -942,11 +1029,13 @@ export function switchWorkspaceMode(
 export function createWorkspaceTransportEnvelope(
   workspace: WorkspaceDocument
 ): WorkspaceTransportEnvelope {
-  return workspaceTransportEnvelopeSchema.parse({
+  const envelope = workspaceTransportEnvelopeSchema.parse({
     format: WORKSPACE_ENVELOPE_FORMAT,
     envelopeVersion: WORKSPACE_ENVELOPE_VERSION,
     workspace,
   });
+  assertImportBudget(envelope);
+  return envelope;
 }
 
 export function workspaceEnvelopeForBoard(
@@ -1100,11 +1189,8 @@ export function workspaceToLegacyTilesSession(
 
 export function workspaceTransportForCloud(
   workspace: WorkspaceDocument
-): LegacyTilesSession & { workspaceEnvelope: WorkspaceTransportEnvelope } {
-  return {
-    ...workspaceToLegacyTilesSession(workspace),
-    workspaceEnvelope: createWorkspaceTransportEnvelope(workspace),
-  };
+): WorkspaceTransportEnvelope {
+  return createWorkspaceTransportEnvelope(workspace);
 }
 
 /**

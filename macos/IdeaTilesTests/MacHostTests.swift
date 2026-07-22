@@ -51,6 +51,7 @@ struct MacHostBootstrapTests {
         #expect(decoded["format"] as? String == "app.ideatiles.workspace-envelope")
 
         let packageURL = try TestDirectory.make().appending(path: "workspace.ideatiles")
+        try RPCRequestValidator.validateWorkspaceEnvelopeData(payload, expectedBoardID: "board:stable")
         try IdeaTilesPackageCodec().export(
             manifest: ArtifactFixture.manifest(content: "workspace"),
             boardPayload: payload,

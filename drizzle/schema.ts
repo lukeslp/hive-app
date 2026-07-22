@@ -44,8 +44,8 @@ export const sessions = mysqlTable("sessions", {
   id: int("id").autoincrement().primaryKey(),
   userId: int("userId").notNull(),
   name: varchar("name", { length: 255 }).notNull(),
-  /** Full JSON blob: { nodes, viewState, creativity, keyThemes } */
-  data: text("data").notNull(),
+  /** Canonical workspace transport envelope, bounded below MEDIUMTEXT's limit. */
+  data: mediumtext("data").notNull(),
   nodeCount: int("nodeCount").notNull().default(0),
   /** CDN URL to a small canvas snapshot used as thumbnail */
   thumbnailUrl: text("thumbnailUrl"),

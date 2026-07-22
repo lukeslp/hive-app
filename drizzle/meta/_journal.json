@@ -29,6 +29,13 @@
       "when": 1784690930806,
       "tag": "0003_glamorous_jackpot",
       "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "5",
+      "when": 1784696403355,
+      "tag": "0004_illegal_red_ghost",
+      "breakpoints": true
     }
   ]
 }

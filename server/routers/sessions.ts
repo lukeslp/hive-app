@@ -9,6 +9,36 @@ import {
   deleteSessionById,
 } from "../db";
 import { storagePut } from "../storage";
+import { MAX_WORKSPACE_TRANSPORT_BYTES } from "@shared/workspaceDocument";
+
+export const sessionDataSchema = z.unknown().superRefine((value, context) => {
+  if (typeof value !== "object" || value === null || Array.isArray(value)) {
+    context.addIssue({
+      code: "custom",
+      message: "Session data must be an object",
+    });
+    return;
+  }
+  let serialized: string;
+  try {
+    serialized = JSON.stringify(value);
+  } catch {
+    context.addIssue({
+      code: "custom",
+      message: "Session data must be JSON serializable",
+    });
+    return;
+  }
+  if (
+    new TextEncoder().encode(serialized).byteLength >
+    MAX_WORKSPACE_TRANSPORT_BYTES
+  ) {
+    context.addIssue({
+      code: "custom",
+      message: "Session data exceeds the transport limit",
+    });
+  }
+});
 
 export const sessionsRouter = router({
   /** List all sessions for the current user (metadata only, no data blob) */
@@ -38,7 +68,7 @@ export const sessionsRouter = router({
     .input(
       z.object({
         name: z.string().min(1).max(255),
-        data: z.any(), // The full session data object
+        data: sessionDataSchema,
         nodeCount: z.number().int().min(0),
         thumbnailDataUrl: z.string().optional(),
       })
@@ -75,7 +105,7 @@ export const sessionsRouter = router({
       z.object({
         id: z.number(),
         name: z.string().min(1).max(255).optional(),
-        data: z.any().optional(),
+        data: sessionDataSchema.optional(),
         nodeCount: z.number().int().min(0).optional(),
         thumbnailDataUrl: z.string().optional(),
       })

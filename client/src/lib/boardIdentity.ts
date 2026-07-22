@@ -10,6 +10,20 @@ function storedBoardId(value: unknown): string | null {
   ) {
     return value.boardId;
   }
+  if (
+    typeof value === "object" &&
+    value !== null &&
+    "format" in value &&
+    value.format === "app.ideatiles.workspace-envelope" &&
+    "workspace" in value &&
+    typeof value.workspace === "object" &&
+    value.workspace !== null &&
+    "id" in value.workspace &&
+    typeof value.workspace.id === "string" &&
+    STABLE_BOARD_ID.test(value.workspace.id)
+  ) {
+    return value.workspace.id;
+  }
   return null;
 }
 

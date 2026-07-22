@@ -47,7 +47,7 @@ struct IdeaTilesPackageCodec: Sendable {
 
     func export(
         manifest: ArtifactManifest,
-        boardPayload: Data? = nil,
+        boardPayload: Data,
         payloads suppliedPayloads: [String: Data] = [:],
         to destination: URL
     ) throws {
@@ -57,7 +57,15 @@ struct IdeaTilesPackageCodec: Sendable {
         let artifactBase = "artifacts/\(manifest.id)"
         let manifestPath = "\(artifactBase)/manifest.json"
         let boardPath = "boards/\(manifest.provenance.sourceBoardId)/board.json"
-        let resolvedBoardPayload = boardPayload ?? Data(#"{"schemaVersion":1,"id":"\#(manifest.provenance.sourceBoardId)"}"#.utf8)
+        let resolvedBoardPayload = boardPayload
+        do {
+            try RPCRequestValidator.validateWorkspaceEnvelopeData(
+                resolvedBoardPayload,
+                expectedBoardID: manifest.provenance.sourceBoardId
+            )
+        } catch {
+            throw IdeaTilesPackageError.invalidPackage
+        }
         let persistedManifest = manifest.withoutInlineContent()
         let index = PackageIndex(
             schemaVersion: 1,
@@ -114,6 +122,11 @@ struct IdeaTilesPackageCodec: Sendable {
 
         let boardPayload = try safeData(relativePath: index.boardPath, root: packageURL, totalRead: &totalRead)
         guard sha256(boardPayload) == index.boardChecksum else { throw IdeaTilesPackageError.checksumMismatch }
+        do {
+            try RPCRequestValidator.validateWorkspaceEnvelopeData(boardPayload, expectedBoardID: index.boardId)
+        } catch {
+            throw IdeaTilesPackageError.invalidPackage
+        }
         let manifest = try ArtifactManifest.decode(
             data: safeData(relativePath: index.artifactManifestPath, root: packageURL, totalRead: &totalRead)
         )

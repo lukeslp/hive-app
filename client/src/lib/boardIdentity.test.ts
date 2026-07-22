@@ -21,6 +21,21 @@ describe("local board identity", () => {
     expect(create).not.toHaveBeenCalled();
   });
 
+  it("reuses the canonical workspace ID from compact autosaves", () => {
+    const create = vi.fn(() => "board:local:new");
+    expect(
+      readAutosaveBoardId(
+        JSON.stringify({
+          format: "app.ideatiles.workspace-envelope",
+          envelopeVersion: 1,
+          workspace: { id: "board:local:canonical" },
+        }),
+        create
+      )
+    ).toBe("board:local:canonical");
+    expect(create).not.toHaveBeenCalled();
+  });
+
   it("derives a stable identity from a legacy autosave timestamp", () => {
     expect(
       readAutosaveBoardId(

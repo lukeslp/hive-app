@@ -23,18 +23,24 @@ projections.
 Strict, bounded Zod schemas migrate both current Idea Tiles session shapes and
 the actual `lukeslp/brainsphere` `SessionData` shape. Imports reject unknown
 fields, invalid references, duplicate coordinates or indices, oversized text,
-node floods, edge floods, and payloads over 16 MiB. BrainSphere
+node floods, edge floods, JSON nesting beyond 64 levels, and payloads over
+16,000,000 UTF-8 bytes. BrainSphere
 `contextPrompt` becomes canonical generation context when `contextInfo` is
 absent. Renderer-specific fields that cannot yet be canonicalized are retained
 in an explicit compatibility section.
 
-Cloud sessions keep their current Tiles fields and add `workspaceEnvelope`, so
-older clients can still read them. On macOS, the envelope is rekeyed to the
-native artifact board ID and saved as the board payload. Artifact Studio awaits
-that serialized save immediately before export, so a package cannot use stale
-or placeholder board data. Existing `IdeaTilesPackageCodec` integrity checks
-then place it in `boards/{boardId}/board.json` inside an `.ideatiles` package;
-Swift persistence and the package format remain unchanged.
+Local autosave, explicit local saves, and new cloud writes store one canonical
+workspace envelope. Legacy Tiles and BrainSphere session objects remain
+migration-on-read inputs, but are not duplicated beside the envelope. Deploy
+the `sessions.data` TEXT-to-MEDIUMTEXT migration before updated clients write
+the new form, and coordinate the client rollout: older builds may not read
+sessions saved by a canonical-only client.
+
+On macOS, the envelope is rekeyed to the native artifact board ID and saved as
+the board payload. Artifact Studio awaits that serialized save immediately
+before export. `IdeaTilesPackageCodec` requires and validates that canonical
+payload, including its embedded board ID, before placing it at
+`boards/{boardId}/board.json` inside an `.ideatiles` package.
 
 Artifact Studio builds context from the canonical semantic graph internally.
 Its existing `HexNode` API and coordinate-based scopes remain compatible.
