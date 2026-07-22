@@ -3,6 +3,7 @@
  */
 
 export interface HexNode {
+  imageAttachment?: import("@shared/macArtifacts").ArtifactImageAttachment;
   q: number;
   r: number;
   text: string;

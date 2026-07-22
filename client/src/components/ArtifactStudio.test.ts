@@ -65,6 +65,15 @@ const artifact: ArtifactManifest = {
   updatedAt: "2026-07-21T12:00:00.000Z",
 };
 
+const attachment = {
+  artifactId: artifact.id,
+  targetNodeId: "0,0",
+  fileId: artifact.files[0].id,
+  mimeType: "image/png" as const,
+  dataURL: "data:image/png;base64,iVBORw0KGgo=",
+  checksum: artifact.files[0].checksum,
+};
+
 afterEach(cleanup);
 
 describe("Artifact Studio", () => {
@@ -87,7 +96,7 @@ describe("Artifact Studio", () => {
         save,
         export: vi.fn(async () => undefined),
       },
-      attachImageToBoard: vi.fn(async () => undefined),
+      attachImageToBoard: vi.fn(async () => attachment),
     };
 
     render(
@@ -139,7 +148,7 @@ describe("Artifact Studio", () => {
         save: vi.fn(async value => value),
         export: vi.fn(async () => undefined),
       },
-      attachImageToBoard: vi.fn(async () => undefined),
+      attachImageToBoard: vi.fn(async () => attachment),
     };
 
     render(
@@ -178,7 +187,7 @@ describe("Artifact Studio", () => {
         save: vi.fn(async value => value),
         export: vi.fn(async () => undefined),
       },
-      attachImageToBoard: vi.fn(async () => undefined),
+      attachImageToBoard: vi.fn(async () => attachment),
     };
 
     render(
@@ -223,7 +232,7 @@ describe("Artifact Studio", () => {
         save: vi.fn(async value => value),
         export: vi.fn(async () => undefined),
       },
-      attachImageToBoard: vi.fn(async () => undefined),
+      attachImageToBoard: vi.fn(async () => attachment),
     };
 
     render(
@@ -275,7 +284,7 @@ describe("Artifact Studio", () => {
         save: vi.fn(async value => value),
         export: vi.fn(async () => undefined),
       },
-      attachImageToBoard: vi.fn(async () => undefined),
+      attachImageToBoard: vi.fn(async () => attachment),
     };
 
     render(
@@ -376,7 +385,7 @@ describe("Artifact Studio", () => {
         save: vi.fn(async value => value),
         export: vi.fn(async () => undefined),
       },
-      attachImageToBoard: vi.fn(async () => undefined),
+      attachImageToBoard: vi.fn(async () => attachment),
     };
     render(
       React.createElement(ArtifactStudio, {
@@ -394,5 +403,70 @@ describe("Artifact Studio", () => {
 
     expect(preview.getAttribute("srcdoc")).toContain("HTML entry");
     expect(preview.getAttribute("srcdoc")).not.toContain("color: red");
+  });
+
+  it("reports attachment only after React board state accepts the typed image handoff", async () => {
+    const imageArtifact: ArtifactManifest = {
+      ...artifact,
+      kind: "image",
+      recipeId: "image-playground-artwork",
+      files: [
+        {
+          ...artifact.files[0],
+          id: "file:image:1",
+          path: "artwork.png",
+          mimeType: "image/png",
+          encoding: "base64",
+          content: "iVBORw0KGgo=",
+        },
+      ],
+    };
+    const handoff = {
+      artifactId: imageArtifact.id,
+      targetNodeId: "0,0",
+      fileId: "file:image:1",
+      mimeType: "image/png",
+      dataURL: "data:image/png;base64,iVBORw0KGgo=",
+      checksum: imageArtifact.files[0].checksum,
+    } as const;
+    const prepare = vi.fn(async () => handoff);
+    let acceptAttachment: (() => void) | undefined;
+    const onAttachImage = vi.fn(
+      () =>
+        new Promise<void>(resolve => {
+          acceptAttachment = resolve;
+        })
+    );
+    const services: ArtifactStudioServices = {
+      generator: { generate: vi.fn(async () => imageArtifact) },
+      persistence: {
+        save: vi.fn(async value => value),
+        export: vi.fn(async () => undefined),
+      },
+      attachImageToBoard: prepare,
+    };
+    render(
+      React.createElement(ArtifactStudio, {
+        isOpen: true,
+        onClose: vi.fn(),
+        boardId: "board:test",
+        nodes,
+        selectedNodeIds: ["0,0"],
+        services,
+        onAttachImage,
+      })
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: "Review generation" }));
+    fireEvent.click(screen.getByRole("button", { name: "Generate artifact" }));
+    fireEvent.click(
+      await screen.findByRole("button", { name: "Attach image" })
+    );
+    await waitFor(() => expect(onAttachImage).toHaveBeenCalledWith(handoff));
+    expect(screen.queryByText("Image attached to the board.")).toBeNull();
+
+    await act(async () => acceptAttachment?.());
+    expect(await screen.findByText("Image attached to tile.")).toBeTruthy();
+    expect(prepare).toHaveBeenCalledWith(imageArtifact, "0,0");
   });
 });

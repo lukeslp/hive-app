@@ -85,7 +85,7 @@ struct RPCRequestValidator: Sendable {
                   provider.requiresCredential,
                   let credential = params["credential"] as? String,
                   !credential.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty,
-                  credential.utf8.count <= 16_384
+                  credential.trimmingCharacters(in: .whitespacesAndNewlines).utf8.count <= 16_384
             else { throw RPCValidationError.invalidParameters }
         case .removeCredential:
             guard Set(params.keys) == ["provider"],
@@ -139,9 +139,12 @@ struct RPCRequestValidator: Sendable {
             do { _ = try ArtifactManifest.decode(data: JSONSerialization.data(withJSONObject: manifest)) }
             catch { throw RPCValidationError.invalidParameters }
         case .attachImage:
-            guard Set(params.keys) == ["artifactId", "file"],
+            guard Set(params.keys) == ["artifactId", "targetNodeId", "file"],
                   let artifactID = params["artifactId"] as? String,
-                  Self.isStableID(artifactID), let file = params["file"] as? [String: Any]
+                  Self.isStableID(artifactID),
+                  let targetNodeID = params["targetNodeId"] as? String,
+                  Self.isStableID(targetNodeID),
+                  let file = params["file"] as? [String: Any]
             else { throw RPCValidationError.invalidParameters }
             do { _ = try ArtifactFile.decode(data: JSONSerialization.data(withJSONObject: file)) }
             catch { throw RPCValidationError.invalidParameters }
@@ -185,10 +188,7 @@ struct RPCRequestValidator: Sendable {
               Set(settings.keys).subtracting(required).isSubset(of: optional),
               let providerName = settings["provider"] as? String,
               let provider = GenerationProvider(rawValue: providerName),
-              let model = settings["model"] as? String,
-              !model.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty,
-              model.utf8.count <= 128,
-              !model.unicodeScalars.contains(where: CharacterSet.controlCharacters.contains)
+              let model = settings["model"] as? String
         else { throw RPCValidationError.invalidParameters }
         let baseURL: String?
         if let value = settings["ollamaBaseURL"] {

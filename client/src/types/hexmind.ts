@@ -41,6 +41,8 @@ export type NodeType =
  * Nodes can be expanded via AI to generate 6 contextual neighbors.
  */
 export interface HexNode {
+  /** Image artifact attached to this tile by the native Mac host. */
+  imageAttachment?: import("@shared/macArtifacts").ArtifactImageAttachment;
   /** Axial coordinate: column position */
   q: number;
 

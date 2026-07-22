@@ -223,8 +223,17 @@ export type GenerationProvider = z.infer<typeof generationProviderSchema>;
 export const generationSettingsSchema = z
   .object({
     provider: generationProviderSchema,
-    model: z.string().trim().min(1).max(128),
-    ollamaBaseURL: z.string().url().max(2_048).optional(),
+    model: z
+      .string()
+      .trim()
+      .min(1)
+      .refine(value => new TextEncoder().encode(value).byteLength <= 128)
+      .regex(/^[A-Za-z0-9._:-]+$/),
+    ollamaBaseURL: z
+      .string()
+      .url()
+      .refine(value => new TextEncoder().encode(value).byteLength <= 2_048)
+      .optional(),
   })
   .strict()
   .superRefine((settings, context) => {
@@ -233,6 +242,42 @@ export const generationSettingsSchema = z
         code: "custom",
         path: ["ollamaBaseURL"],
         message: "Ollama requires a loopback base URL",
+      });
+    }
+    if (settings.provider === "ollama" && settings.ollamaBaseURL) {
+      const url = new URL(settings.ollamaBaseURL);
+      const host = url.hostname.toLowerCase();
+      const octets = host.split(".");
+      const loopback =
+        host === "localhost" ||
+        host === "[::1]" ||
+        (octets.length === 4 &&
+          octets[0] === "127" &&
+          octets.every(part => /^\d+$/.test(part) && Number(part) <= 255));
+      if (
+        !loopback ||
+        !["http:", "https:"].includes(url.protocol) ||
+        url.username ||
+        url.password ||
+        url.pathname !== "/" ||
+        url.search ||
+        url.hash
+      ) {
+        context.addIssue({
+          code: "custom",
+          path: ["ollamaBaseURL"],
+          message: "Ollama requires a root loopback URL",
+        });
+      }
+    }
+    if (
+      settings.provider === "apple" &&
+      settings.model !== "system-language-model"
+    ) {
+      context.addIssue({
+        code: "custom",
+        path: ["model"],
+        message: "Apple uses the system language model",
       });
     }
   });
@@ -260,6 +305,25 @@ export const credentialStatusSchema = z
   .object({ configured: configuredCredentialSchema })
   .strict();
 export type CredentialStatus = z.infer<typeof credentialStatusSchema>;
+
+export const artifactImageAttachmentSchema = z
+  .object({
+    artifactId: stableIdSchema,
+    targetNodeId: stableIdSchema,
+    fileId: stableIdSchema,
+    mimeType: z.literal("image/png"),
+    dataURL: z.string().regex(/^data:image\/png;base64,[A-Za-z0-9+/]+={0,2}$/),
+    checksum: z
+      .object({
+        algorithm: z.literal("sha256"),
+        value: z.string().regex(/^[a-f0-9]{64}$/),
+      })
+      .strict(),
+  })
+  .strict();
+export type ArtifactImageAttachment = z.infer<
+  typeof artifactImageAttachmentSchema
+>;
 
 const credentialSetResultSchema = z
   .object({
@@ -316,7 +380,11 @@ export const macRpcRequestSchema = z.discriminatedUnion("method", [
       id: rpcIdSchema,
       method: z.literal("artifact.attachImage"),
       params: z
-        .object({ artifactId: stableIdSchema, file: artifactFileSchema })
+        .object({
+          artifactId: stableIdSchema,
+          targetNodeId: stableIdSchema,
+          file: artifactFileSchema,
+        })
         .strict(),
     })
     .strict(),
@@ -348,7 +416,13 @@ export const macRpcRequestSchema = z.discriminatedUnion("method", [
       params: z
         .object({
           provider: credentialProviderSchema,
-          credential: z.string().trim().min(1).max(16_384),
+          credential: z
+            .string()
+            .trim()
+            .min(1)
+            .refine(
+              value => new TextEncoder().encode(value).byteLength <= 16_384
+            ),
         })
         .strict(),
     })
@@ -407,7 +481,7 @@ export const macRpcResponseSchema = z.union([
     .object({
       ...rpcSuccessBase,
       method: z.literal("artifact.attachImage"),
-      result: artifactManifestSchema,
+      result: artifactImageAttachmentSchema,
     })
     .strict(),
   z
@@ -468,7 +542,7 @@ export interface MacRpcResultMap {
   "artifact.cancel": { cancelled: boolean };
   "artifact.save": ArtifactManifest;
   "artifact.export": { exported: boolean };
-  "artifact.attachImage": ArtifactManifest;
+  "artifact.attachImage": ArtifactImageAttachment;
   "generation.settings.get": GenerationSettings;
   "generation.settings.set": GenerationSettings;
   "credentials.status": CredentialStatus;
@@ -494,7 +568,10 @@ export interface ArtifactPersistence {
 export interface ArtifactStudioServices {
   generator: ArtifactGenerator;
   persistence: ArtifactPersistence;
-  attachImageToBoard(manifest: ArtifactManifest): Promise<void>;
+  attachImageToBoard(
+    manifest: ArtifactManifest,
+    targetNodeId: string
+  ): Promise<ArtifactImageAttachment>;
 }
 
 export interface NativeGenerationSettingsService {

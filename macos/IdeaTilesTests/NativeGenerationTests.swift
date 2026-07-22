@@ -1,6 +1,8 @@
 import CryptoKit
 import AppKit
 import Foundation
+import FoundationModels
+import Security
 import Testing
 @testable import IdeaTiles
 
@@ -59,6 +61,49 @@ struct NativeGenerationPolicyTests {
     }
 }
 
+@Suite("Foundation Models production mapping")
+struct FoundationModelsMappingTests {
+    @Test("maps every availability state through the production adapter")
+    func availability() {
+        #expect(FoundationModelsErrorMapper.availability(.available) == .available)
+        #expect(FoundationModelsErrorMapper.availability(.unavailable(.deviceNotEligible)) == .deviceNotEligible)
+        #expect(FoundationModelsErrorMapper.availability(.unavailable(.appleIntelligenceNotEnabled)) == .appleIntelligenceNotEnabled)
+        #expect(FoundationModelsErrorMapper.availability(.unavailable(.modelNotReady)) == .modelNotReady)
+    }
+
+    @Test("maps framework generation failures to actionable safe categories")
+    func generationErrors() {
+        let context = LanguageModelSession.GenerationError.Context(debugDescription: "must not escape")
+        #expect(FoundationModelsErrorMapper.map(
+            LanguageModelSession.GenerationError.exceededContextWindowSize(context)
+        ) == .contextWindowExceeded)
+        #expect(FoundationModelsErrorMapper.map(
+            LanguageModelSession.GenerationError.guardrailViolation(context)
+        ) == .safetyRefusal)
+        #expect(FoundationModelsErrorMapper.map(
+            LanguageModelSession.GenerationError.refusal(.init(transcriptEntries: []), context)
+        ) == .safetyRefusal)
+        #expect(FoundationModelsErrorMapper.map(
+            LanguageModelSession.GenerationError.rateLimited(context)
+        ) == .rateLimited)
+        #expect(FoundationModelsErrorMapper.map(
+            LanguageModelSession.GenerationError.concurrentRequests(context)
+        ) == .concurrentRequest)
+        #expect(FoundationModelsErrorMapper.map(
+            LanguageModelSession.GenerationError.assetsUnavailable(context)
+        ) == .modelUnavailable("modelNotReady"))
+        #expect(FoundationModelsErrorMapper.map(
+            LanguageModelSession.GenerationError.unsupportedLanguageOrLocale(context)
+        ) == .unsupportedLanguage)
+        #expect(FoundationModelsErrorMapper.map(
+            LanguageModelSession.GenerationError.decodingFailure(context)
+        ) == .invalidResponse)
+        #expect(FoundationModelsErrorMapper.map(TestMapperError()) == .invalidResponse)
+    }
+}
+
+private struct TestMapperError: Error {}
+
 @Suite("Native provider credentials")
 struct NativeCredentialTests {
     @Test("credential status exposes presence without exposing secret values")
@@ -72,6 +117,26 @@ struct NativeCredentialTests {
         #expect(statuses[.gemini] == false)
         let encoded = String(data: try JSONEncoder().encode(statuses), encoding: .utf8) ?? ""
         #expect(!encoded.contains("sk-private"))
+    }
+
+    @Test("Keychain status mapping treats only not-found as absence")
+    func keychainStatusMapping() async throws {
+        let access = FakeKeychainAccess()
+        let store = KeychainCredentialStore(service: "test", access: access)
+        access.setRead(status: errSecItemNotFound, data: nil)
+        #expect(try await store.credential(for: .openAI) == nil)
+        #expect(try await store.containsCredential(for: .openAI) == false)
+
+        access.setRead(status: errSecAuthFailed, data: nil)
+        await #expect(throws: CredentialStoreError.self) {
+            try await store.credential(for: .openAI)
+        }
+        await #expect(throws: CredentialStoreError.self) {
+            try await store.containsCredential(for: .openAI)
+        }
+
+        access.setRemoveStatus(errSecItemNotFound)
+        try await store.removeCredential(for: .openAI)
     }
 }
 
@@ -95,6 +160,17 @@ struct NativeGenerationSettingsTests {
         #expect(await credentials.credential(for: .anthropic) == "private-key")
         #expect(model.credentialEntry.isEmpty)
         #expect(model.credentialConfigured)
+    }
+
+    @Test(arguments: [
+        GenerationSettings(provider: .ollama, model: "gemma3:4b", ollamaBaseURL: "https://example.com"),
+        GenerationSettings(provider: .ollama, model: "gemma3:4b", ollamaBaseURL: "http://127.0.0.1:11434/path"),
+        GenerationSettings(provider: .openAI, model: "org/model", ollamaBaseURL: nil),
+        GenerationSettings(provider: .openAI, model: String(repeating: "é", count: 65), ollamaBaseURL: nil),
+        GenerationSettings(provider: .apple, model: "not-the-system-model", ollamaBaseURL: nil),
+    ])
+    func rejectsContractParityViolations(_ settings: GenerationSettings) {
+        #expect(throws: GenerationServiceError.self) { try settings.validated() }
     }
 }
 
@@ -164,6 +240,66 @@ struct DirectProviderNetworkingTests {
             to: URL(string: "https://example.com/steal")!
         ))
     }
+
+    @Test("the production transport rejects oversized declared and streamed cloud responses")
+    func boundedCloudResponses() async throws {
+        let configuration = URLSessionConfiguration.ephemeral
+        configuration.protocolClasses = [MockURLProtocol.self]
+        let transport = URLSessionHTTPTransport(configuration: configuration)
+
+        MockURLProtocol.recorder = MockURLProtocolRecorder(
+            responseBody: "{}",
+            headers: ["Content-Length": "\(ProviderTransportLimits.maximumResponseBytes + 1)"]
+        )
+        await #expect(throws: GenerationServiceError.responseTooLarge) {
+            try await transport.data(for: URLRequest(url: URL(string: "https://api.openai.com/v1/chat/completions")!))
+        }
+
+        MockURLProtocol.recorder = MockURLProtocolRecorder(
+            responseBody: String(repeating: "x", count: ProviderTransportLimits.maximumResponseBytes + 1)
+        )
+        await #expect(throws: GenerationServiceError.responseTooLarge) {
+            try await transport.data(for: URLRequest(url: URL(string: "http://127.0.0.1:11434/api/chat")!))
+        }
+        MockURLProtocol.recorder = nil
+    }
+
+    @Test("oversized provider error bodies are rejected before status handling")
+    func boundedErrorResponse() async throws {
+        let configuration = URLSessionConfiguration.ephemeral
+        configuration.protocolClasses = [MockURLProtocol.self]
+        MockURLProtocol.recorder = MockURLProtocolRecorder(
+            responseBody: String(repeating: "x", count: ProviderTransportLimits.maximumResponseBytes + 1),
+            statusCode: 429
+        )
+        defer { MockURLProtocol.recorder = nil }
+        let client = DirectProviderClient(transport: URLSessionHTTPTransport(configuration: configuration))
+
+        await #expect(throws: GenerationServiceError.responseTooLarge) {
+            try await client.generate(
+                provider: .openAI, prompt: "hello", model: "gpt-test",
+                credential: "key", ollamaBaseURL: nil
+            )
+        }
+    }
+
+    @Test("cancelling bounded streaming cancels the URL load")
+    func transportCancellation() async throws {
+        let configuration = URLSessionConfiguration.ephemeral
+        configuration.protocolClasses = [MockURLProtocol.self]
+        let recorder = MockURLProtocolRecorder(responseBody: "{}", delay: 2)
+        MockURLProtocol.recorder = recorder
+        defer { MockURLProtocol.recorder = nil }
+        let transport = URLSessionHTTPTransport(configuration: configuration)
+        let task = Task {
+            try await transport.data(for: URLRequest(url: URL(string: "https://api.openai.com/v1/chat/completions")!))
+        }
+        try await Task.sleep(for: .milliseconds(20))
+        task.cancel()
+
+        await #expect(throws: CancellationError.self) { try await task.value }
+        #expect(recorder.wasStopped)
+    }
 }
 
 @Suite("Artifact generation and cancellation")
@@ -183,7 +319,18 @@ struct ArtifactGenerationTests {
         #expect(file.checksum.value == SHA256.hash(data: bytes).hexString)
         #expect(manifest.provenance.generator.kind == "onDevice")
         #expect(manifest.provenance.generator.name == "Apple Foundation Models")
-        #expect(await generator.lastPrompt?.count ?? .max <= NativeContextReducer.maximumCharacters)
+        #expect(await generator.lastPrompt?.utf8.count ?? .max <= NativeContextReducer.maximumUTF8Bytes)
+    }
+
+    @Test("context reduction is deterministic and preserves UTF-8 boundaries")
+    func utf8ContextReduction() {
+        let context = String(repeating: "🧩é", count: 10_000)
+        let first = NativeContextReducer.reduce(context)
+        let second = NativeContextReducer.reduce(context)
+
+        #expect(first == second)
+        #expect(first.utf8.count <= NativeContextReducer.maximumUTF8Bytes)
+        #expect(first.contains("[Context reduced by the native Mac host]"))
     }
 
     @Test("artifact.cancel cancels the matching active generation")
@@ -244,8 +391,10 @@ struct ImagePlaygroundArtifactTests {
         let sourceBytes = try #require(bitmap.representation(using: .jpeg, properties: [:]))
         try sourceBytes.write(to: imageURL)
         let repository = try ArtifactRepository(root: root.appending(path: "Repository"), inMemory: true)
+        let ownedPNG = try #require(NSBitmapImageRep(data: sourceBytes)?.representation(using: .png, properties: [:]))
+        try FileManager.default.removeItem(at: imageURL)
         let generator = ImageArtifactGenerator(
-            presenter: FakeImagePresenter(isAvailable: true, result: .success(imageURL)),
+            presenter: FakeImagePresenter(isAvailable: true, result: .success(ownedPNG)),
             repository: repository
         )
 
@@ -262,6 +411,17 @@ struct ImagePlaygroundArtifactTests {
         #expect(file.checksum.value == SHA256.hash(data: imageBytes).hexString)
         #expect(try await repository.loadArtifact(id: manifest.id) == manifest)
         #expect(try Data(contentsOf: await repository.payloadURL(artifactID: manifest.id, path: file.path)) == imageBytes)
+    }
+
+    @Test("request lifecycle ignores stale completion and clears before returning completion")
+    func imageLifecycle() throws {
+        let lifecycle = ImagePlaygroundRequestLifecycle()
+        let first = try lifecycle.begin()
+        #expect(lifecycle.finish(id: UUID(), result: .failure(ImagePlaygroundServiceError.cancelled)) == nil)
+        let completion = try #require(lifecycle.finish(id: first, result: .success(Data([1]))))
+        #expect(!lifecycle.isActive)
+        #expect(lifecycle.finish(id: first, result: .success(Data([2]))) == nil)
+        #expect(try completion.get() == Data([1]))
     }
 }
 
@@ -339,6 +499,23 @@ private actor InMemoryGenerationPreferences: GenerationPreferencesStoring {
     func save(_ settings: GenerationSettings) { self.settings = settings }
 }
 
+private final class FakeKeychainAccess: KeychainAccessing, @unchecked Sendable {
+    private let lock = NSLock()
+    private var readStatus: OSStatus = errSecSuccess
+    private var readData: Data?
+    private var removeStatus: OSStatus = errSecSuccess
+
+    func setRead(status: OSStatus, data: Data?) {
+        lock.withLock { readStatus = status; readData = data }
+    }
+    func setRemoveStatus(_ status: OSStatus) { lock.withLock { removeStatus = status } }
+    func set(_ data: Data, service: String, account: String) -> OSStatus { errSecSuccess }
+    func read(service: String, account: String, returnData: Bool) -> (OSStatus, Data?) {
+        lock.withLock { (readStatus, returnData ? readData : nil) }
+    }
+    func remove(service: String, account: String) -> OSStatus { lock.withLock { removeStatus } }
+}
+
 private struct FixedGenerationEngine: ArtifactTextGenerating {
     let provider: GenerationProvider
     let model: String?
@@ -356,12 +533,12 @@ private struct FixedGenerationEngine: ArtifactTextGenerating {
 @MainActor
 private final class FakeImagePresenter: ImagePlaygroundPresenting {
     let isAvailable: Bool
-    let result: Result<URL, Error>
-    init(isAvailable: Bool, result: Result<URL, Error>) {
+    let result: Result<Data, Error>
+    init(isAvailable: Bool, result: Result<Data, Error>) {
         self.isAvailable = isAvailable
         self.result = result
     }
-    func createImage(concept: String) async throws -> URL { try result.get() }
+    func createImage(concept: String) async throws -> Data { try result.get() }
 }
 
 private enum GenerationRequestFixture {
@@ -391,14 +568,31 @@ private extension SHA256.Digest {
 private final class MockURLProtocolRecorder: @unchecked Sendable {
     private let lock = NSLock()
     private let responseBody: String
+    private let statusCode: Int
+    private let headers: [String: String]
+    let delay: TimeInterval
     private var storedRequest: URLRequest?
+    private var stopped = false
     var request: URLRequest? { lock.withLock { storedRequest } }
+    var wasStopped: Bool { lock.withLock { stopped } }
 
-    init(responseBody: String) { self.responseBody = responseBody }
+    init(
+        responseBody: String,
+        statusCode: Int = 200,
+        headers: [String: String] = [:],
+        delay: TimeInterval = 0
+    ) {
+        self.responseBody = responseBody
+        self.statusCode = statusCode
+        self.headers = headers
+        self.delay = delay
+    }
+
+    func markStopped() { lock.withLock { stopped = true } }
 
     func respond(to request: URLRequest) -> (HTTPURLResponse, Data) {
         lock.withLock { storedRequest = request }
-        let response = HTTPURLResponse(url: request.url!, statusCode: 200, httpVersion: nil, headerFields: nil)!
+        let response = HTTPURLResponse(url: request.url!, statusCode: statusCode, httpVersion: nil, headerFields: headers)!
         return (response, Data(responseBody.utf8))
     }
 }
@@ -415,10 +609,15 @@ private final class MockURLProtocol: URLProtocol, @unchecked Sendable {
     override class func canonicalRequest(for request: URLRequest) -> URLRequest { request }
     override func startLoading() {
         guard let recorder = Self.recorder else { return }
-        let (response, data) = recorder.respond(to: request)
-        client?.urlProtocol(self, didReceive: response, cacheStoragePolicy: .notAllowed)
-        client?.urlProtocol(self, didLoad: data)
-        client?.urlProtocolDidFinishLoading(self)
+        let load: @Sendable () -> Void = { [weak self] in
+            guard let self, !recorder.wasStopped else { return }
+            let (response, data) = recorder.respond(to: self.request)
+            self.client?.urlProtocol(self, didReceive: response, cacheStoragePolicy: .notAllowed)
+            self.client?.urlProtocol(self, didLoad: data)
+            self.client?.urlProtocolDidFinishLoading(self)
+        }
+        if recorder.delay > 0 { DispatchQueue.global().asyncAfter(deadline: .now() + recorder.delay, execute: load) }
+        else { load() }
     }
-    override func stopLoading() {}
+    override func stopLoading() { Self.recorder?.markStopped() }
 }

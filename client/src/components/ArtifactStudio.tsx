@@ -12,6 +12,7 @@ import {
 } from "@/lib/artifactRecipes";
 import type {
   ArtifactGenerationProgress,
+  ArtifactImageAttachment,
   ArtifactManifest,
   ArtifactScope,
   ArtifactStudioServices,
@@ -33,6 +34,7 @@ export interface ArtifactStudioProps {
   selectedNodeIds?: string[];
   branchRootNodeId?: string | null;
   services?: ArtifactStudioServices;
+  onAttachImage?: (attachment: ArtifactImageAttachment) => Promise<void> | void;
 }
 
 function createRequestId(): string {
@@ -104,6 +106,7 @@ export function ArtifactStudio({
   selectedNodeIds = [],
   branchRootNodeId,
   services,
+  onAttachImage,
 }: ArtifactStudioProps) {
   const [scopeKind, setScopeKind] = useState<ArtifactScope["kind"]>("board");
   const [recipeId, setRecipeId] = useState("brief");
@@ -229,8 +232,17 @@ export function ArtifactStudio({
         await services.persistence.export(artifact);
         setMessage("Export started.");
       } else {
-        await services.attachImageToBoard(artifact);
-        setMessage("Image attached to the board.");
+        const targetNodeId =
+          selectedNodeIds[0] ?? artifact.provenance.sourceNodeIds[0];
+        if (!targetNodeId || !nodes[targetNodeId] || !onAttachImage) {
+          throw new Error("Select a source tile before attaching the image.");
+        }
+        const attachment = await services.attachImageToBoard(
+          artifact,
+          targetNodeId
+        );
+        await onAttachImage(attachment);
+        setMessage("Image attached to tile.");
       }
     } catch (error) {
       setMessage(error instanceof Error ? error.message : "Action failed.");

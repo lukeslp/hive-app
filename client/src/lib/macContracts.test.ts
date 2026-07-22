@@ -206,6 +206,58 @@ describe("Mac artifact contracts", () => {
     expect(macRpcResponseSchema.parse(response)).toEqual(response);
   });
 
+  it.each([
+    {
+      provider: "ollama",
+      model: "gemma3:4b",
+      ollamaBaseURL: "https://example.com",
+    },
+    {
+      provider: "ollama",
+      model: "gemma3:4b",
+      ollamaBaseURL: "http://127.0.0.1:11434/path",
+    },
+    { provider: "openai", model: "org/model" },
+    { provider: "openai", model: "é".repeat(65) },
+    { provider: "apple", model: "not-the-system-model" },
+  ])("rejects native-incompatible generation settings %#", settings => {
+    expect(generationSettingsSchema.safeParse(settings).success).toBe(false);
+  });
+
+  it("accepts only root loopback Ollama settings and the real Apple model", () => {
+    expect(
+      generationSettingsSchema.safeParse({
+        provider: "ollama",
+        model: "gemma3:4b",
+        ollamaBaseURL: "http://[::1]:11434/",
+      }).success
+    ).toBe(true);
+    expect(
+      generationSettingsSchema.safeParse({
+        provider: "apple",
+        model: "system-language-model",
+      }).success
+    ).toBe(true);
+  });
+
+  it("validates a semantic image-to-tile attachment response", () => {
+    const response = {
+      id: "rpc:attach:1",
+      method: "artifact.attachImage",
+      ok: true,
+      result: {
+        artifactId: "artifact:test:1",
+        targetNodeId: "0,0",
+        fileId: "file:test:1",
+        mimeType: "image/png",
+        dataURL: "data:image/png;base64,iVBORw0KGgo=",
+        checksum: { algorithm: "sha256", value: "a".repeat(64) },
+      },
+    };
+
+    expect(macRpcResponseSchema.parse(response)).toEqual(response);
+  });
+
   it("keeps provider credentials request-only", () => {
     const request = {
       id: "rpc:credential:set",

@@ -68,6 +68,7 @@ import { APP_DISPLAY_NAME, APP_EXPORT_FILE_PREFIX } from "@shared/appBrand";
 import {
   hasMacArtifactStudioCapability,
   type ArtifactStudioServices,
+  type ArtifactImageAttachment,
   type NativeCredentialService,
   type NativeGenerationSettingsService,
 } from "@shared/macArtifacts";
@@ -223,6 +224,27 @@ export default function HexmindApp() {
   const collab = useCollaboration(nodes, commitNodes);
   const [showCollabModal, setShowCollabModal] = useState(false);
   const [showArtifactStudio, setShowArtifactStudio] = useState(false);
+  const attachArtifactImage = useCallback(
+    async (attachment: ArtifactImageAttachment) => {
+      let attached = false;
+      flushSync(() => {
+        commitNodes(previous => {
+          const target = previous[attachment.targetNodeId];
+          if (!target) return previous;
+          attached = true;
+          return {
+            ...previous,
+            [attachment.targetNodeId]: {
+              ...target,
+              imageAttachment: attachment,
+            },
+          };
+        });
+      });
+      if (!attached) throw new Error("The target tile no longer exists.");
+    },
+    [commitNodes]
+  );
 
   // Build nodePresenceMap from collab.nodePresence for HexCanvas
   const nodePresenceMap = useMemo(() => {
@@ -2254,6 +2276,7 @@ Generate 6 diverse related ideas. Connect to key themes when relevant.`;
           selectedNodeIds={selectedNodeId ? [selectedNodeId] : []}
           branchRootNodeId={selectedNodeId}
           services={macArtifactHost?.artifactStudioServices}
+          onAttachImage={attachArtifactImage}
         />
       )}
 

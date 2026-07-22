@@ -8,6 +8,49 @@ protocol CredentialStoring: Sendable {
     func removeCredential(for provider: GenerationProvider) async throws
 }
 
+protocol KeychainAccessing: Sendable {
+    func set(_ data: Data, service: String, account: String) -> OSStatus
+    func read(service: String, account: String, returnData: Bool) -> (OSStatus, Data?)
+    func remove(service: String, account: String) -> OSStatus
+}
+
+struct SystemKeychainAccess: KeychainAccessing, Sendable {
+    func set(_ data: Data, service: String, account: String) -> OSStatus {
+        let query = baseQuery(service: service, account: account)
+        let attributes: [CFString: Any] = [
+            kSecValueData: data,
+            kSecAttrAccessible: kSecAttrAccessibleAfterFirstUnlock,
+        ]
+        let status = SecItemUpdate(query as CFDictionary, attributes as CFDictionary)
+        guard status == errSecItemNotFound else { return status }
+        var insertion = query
+        attributes.forEach { insertion[$0.key] = $0.value }
+        return SecItemAdd(insertion as CFDictionary, nil)
+    }
+
+    func read(service: String, account: String, returnData: Bool) -> (OSStatus, Data?) {
+        var query = baseQuery(service: service, account: account)
+        query[kSecReturnData] = returnData
+        query[kSecMatchLimit] = kSecMatchLimitOne
+        var result: CFTypeRef?
+        let status: OSStatus
+        if returnData {
+            status = SecItemCopyMatching(query as CFDictionary, &result)
+        } else {
+            status = SecItemCopyMatching(query as CFDictionary, nil)
+        }
+        return (status, result as? Data)
+    }
+
+    func remove(service: String, account: String) -> OSStatus {
+        SecItemDelete(baseQuery(service: service, account: account) as CFDictionary)
+    }
+
+    private func baseQuery(service: String, account: String) -> [CFString: Any] {
+        [kSecClass: kSecClassGenericPassword, kSecAttrService: service, kSecAttrAccount: account]
+    }
+}
+
 enum CredentialStoreError: Error, LocalizedError, Sendable {
     case invalidValue
     case keychain(OSStatus)
@@ -23,9 +66,14 @@ enum CredentialStoreError: Error, LocalizedError, Sendable {
 
 actor KeychainCredentialStore: CredentialStoring {
     private let service: String
+    private let access: any KeychainAccessing
 
-    init(service: String = "app.ideatiles.macos.provider-credentials") {
+    init(
+        service: String = "app.ideatiles.macos.provider-credentials",
+        access: any KeychainAccessing = SystemKeychainAccess()
+    ) {
         self.service = service
+        self.access = access
     }
 
     func set(_ value: String, for provider: GenerationProvider) throws {
@@ -33,33 +81,16 @@ actor KeychainCredentialStore: CredentialStoring {
         guard provider.requiresCredential, !trimmed.isEmpty, trimmed.utf8.count <= 16_384 else {
             throw CredentialStoreError.invalidValue
         }
-        let data = Data(trimmed.utf8)
-        let query = baseQuery(provider)
-        let attributes: [CFString: Any] = [
-            kSecValueData: data,
-            kSecAttrAccessible: kSecAttrAccessibleAfterFirstUnlock,
-        ]
-        let status = SecItemUpdate(query as CFDictionary, attributes as CFDictionary)
-        if status == errSecItemNotFound {
-            var insert = query
-            attributes.forEach { insert[$0.key] = $0.value }
-            let insertStatus = SecItemAdd(insert as CFDictionary, nil)
-            guard insertStatus == errSecSuccess else { throw CredentialStoreError.keychain(insertStatus) }
-        } else if status != errSecSuccess {
-            throw CredentialStoreError.keychain(status)
-        }
+        let status = access.set(Data(trimmed.utf8), service: service, account: provider.rawValue)
+        guard status == errSecSuccess else { throw CredentialStoreError.keychain(status) }
     }
 
     func credential(for provider: GenerationProvider) throws -> String? {
         guard provider.requiresCredential else { return nil }
-        var query = baseQuery(provider)
-        query[kSecReturnData] = true
-        query[kSecMatchLimit] = kSecMatchLimitOne
-        var result: CFTypeRef?
-        let status = SecItemCopyMatching(query as CFDictionary, &result)
+        let (status, data) = access.read(service: service, account: provider.rawValue, returnData: true)
         if status == errSecItemNotFound { return nil }
         guard status == errSecSuccess,
-              let data = result as? Data,
+              let data,
               let value = String(data: data, encoding: .utf8)
         else { throw CredentialStoreError.keychain(status) }
         return value
@@ -67,29 +98,19 @@ actor KeychainCredentialStore: CredentialStoring {
 
     func containsCredential(for provider: GenerationProvider) throws -> Bool {
         guard provider.requiresCredential else { return false }
-        var query = baseQuery(provider)
-        query[kSecReturnData] = false
-        query[kSecMatchLimit] = kSecMatchLimitOne
-        let status = SecItemCopyMatching(query as CFDictionary, nil)
+        let (status, _) = access.read(service: service, account: provider.rawValue, returnData: false)
         if status == errSecItemNotFound { return false }
         guard status == errSecSuccess else { throw CredentialStoreError.keychain(status) }
         return true
     }
 
     func removeCredential(for provider: GenerationProvider) throws {
-        let status = SecItemDelete(baseQuery(provider) as CFDictionary)
+        let status = access.remove(service: service, account: provider.rawValue)
         guard status == errSecSuccess || status == errSecItemNotFound else {
             throw CredentialStoreError.keychain(status)
         }
     }
 
-    private func baseQuery(_ provider: GenerationProvider) -> [CFString: Any] {
-        [
-            kSecClass: kSecClassGenericPassword,
-            kSecAttrService: service,
-            kSecAttrAccount: provider.rawValue,
-        ]
-    }
 }
 
 struct CredentialStatusService: Sendable {

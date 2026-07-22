@@ -21,23 +21,45 @@ enum ImagePlaygroundServiceError: Error, Equatable, LocalizedError, Sendable {
 @MainActor
 protocol ImagePlaygroundPresenting: AnyObject, Sendable {
     var isAvailable: Bool { get }
-    func createImage(concept: String) async throws -> URL
+    func createImage(concept: String) async throws -> Data
+}
+
+@MainActor
+final class ImagePlaygroundRequestLifecycle {
+    private var activeID: UUID?
+
+    var isActive: Bool { activeID != nil }
+
+    func begin() throws -> UUID {
+        guard activeID == nil else { throw GenerationServiceError.concurrentRequest }
+        let id = UUID()
+        activeID = id
+        return id
+    }
+
+    func finish(id: UUID, result: Result<Data, Error>) -> Result<Data, Error>? {
+        guard activeID == id else { return nil }
+        activeID = nil
+        return result
+    }
 }
 
 @MainActor
 final class AppKitImagePlaygroundPresenter: NSObject, ImagePlaygroundPresenting, ImagePlaygroundViewController.Delegate {
-    private var continuation: CheckedContinuation<URL, Error>?
+    private let lifecycle = ImagePlaygroundRequestLifecycle()
+    private var continuation: CheckedContinuation<Data, Error>?
+    private var requestID: UUID?
     private weak var presentingController: NSViewController?
     private var playgroundController: ImagePlaygroundViewController?
 
     var isAvailable: Bool { ImagePlaygroundViewController.isAvailable }
 
-    func createImage(concept: String) async throws -> URL {
+    func createImage(concept: String) async throws -> Data {
         guard isAvailable else { throw ImagePlaygroundServiceError.unavailable }
-        guard continuation == nil else { throw GenerationServiceError.invalidConfiguration }
         guard let controller = NSApp.keyWindow?.contentViewController
                 ?? NSApp.windows.first(where: { $0.isVisible })?.contentViewController
         else { throw ImagePlaygroundServiceError.presentationUnavailable }
+        let id = try lifecycle.begin()
 
         return try await withTaskCancellationHandler {
             try await withCheckedThrowingContinuation { continuation in
@@ -45,12 +67,19 @@ final class AppKitImagePlaygroundPresenter: NSObject, ImagePlaygroundPresenting,
                 playground.concepts = [.text(String(concept.prefix(2_000)))]
                 playground.delegate = self
                 self.continuation = continuation
+                requestID = id
                 presentingController = controller
                 playgroundController = playground
-                controller.presentAsSheet(playground)
+                if Task.isCancelled {
+                    complete(id: id, result: .failure(ImagePlaygroundServiceError.cancelled))
+                } else {
+                    controller.presentAsSheet(playground)
+                }
             }
         } onCancel: {
-            Task { @MainActor [weak self] in self?.finish(.failure(ImagePlaygroundServiceError.cancelled)) }
+            Task { @MainActor [weak self] in
+                self?.complete(id: id, result: .failure(ImagePlaygroundServiceError.cancelled))
+            }
         }
     }
 
@@ -58,20 +87,43 @@ final class AppKitImagePlaygroundPresenter: NSObject, ImagePlaygroundPresenting,
         _ imagePlaygroundViewController: ImagePlaygroundViewController,
         didCreateImageAt imageURL: URL
     ) {
-        finish(.success(imageURL))
+        guard imagePlaygroundViewController === playgroundController,
+              let requestID
+        else { return }
+        let result: Result<Data, Error>
+        do {
+            let temporaryData = try Data(contentsOf: imageURL, options: [.mappedIfSafe])
+            guard !temporaryData.isEmpty,
+                  let bitmap = NSBitmapImageRep(data: temporaryData),
+                  let pngData = bitmap.representation(using: .png, properties: [:]),
+                  !pngData.isEmpty
+            else { throw ImagePlaygroundServiceError.invalidImage }
+            result = .success(pngData)
+        } catch {
+            result = .failure(error is ImagePlaygroundServiceError ? error : ImagePlaygroundServiceError.invalidImage)
+        }
+        complete(id: requestID, result: result)
     }
 
     func imagePlaygroundViewControllerDidCancel(_ imagePlaygroundViewController: ImagePlaygroundViewController) {
-        finish(.failure(ImagePlaygroundServiceError.cancelled))
+        guard imagePlaygroundViewController === playgroundController,
+              let requestID
+        else { return }
+        complete(id: requestID, result: .failure(ImagePlaygroundServiceError.cancelled))
     }
 
-    private func finish(_ result: Result<URL, Error>) {
-        guard let continuation else { return }
-        if let playgroundController { presentingController?.dismiss(playgroundController) }
+    private func complete(id: UUID, result: Result<Data, Error>) {
+        guard let continuation,
+              let completed = lifecycle.finish(id: id, result: result)
+        else { return }
+        let presenter = presentingController
+        let playground = playgroundController
         self.continuation = nil
+        requestID = nil
         presentingController = nil
         playgroundController = nil
-        continuation.resume(with: result)
+        if let playground { presenter?.dismiss(playground) }
+        continuation.resume(with: completed)
     }
 }
 
@@ -83,15 +135,12 @@ struct ImageArtifactGenerator: ImageArtifactGenerating, Sendable {
     func generate(_ request: ArtifactGenerationRequest) async throws -> ArtifactManifest {
         guard await presenter.isAvailable else { throw ImagePlaygroundServiceError.unavailable }
         let concept = NativeContextReducer.reduce(request.context)
-        let imageURL = try await presenter.createImage(concept: concept)
+        let pngData = try await presenter.createImage(concept: concept)
         try Task.checkCancellation()
-        let sourceData = try Data(contentsOf: imageURL, options: [.mappedIfSafe])
-        guard !sourceData.isEmpty,
-              let bitmap = NSBitmapImageRep(data: sourceData),
-              let pngData = bitmap.representation(using: .png, properties: [:]),
-              !pngData.isEmpty
+        guard !pngData.isEmpty,
+              let bitmap = NSBitmapImageRep(data: pngData),
+              bitmap.representation(using: .png, properties: [:]) != nil
         else { throw ImagePlaygroundServiceError.invalidImage }
-        try Task.checkCancellation()
         let manifest = try factory.imageManifest(request: request, data: pngData)
         return try await repository.saveArtifact(manifest)
     }

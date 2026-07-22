@@ -6,7 +6,7 @@ import Testing
 struct MacHostBootstrapTests {
     @Test("injects capabilities and services at document start")
     func bootstrapScript() {
-        let source = MacBridgeBootstrap.javaScript
+        let source = MacBridgeBootstrap.javaScript(capabilities: .fullyAvailable)
 
         #expect(source.contains("Object.defineProperty(window, 'ideaTilesMac'"))
         #expect(source.contains("artifactStudioServices"))
@@ -22,6 +22,32 @@ struct MacHostBootstrapTests {
         #expect(source.contains("credentials.remove"))
         #expect(!source.contains("localStorage"))
         #expect(source.contains("bridgeVersion: 1"))
+    }
+
+    @Test("bootstrap and RPC expose the same runtime-derived capabilities")
+    func runtimeCapabilitiesStayInSync() async throws {
+        let capabilities = MacRuntimeCapabilities(
+            artifactGeneration: true,
+            artifactPersistence: true,
+            artifactExport: true,
+            imagePlayground: false,
+            keychain: true,
+            staticPreview: true
+        )
+        let source = MacBridgeBootstrap.javaScript(capabilities: capabilities)
+        let repository = try ArtifactRepository(root: TestDirectory.make(), inMemory: true)
+        let router = NativeBridgeRouter(
+            repository: repository,
+            capabilities: capabilities,
+            exporter: { _ in true }
+        )
+        let result = try await router.execute(ValidatedRPCRequest(
+            id: "rpc:capabilities:dynamic", method: .getCapabilities, params: [:]
+        ))
+
+        #expect(source.contains("imagePlayground: false"))
+        #expect(result == capabilities.jsonValue)
+        #expect(result.objectValue?["features"]?.objectValue?["imagePlayground"] == .bool(false))
     }
 
     @Test("main navigation stays on the private app origin")
@@ -70,7 +96,11 @@ struct NativeBridgeRouterTests {
     @Test("reports the Task 2 capability surface")
     func capabilities() async throws {
         let repository = try ArtifactRepository(root: TestDirectory.make(), inMemory: true)
-        let router = NativeBridgeRouter(repository: repository, exporter: { _ in true })
+        let router = NativeBridgeRouter(
+            repository: repository,
+            capabilities: .fullyAvailable,
+            exporter: { _ in true }
+        )
 
         let result = try await router.execute(ValidatedRPCRequest(
             id: "rpc:capabilities", method: .getCapabilities, params: [:]
@@ -85,6 +115,52 @@ struct NativeBridgeRouterTests {
         #expect(features["imagePlayground"] == .bool(true))
     }
 
+    @Test("returns an owned typed image handoff while preserving the saved artifact")
+    func imageAttachmentHandoff() async throws {
+        let repository = try ArtifactRepository(root: TestDirectory.make(), inMemory: true)
+        let router = NativeBridgeRouter(
+            repository: repository,
+            capabilities: .fullyAvailable,
+            exporter: { _ in true }
+        )
+        let request = try ArtifactGenerationRequest(params: [
+            "requestId": .string("request:image"),
+            "sourceBoardId": .string("board:stable"),
+            "sourceNodeIds": .array([.string("0,0")]),
+            "includedNodeCount": .number(1),
+            "originalNodeCount": .number(1),
+            "contextTruncated": .bool(false),
+            "recipeId": .string("image-playground-artwork"),
+            "scope": .object(["kind": .string("selection"), "nodeIds": .array([.string("0,0")])]),
+            "context": .string("A blue tile"),
+        ])
+        let manifest = try ArtifactManifestFactory().imageManifest(
+            request: request,
+            data: Data([0x89, 0x50, 0x4E, 0x47])
+        )
+        _ = try await repository.saveArtifact(manifest)
+        let file = try #require(manifest.files.first)
+        let fileValue = try JSONDecoder().decode(JSONValue.self, from: JSONEncoder().encode(file))
+
+        let result = try await router.execute(ValidatedRPCRequest(
+            id: "rpc:attach", method: .attachImage,
+            params: [
+                "artifactId": .string(manifest.id),
+                "targetNodeId": .string("0,0"),
+                "file": fileValue,
+            ]
+        ))
+
+        #expect(result.objectValue?["artifactId"] == .string(manifest.id))
+        #expect(result.objectValue?["targetNodeId"] == .string("0,0"))
+        #expect(result.objectValue?["fileId"] == .string(file.id))
+        #expect(result.objectValue?["mimeType"] == .string("image/png"))
+        #expect(result.objectValue?["dataURL"] == .string("data:image/png;base64,iVBORw=="))
+        #expect(result.objectValue?["checksum"]?.objectValue?["algorithm"] == .string("sha256"))
+        #expect(result.objectValue?["checksum"]?.objectValue?["value"] == .string(file.checksum.value))
+        #expect(try await repository.loadArtifact(id: manifest.id) == manifest)
+    }
+
     @Test("returns a typed not-configured generation error")
     func generationBoundary() async throws {
         let repository = try ArtifactRepository(root: TestDirectory.make(), inMemory: true)
@@ -94,6 +170,51 @@ struct NativeBridgeRouterTests {
             try await router.execute(ValidatedRPCRequest(
                 id: "rpc:generate", method: .generateArtifact, params: [:]
             ))
+        }
+    }
+
+    @Test("maps actionable generation failures without leaking framework context")
+    func actionableGenerationErrors() async throws {
+        let cases: [(GenerationServiceError, String, Bool)] = [
+            (.contextWindowExceeded, "contextWindowExceeded", false),
+            (.safetyRefusal, "modelRefusal", false),
+            (.rateLimited, "modelRateLimited", true),
+            (.unsupportedLanguage, "unsupportedLanguage", false),
+            (.concurrentRequest, "modelBusy", true),
+            (.responseTooLarge, "providerResponseTooLarge", false),
+        ]
+        let request = ValidatedRPCRequest(
+            id: "rpc:generation:error",
+            method: .generateArtifact,
+            params: [
+                "requestId": .string("request:error"),
+                "sourceBoardId": .string("board:stable"),
+                "sourceNodeIds": .array([.string("0,0")]),
+                "includedNodeCount": .number(1),
+                "originalNodeCount": .number(1),
+                "contextTruncated": .bool(false),
+                "recipeId": .string("brief"),
+                "scope": .object(["kind": .string("board")]),
+                "context": .string("private framework debug context"),
+            ]
+        )
+
+        for (failure, expectedCode, retryable) in cases {
+            let repository = try ArtifactRepository(root: TestDirectory.make(), inMemory: true)
+            let coordinator = ArtifactGenerationCoordinator(engine: FailingArtifactEngine(error: failure))
+            let router = NativeBridgeRouter(
+                repository: repository,
+                generationCoordinator: coordinator,
+                exporter: { _ in true }
+            )
+            do {
+                _ = try await router.execute(request)
+                Issue.record("Expected \(expectedCode)")
+            } catch let error as NativeRPCError {
+                #expect(error.code == expectedCode)
+                #expect(error.retryable == retryable)
+                #expect(!error.message.contains("private framework debug context"))
+            }
         }
     }
 
@@ -177,4 +298,9 @@ private actor TestCredentialStore: CredentialStoring {
     func credential(for provider: GenerationProvider) -> String? { values[provider] }
     func containsCredential(for provider: GenerationProvider) -> Bool { values[provider] != nil }
     func removeCredential(for provider: GenerationProvider) { values[provider] = nil }
+}
+
+private struct FailingArtifactEngine: ArtifactTextGenerating {
+    let error: GenerationServiceError
+    func generate(prompt: String) async throws -> GeneratedText { throw error }
 }

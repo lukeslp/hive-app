@@ -84,6 +84,14 @@ export const InspectPanel = ({
           </p>
         )}
 
+        {node.imageAttachment && (
+          <img
+            src={node.imageAttachment.dataURL}
+            alt={`Attached artwork for ${node.text}`}
+            className="mb-3 max-h-48 w-full rounded-lg object-contain"
+          />
+        )}
+
         {/* Context info — subtle inline */}
         {node.contextInfo && (
           <p className="text-xs text-blue-400/80 mb-3 line-clamp-2">

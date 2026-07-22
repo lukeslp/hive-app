@@ -17,15 +17,37 @@ enum FoundationModelAvailability: Equatable, Sendable {
     }
 }
 
-struct FoundationModelsTextGenerator: TextGenerating, Sendable {
-    var availability: FoundationModelAvailability {
-        switch SystemLanguageModel.default.availability {
+enum FoundationModelsErrorMapper {
+    static func availability(_ value: SystemLanguageModel.Availability) -> FoundationModelAvailability {
+        switch value {
         case .available: .available
         case .unavailable(.deviceNotEligible): .deviceNotEligible
         case .unavailable(.appleIntelligenceNotEnabled): .appleIntelligenceNotEnabled
         case .unavailable(.modelNotReady): .modelNotReady
         @unknown default: .modelNotReady
         }
+    }
+
+    static func map(_ error: Error) -> GenerationServiceError {
+        guard let error = error as? LanguageModelSession.GenerationError else {
+            return .invalidResponse
+        }
+        switch error {
+        case .exceededContextWindowSize: return GenerationServiceError.contextWindowExceeded
+        case .assetsUnavailable: return GenerationServiceError.modelUnavailable("modelNotReady")
+        case .guardrailViolation, .refusal: return GenerationServiceError.safetyRefusal
+        case .rateLimited: return GenerationServiceError.rateLimited
+        case .concurrentRequests: return GenerationServiceError.concurrentRequest
+        case .unsupportedLanguageOrLocale: return GenerationServiceError.unsupportedLanguage
+        case .unsupportedGuide, .decodingFailure: return GenerationServiceError.invalidResponse
+        @unknown default: return GenerationServiceError.invalidResponse
+        }
+    }
+}
+
+struct FoundationModelsTextGenerator: TextGenerating, Sendable {
+    var availability: FoundationModelAvailability {
+        FoundationModelsErrorMapper.availability(SystemLanguageModel.default.availability)
     }
 
     func generate(prompt: String, model: String?) async throws -> String {
@@ -37,9 +59,15 @@ struct FoundationModelsTextGenerator: TextGenerating, Sendable {
             model: .default,
             instructions: "Create the requested artifact from only the supplied Idea Tiles context. Return artifact content only. Never claim that software was installed, built, or executed."
         )
-        let response = try await session.respond(to: prompt)
-        try Task.checkCancellation()
-        return response.content
+        do {
+            let response = try await session.respond(to: prompt)
+            try Task.checkCancellation()
+            return response.content
+        } catch is CancellationError {
+            throw CancellationError()
+        } catch {
+            throw FoundationModelsErrorMapper.map(error)
+        }
     }
 }
 

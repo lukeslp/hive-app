@@ -4,6 +4,12 @@ protocol HTTPTransporting: Sendable {
     func data(for request: URLRequest) async throws -> (Data, HTTPURLResponse)
 }
 
+enum ProviderTransportLimits {
+    // Provider text responses are expected to be tens of kilobytes. One MiB
+    // leaves ample headroom while bounding success, redirect, and error bodies.
+    static let maximumResponseBytes = 1_048_576
+}
+
 final class URLSessionHTTPTransport: NSObject, HTTPTransporting, @unchecked Sendable {
     private let redirectDelegate: ProviderRedirectDelegate
     private let session: URLSession
@@ -15,11 +21,30 @@ final class URLSessionHTTPTransport: NSObject, HTTPTransporting, @unchecked Send
     }
 
     func data(for request: URLRequest) async throws -> (Data, HTTPURLResponse) {
-        let (data, response) = try await session.data(for: request)
-        guard let response = response as? HTTPURLResponse else {
-            throw GenerationServiceError.invalidResponse
+        do {
+            let (bytes, response) = try await session.bytes(for: request)
+            guard let response = response as? HTTPURLResponse else {
+                throw GenerationServiceError.invalidResponse
+            }
+            if response.expectedContentLength > ProviderTransportLimits.maximumResponseBytes {
+                throw GenerationServiceError.responseTooLarge
+            }
+            var data = Data()
+            data.reserveCapacity(min(
+                max(Int(response.expectedContentLength), 0),
+                ProviderTransportLimits.maximumResponseBytes
+            ))
+            for try await byte in bytes {
+                try Task.checkCancellation()
+                guard data.count < ProviderTransportLimits.maximumResponseBytes else {
+                    throw GenerationServiceError.responseTooLarge
+                }
+                data.append(byte)
+            }
+            return (data, response)
+        } catch let error as URLError where error.code == .cancelled {
+            throw CancellationError()
         }
-        return (data, response)
     }
 }
 

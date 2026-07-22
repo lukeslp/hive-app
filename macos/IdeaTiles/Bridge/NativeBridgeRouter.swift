@@ -9,6 +9,7 @@ struct NativeBridgeRouter: Sendable {
     let generationCoordinator: ArtifactGenerationCoordinator?
     let generationPreferences: (any GenerationPreferencesStoring)?
     let credentialStore: (any CredentialStoring)?
+    let capabilities: MacRuntimeCapabilities
     let exporter: Exporter
 
     init(
@@ -16,19 +17,25 @@ struct NativeBridgeRouter: Sendable {
         generationCoordinator: ArtifactGenerationCoordinator? = nil,
         generationPreferences: (any GenerationPreferencesStoring)? = nil,
         credentialStore: (any CredentialStoring)? = nil,
+        capabilities: MacRuntimeCapabilities = .configured(
+            artifactGeneration: false,
+            imagePlayground: false,
+            keychain: false
+        ),
         exporter: @escaping Exporter
     ) {
         self.repository = repository
         self.generationCoordinator = generationCoordinator
         self.generationPreferences = generationPreferences
         self.credentialStore = credentialStore
+        self.capabilities = capabilities
         self.exporter = exporter
     }
 
     func execute(_ request: ValidatedRPCRequest) async throws -> JSONValue {
         switch request.method {
         case .getCapabilities:
-            return Self.capabilities
+            return capabilities.jsonValue
         case .generateArtifact:
             guard let generationCoordinator else { throw NativeRPCError.notConfigured }
             do {
@@ -54,12 +61,31 @@ struct NativeBridgeRouter: Sendable {
             return .object(["exported": .bool(try await exporter(manifest))])
         case .attachImage:
             guard let artifactID = request.params["artifactId"]?.stringValue,
+                  let targetNodeID = request.params["targetNodeId"]?.stringValue,
                   let fileValue = request.params["file"]
             else { throw invalidParameters() }
             let fileData = try JSONEncoder().encode(fileValue)
             let file = try ArtifactFile.decode(data: fileData)
-            let saved = try await repository.attachImage(artifactID: artifactID, file: file)
-            return try jsonValue(saved)
+            guard file.mimeType == "image/png" else { throw invalidParameters() }
+            let saved = try await repository.loadArtifact(id: artifactID)
+            guard let persisted = saved.files.first(where: { $0.id == file.id && $0.path == file.path }),
+                  persisted.checksum == file.checksum,
+                  persisted.sizeBytes == file.sizeBytes,
+                  let content = persisted.content,
+                  let payload = Data(base64Encoded: content),
+                  !payload.isEmpty
+            else { throw invalidParameters() }
+            return .object([
+                "artifactId": .string(artifactID),
+                "targetNodeId": .string(targetNodeID),
+                "fileId": .string(persisted.id),
+                "mimeType": .string(persisted.mimeType),
+                "dataURL": .string("data:\(persisted.mimeType);base64,\(payload.base64EncodedString())"),
+                "checksum": .object([
+                    "algorithm": .string(persisted.checksum.algorithm),
+                    "value": .string(persisted.checksum.value),
+                ]),
+            ])
         case .getGenerationSettings:
             guard let generationPreferences else { throw NativeRPCError.notConfigured }
             return try jsonValue(await generationPreferences.load())
@@ -111,19 +137,6 @@ struct NativeBridgeRouter: Sendable {
         }
     }
 
-    static let capabilities: JSONValue = .object([
-        "bridgeVersion": .number(1),
-        "nativeMac": .bool(true),
-        "features": .object([
-            "artifactGeneration": .bool(true),
-            "artifactPersistence": .bool(true),
-            "artifactExport": .bool(true),
-            "imagePlayground": .bool(true),
-            "keychain": .bool(true),
-            "staticPreview": .bool(true),
-        ]),
-    ])
-
     private func manifest(from params: [String: JSONValue]) throws -> ArtifactManifest {
         guard let value = params["manifest"] else { throw invalidParameters() }
         do { return try ArtifactManifest.decode(data: JSONEncoder().encode(value)) }
@@ -153,9 +166,11 @@ struct NativeBridgeRouter: Sendable {
               provider.requiresCredential
         else { throw invalidParameters() }
         if requiresValue {
-            guard let credential = params["credential"]?.stringValue,
-                  !credential.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty,
-                  credential.utf8.count <= 16_384
+            guard let rawCredential = params["credential"]?.stringValue else {
+                throw invalidParameters()
+            }
+            let credential = rawCredential.trimmingCharacters(in: .whitespacesAndNewlines)
+            guard !credential.isEmpty, credential.utf8.count <= 16_384
             else { throw invalidParameters() }
             return (provider, credential)
         }
@@ -188,6 +203,18 @@ struct NativeBridgeRouter: Sendable {
             NativeRPCError(code: "invalidConfiguration", message: error.localizedDescription, retryable: false)
         case .invalidResponse:
             NativeRPCError(code: "invalidProviderResponse", message: error.localizedDescription, retryable: true)
+        case .responseTooLarge:
+            NativeRPCError(code: "providerResponseTooLarge", message: error.localizedDescription, retryable: false)
+        case .contextWindowExceeded:
+            NativeRPCError(code: "contextWindowExceeded", message: error.localizedDescription, retryable: false)
+        case .safetyRefusal:
+            NativeRPCError(code: "modelRefusal", message: error.localizedDescription, retryable: false)
+        case .rateLimited:
+            NativeRPCError(code: "modelRateLimited", message: error.localizedDescription, retryable: true)
+        case .unsupportedLanguage:
+            NativeRPCError(code: "unsupportedLanguage", message: error.localizedDescription, retryable: false)
+        case .concurrentRequest:
+            NativeRPCError(code: "modelBusy", message: error.localizedDescription, retryable: true)
         }
     }
 

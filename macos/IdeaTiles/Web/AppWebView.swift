@@ -1,5 +1,6 @@
 import AppKit
 import Foundation
+import ImagePlayground
 import SwiftUI
 @preconcurrency import WebKit
 
@@ -99,6 +100,7 @@ final class MacRuntime {
     let repository: ArtifactRepository
     let generationPreferences: UserDefaultsGenerationPreferences
     let credentialStore: KeychainCredentialStore
+    let capabilities: MacRuntimeCapabilities
     fileprivate let dispatcher: BridgeDispatcher
     fileprivate let messageHandler: MacScriptMessageHandler
     fileprivate let schemeHandler: BundleSchemeHandler
@@ -128,11 +130,17 @@ final class MacRuntime {
             engine: engine,
             imageGenerator: imageGenerator
         )
+        let capabilities = MacRuntimeCapabilities.configured(
+            artifactGeneration: true,
+            imagePlayground: ImagePlaygroundViewController.isAvailable,
+            keychain: true
+        )
         let router = NativeBridgeRouter(
             repository: repository,
             generationCoordinator: generationCoordinator,
             generationPreferences: generationPreferences,
-            credentialStore: credentialStore
+            credentialStore: credentialStore,
+            capabilities: capabilities
         ) { manifest in
             let boardPayload = try? await repository.boardPayload(id: manifest.provenance.sourceBoardId)
             return try await FilePanelService.export(manifest, boardPayload: boardPayload)
@@ -141,6 +149,7 @@ final class MacRuntime {
         self.repository = repository
         self.generationPreferences = generationPreferences
         self.credentialStore = credentialStore
+        self.capabilities = capabilities
         self.dispatcher = dispatcher
         messageHandler = MacScriptMessageHandler(dispatcher: dispatcher)
         schemeHandler = BundleSchemeHandler(root: resourceRoot)
@@ -173,7 +182,7 @@ struct AppWebView: NSViewRepresentable {
         configuration.setURLSchemeHandler(runtime.schemeHandler, forURLScheme: "ideatiles")
         let contentController = WKUserContentController()
         contentController.addUserScript(WKUserScript(
-            source: MacBridgeBootstrap.javaScript,
+            source: MacBridgeBootstrap.javaScript(capabilities: runtime.capabilities),
             injectionTime: .atDocumentStart,
             forMainFrameOnly: true,
             in: .page

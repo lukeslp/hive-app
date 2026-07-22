@@ -56,8 +56,11 @@ struct GenerationSettings: Codable, Equatable, Sendable {
     func validated() throws -> GenerationSettings {
         let model = model.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !model.isEmpty, model.utf8.count <= 128,
-              !model.unicodeScalars.contains(where: CharacterSet.controlCharacters.contains)
+              model.range(of: #"^[A-Za-z0-9._:-]+$"#, options: .regularExpression) != nil
         else { throw GenerationServiceError.invalidConfiguration }
+        if provider == .apple, model != GenerationProvider.apple.defaultModel {
+            throw GenerationServiceError.invalidConfiguration
+        }
         if provider == .ollama {
             guard let ollamaBaseURL else { throw GenerationServiceError.invalidConfiguration }
             _ = try OllamaEndpoint(rawValue: ollamaBaseURL)
@@ -98,6 +101,12 @@ enum GenerationServiceError: Error, Equatable, LocalizedError, Sendable {
     case invalidResponse
     case providerFailure(statusCode: Int)
     case timeout
+    case responseTooLarge
+    case contextWindowExceeded
+    case safetyRefusal
+    case rateLimited
+    case unsupportedLanguage
+    case concurrentRequest
 
     var errorDescription: String? {
         switch self {
@@ -107,6 +116,12 @@ enum GenerationServiceError: Error, Equatable, LocalizedError, Sendable {
         case .invalidResponse: "The selected provider returned an invalid response."
         case .providerFailure(let status): "The selected provider returned HTTP \(status)."
         case .timeout: "Generation timed out."
+        case .responseTooLarge: "The selected provider returned too much data."
+        case .contextWindowExceeded: "The selected context is too large for the on-device model."
+        case .safetyRefusal: "The on-device model declined this request."
+        case .rateLimited: "The on-device model is temporarily busy."
+        case .unsupportedLanguage: "The on-device model does not support this language or locale."
+        case .concurrentRequest: "The on-device model is already handling another request."
         }
     }
 }
@@ -176,14 +191,19 @@ enum NativeContextReducer {
     // Task 1 already caps board context at 12,000 characters. This larger native
     // envelope preserves that complete provenance while bounding prompt overhead
     // and rejecting oversized/hostile bridge input deterministically.
-    static let maximumCharacters = 16_000
+    static let maximumUTF8Bytes = 16_000
 
     static func reduce(_ value: String) -> String {
-        guard value.count > maximumCharacters else { return value }
+        let bytes = Data(value.utf8)
+        guard bytes.count > maximumUTF8Bytes else { return value }
         let marker = "\n\n[Context reduced by the native Mac host]\n\n"
-        let available = maximumCharacters - marker.count
+        let available = maximumUTF8Bytes - marker.utf8.count
         let leading = available * 3 / 4
         let trailing = available - leading
-        return String(value.prefix(leading)) + marker + String(value.suffix(trailing))
+        var prefix = Data(bytes.prefix(leading))
+        while String(data: prefix, encoding: .utf8) == nil { prefix.removeLast() }
+        var suffix = Data(bytes.suffix(trailing))
+        while String(data: suffix, encoding: .utf8) == nil { suffix.removeFirst() }
+        return String(decoding: prefix, as: UTF8.self) + marker + String(decoding: suffix, as: UTF8.self)
     }
 }

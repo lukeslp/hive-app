@@ -49,6 +49,28 @@ struct BridgeValidationTests {
         }
     }
 
+    @Test("requires the semantic target node for image attachment")
+    func validatesImageAttachmentTarget() throws {
+        let manifest = try ArtifactFixture.manifest(content: "strict")
+        let file = try #require(manifest.files.first)
+        let rawFile = try #require(try JSONSerialization.jsonObject(with: JSONEncoder().encode(file)) as? [String: Any])
+        let valid: [String: Any] = [
+            "id": "rpc:attach",
+            "method": "artifact.attachImage",
+            "params": ["artifactId": manifest.id, "targetNodeId": "0,0", "file": rawFile],
+        ]
+        _ = try RPCRequestValidator().parse(JSONSerialization.data(withJSONObject: valid))
+
+        let invalid: [String: Any] = [
+            "id": "rpc:attach:missing",
+            "method": "artifact.attachImage",
+            "params": ["artifactId": manifest.id, "file": rawFile],
+        ]
+        #expect(throws: RPCValidationError.self) {
+            try RPCRequestValidator().parse(JSONSerialization.data(withJSONObject: invalid))
+        }
+    }
+
     @Test("rejects messages over the byte cap before decoding")
     func rejectsOversize() {
         let validator = RPCRequestValidator(maximumBytes: 32)
