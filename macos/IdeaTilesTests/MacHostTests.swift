@@ -1,3 +1,4 @@
+import CryptoKit
 import Foundation
 import Testing
 @testable import IdeaTiles
@@ -136,7 +137,7 @@ struct NativeBridgeRouterTests {
         ])
         let manifest = try ArtifactManifestFactory().imageManifest(
             request: request,
-            data: Data([0x89, 0x50, 0x4E, 0x47])
+            data: Data([0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A])
         )
         _ = try await repository.saveArtifact(manifest)
         let file = try #require(manifest.files.first)
@@ -155,10 +156,40 @@ struct NativeBridgeRouterTests {
         #expect(result.objectValue?["targetNodeId"] == .string("0,0"))
         #expect(result.objectValue?["fileId"] == .string(file.id))
         #expect(result.objectValue?["mimeType"] == .string("image/png"))
-        #expect(result.objectValue?["dataURL"] == .string("data:image/png;base64,iVBORw=="))
+        #expect(result.objectValue?["dataURL"] == .string("data:image/png;base64,iVBORw0KGgo="))
         #expect(result.objectValue?["checksum"]?.objectValue?["algorithm"] == .string("sha256"))
         #expect(result.objectValue?["checksum"]?.objectValue?["value"] == .string(file.checksum.value))
         #expect(try await repository.loadArtifact(id: manifest.id) == manifest)
+    }
+
+    @Test("canonical image attachment decoding rejects untrusted manifest representations")
+    func attachmentIntegrity() throws {
+        let png = Data([0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A, 0x01])
+        #expect(try ArtifactImagePayload.decode(file: attachmentFile(data: png)) == png)
+
+        #expect(throws: ArtifactContractError.self) {
+            try ArtifactImagePayload.decode(file: attachmentFile(data: png, mimeType: "image/jpeg"))
+        }
+        #expect(throws: ArtifactContractError.self) {
+            try ArtifactImagePayload.decode(file: attachmentFile(data: Data("not png".utf8), encoding: "utf8"))
+        }
+        #expect(throws: ArtifactContractError.self) {
+            try ArtifactImagePayload.decode(file: attachmentFile(data: Data("not png".utf8)))
+        }
+        #expect(throws: ArtifactContractError.self) {
+            var malformed = attachmentFile(data: Data([1]))
+            malformed.content = "***not-base64***"
+            _ = try ArtifactImagePayload.decode(file: malformed)
+        }
+        #expect(throws: ArtifactContractError.self) {
+            var mismatched = attachmentFile(data: png)
+            mismatched.checksum = ArtifactChecksum(algorithm: "sha256", value: String(repeating: "0", count: 64))
+            _ = try ArtifactImagePayload.decode(file: mismatched)
+        }
+        #expect(throws: ArtifactContractError.self) {
+            let wrongSize = attachmentFile(data: png, reportedSize: png.count + 1)
+            _ = try ArtifactImagePayload.decode(file: wrongSize)
+        }
     }
 
     @Test("returns a typed not-configured generation error")
@@ -176,6 +207,9 @@ struct NativeBridgeRouterTests {
     @Test("maps actionable generation failures without leaking framework context")
     func actionableGenerationErrors() async throws {
         let cases: [(GenerationServiceError, String, Bool)] = [
+            (.modelUnavailable(.deviceNotEligible), "modelUnavailable", false),
+            (.modelUnavailable(.appleIntelligenceNotEnabled), "modelUnavailable", false),
+            (.modelUnavailable(.modelNotReady), "modelUnavailable", true),
             (.contextWindowExceeded, "contextWindowExceeded", false),
             (.safetyRefusal, "modelRefusal", false),
             (.rateLimited, "modelRateLimited", true),
@@ -303,4 +337,24 @@ private actor TestCredentialStore: CredentialStoring {
 private struct FailingArtifactEngine: ArtifactTextGenerating {
     let error: GenerationServiceError
     func generate(prompt: String) async throws -> GeneratedText { throw error }
+}
+
+private func attachmentFile(
+    data: Data,
+    mimeType: String = "image/png",
+    encoding: String = "base64",
+    reportedSize: Int? = nil
+) -> ArtifactFile {
+    let checksum = SHA256.hash(data: data).map { String(format: "%02x", $0) }.joined()
+    return ArtifactFile(
+        id: "file:attachment",
+        path: "artwork.png",
+        mimeType: mimeType,
+        sizeBytes: reportedSize ?? data.count,
+        checksum: ArtifactChecksum(algorithm: "sha256", value: checksum),
+        createdAt: "2026-07-21T17:00:00Z",
+        updatedAt: "2026-07-21T17:00:00Z",
+        encoding: encoding,
+        content: encoding == "base64" ? data.base64EncodedString() : String(decoding: data, as: UTF8.self)
+    )
 }

@@ -10,45 +10,112 @@ enum ProviderTransportLimits {
     static let maximumResponseBytes = 1_048_576
 }
 
-final class URLSessionHTTPTransport: NSObject, HTTPTransporting, @unchecked Sendable {
-    private let redirectDelegate: ProviderRedirectDelegate
-    private let session: URLSession
+final class URLSessionHTTPTransport: HTTPTransporting, @unchecked Sendable {
+    private let configuration: URLSessionConfiguration
 
     init(configuration: URLSessionConfiguration = .ephemeral) {
-        redirectDelegate = ProviderRedirectDelegate()
-        session = URLSession(configuration: configuration, delegate: redirectDelegate, delegateQueue: nil)
-        super.init()
+        self.configuration = configuration.copy() as! URLSessionConfiguration
     }
 
     func data(for request: URLRequest) async throws -> (Data, HTTPURLResponse) {
-        do {
-            let (bytes, response) = try await session.bytes(for: request)
-            guard let response = response as? HTTPURLResponse else {
-                throw GenerationServiceError.invalidResponse
-            }
-            if response.expectedContentLength > ProviderTransportLimits.maximumResponseBytes {
-                throw GenerationServiceError.responseTooLarge
-            }
-            var data = Data()
-            data.reserveCapacity(min(
-                max(Int(response.expectedContentLength), 0),
-                ProviderTransportLimits.maximumResponseBytes
-            ))
-            for try await byte in bytes {
-                try Task.checkCancellation()
-                guard data.count < ProviderTransportLimits.maximumResponseBytes else {
-                    throw GenerationServiceError.responseTooLarge
-                }
-                data.append(byte)
-            }
-            return (data, response)
-        } catch let error as URLError where error.code == .cancelled {
-            throw CancellationError()
-        }
+        try await BoundedHTTPDataLoader(configuration: configuration).load(request)
     }
 }
 
-private final class ProviderRedirectDelegate: NSObject, URLSessionTaskDelegate, @unchecked Sendable {
+private final class BoundedHTTPDataLoader: NSObject, URLSessionDataDelegate, @unchecked Sendable {
+    private typealias Reply = CheckedContinuation<(Data, HTTPURLResponse), Error>
+
+    private let configuration: URLSessionConfiguration
+    private let lock = NSLock()
+    private var continuation: Reply?
+    private var session: URLSession?
+    private var task: URLSessionDataTask?
+    private var response: HTTPURLResponse?
+    private var buffer = Data()
+    private var completed = false
+    private var cancellationRequested = false
+
+    init(configuration: URLSessionConfiguration) {
+        self.configuration = configuration
+    }
+
+    func load(_ request: URLRequest) async throws -> (Data, HTTPURLResponse) {
+        try await withTaskCancellationHandler {
+            try await withCheckedThrowingContinuation { continuation in
+                let delegateQueue = OperationQueue()
+                delegateQueue.maxConcurrentOperationCount = 1
+                let session = URLSession(
+                    configuration: configuration,
+                    delegate: self,
+                    delegateQueue: delegateQueue
+                )
+                let task = session.dataTask(with: request)
+                let wasCancelled = lock.withLock {
+                    self.continuation = continuation
+                    self.session = session
+                    self.task = task
+                    return cancellationRequested
+                }
+                if wasCancelled || Task.isCancelled {
+                    resolve(.failure(CancellationError()), cancellingTask: true)
+                } else {
+                    task.resume()
+                }
+            }
+        } onCancel: {
+            cancel()
+        }
+    }
+
+    func urlSession(
+        _ session: URLSession,
+        dataTask: URLSessionDataTask,
+        didReceive response: URLResponse,
+        completionHandler: @escaping @Sendable (URLSession.ResponseDisposition) -> Void
+    ) {
+        guard let response = response as? HTTPURLResponse else {
+            completionHandler(.cancel)
+            resolve(.failure(GenerationServiceError.invalidResponse), cancellingTask: true)
+            return
+        }
+        guard response.expectedContentLength <= ProviderTransportLimits.maximumResponseBytes else {
+            completionHandler(.cancel)
+            resolve(.failure(GenerationServiceError.responseTooLarge), cancellingTask: true)
+            return
+        }
+        lock.withLock { self.response = response }
+        completionHandler(.allow)
+    }
+
+    func urlSession(_ session: URLSession, dataTask: URLSessionDataTask, didReceive data: Data) {
+        let overflow = lock.withLock {
+            if data.count > ProviderTransportLimits.maximumResponseBytes - buffer.count {
+                return true
+            }
+            buffer.append(data)
+            return false
+        }
+        if overflow {
+            resolve(.failure(GenerationServiceError.responseTooLarge), cancellingTask: true)
+        }
+    }
+
+    func urlSession(_ session: URLSession, task: URLSessionTask, didCompleteWithError error: Error?) {
+        if let error {
+            if (error as? URLError)?.code == .cancelled {
+                resolve(.failure(CancellationError()), cancellingTask: false)
+            } else {
+                resolve(.failure(error), cancellingTask: false)
+            }
+            return
+        }
+        let result: Result<(Data, HTTPURLResponse), Error> = lock.withLock {
+            guard let response else { return .failure(GenerationServiceError.invalidResponse) }
+            return .success((buffer, response))
+        }
+        resolve(result, cancellingTask: false)
+    }
+
     func urlSession(
         _ session: URLSession,
         task: URLSessionTask,
@@ -67,6 +134,36 @@ private final class ProviderRedirectDelegate: NSObject, URLSessionTaskDelegate, 
         var canonicalRequest = request
         canonicalRequest.url = canonicalDestination
         completionHandler(canonicalRequest)
+    }
+
+    private func resolve(
+        _ result: Result<(Data, HTTPURLResponse), Error>,
+        cancellingTask: Bool
+    ) {
+        let state: (Reply?, URLSessionDataTask?, URLSession?) = lock.withLock {
+            guard !completed else { return (nil, nil, nil) }
+            completed = true
+            let state = (continuation, task, session)
+            continuation = nil
+            task = nil
+            session = nil
+            return state
+        }
+        guard let continuation = state.0 else { return }
+        if cancellingTask { state.1?.cancel() }
+        if cancellingTask { state.2?.invalidateAndCancel() }
+        else { state.2?.finishTasksAndInvalidate() }
+        continuation.resume(with: result)
+    }
+
+    private func cancel() {
+        let canResolve = lock.withLock {
+            cancellationRequested = true
+            return continuation != nil
+        }
+        if canResolve {
+            resolve(.failure(CancellationError()), cancellingTask: true)
+        }
     }
 }
 
@@ -123,8 +220,7 @@ struct DirectProviderRequestBuilder: Sendable {
         credential: String?,
         ollamaBaseURL: String? = nil
     ) throws -> URLRequest {
-        guard !model.isEmpty, model.utf8.count <= 128,
-              model.range(of: #"^[A-Za-z0-9._:-]+$"#, options: .regularExpression) != nil
+        guard GenerationModelValidator.isValid(model, for: provider)
         else { throw GenerationServiceError.invalidConfiguration }
         if provider.requiresCredential, credential?.isEmpty != false {
             throw GenerationServiceError.missingCredential(provider)

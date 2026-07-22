@@ -54,8 +54,8 @@ enum ArtifactPersistenceError: Error, Equatable {
 }
 
 actor ArtifactRepository {
-    typealias MetadataCommitter = (ModelContext) throws -> Void
-    typealias PersistenceRollback = (URL, URL?) throws -> Void
+    typealias MetadataCommitter = @Sendable (ModelContext) throws -> Void
+    typealias PersistenceRollback = @Sendable (URL, URL?) throws -> Void
 
     private let root: URL
     private let container: ModelContainer
@@ -264,6 +264,24 @@ actor ArtifactRepository {
             payloads[file.path] = data
         }
         return try manifest.hydratingPayloads(payloads)
+    }
+
+    func deleteArtifactIfPresent(id: String, boardID: String) throws {
+        guard RPCRequestValidator.isStableID(id), RPCRequestValidator.isStableID(boardID) else {
+            throw ArtifactPersistenceError.invalidIdentifier
+        }
+        let context = ModelContext(container)
+        let matchingID = id
+        let descriptor = FetchDescriptor<ArtifactMetadataRecord>(predicate: #Predicate { $0.id == matchingID })
+        if let record = try context.fetch(descriptor).first {
+            guard record.boardID == boardID else { throw ArtifactPersistenceError.invalidIdentifier }
+            context.delete(record)
+            try context.save()
+        }
+        let artifactRoot = root.appending(path: "Boards/\(boardID)/Artifacts/\(id)")
+        if FileManager.default.fileExists(atPath: artifactRoot.path) {
+            try FileManager.default.removeItem(at: artifactRoot)
+        }
     }
 
     func attachImage(artifactID: String, file: ArtifactFile) throws -> ArtifactManifest {

@@ -220,6 +220,38 @@ export const generationProviderSchema = z.enum([
 ]);
 export type GenerationProvider = z.infer<typeof generationProviderSchema>;
 
+function isValidGenerationModel(
+  provider: GenerationProvider,
+  model: string
+): boolean {
+  if (!model || new TextEncoder().encode(model).byteLength > 128) return false;
+  switch (provider) {
+    case "apple":
+      return model === "system-language-model";
+    case "gemini":
+      return /^[A-Za-z0-9][A-Za-z0-9._-]*$/.test(model);
+    case "ollama": {
+      const segments = model.split("/");
+      if (
+        segments.some(segment => ["", ".", ".."].includes(segment)) ||
+        segments
+          .slice(0, -1)
+          .some(segment => !/^[A-Za-z0-9][A-Za-z0-9._-]*$/.test(segment))
+      ) {
+        return false;
+      }
+      return /^[A-Za-z0-9][A-Za-z0-9._-]*(?::[A-Za-z0-9][A-Za-z0-9._-]*)?$/.test(
+        segments.at(-1) ?? ""
+      );
+    }
+    case "anthropic":
+    case "openai":
+    case "xai":
+    case "mistral":
+      return /^[A-Za-z0-9][A-Za-z0-9._:/-]*$/.test(model);
+  }
+}
+
 export const generationSettingsSchema = z
   .object({
     provider: generationProviderSchema,
@@ -227,8 +259,7 @@ export const generationSettingsSchema = z
       .string()
       .trim()
       .min(1)
-      .refine(value => new TextEncoder().encode(value).byteLength <= 128)
-      .regex(/^[A-Za-z0-9._:-]+$/),
+      .refine(value => new TextEncoder().encode(value).byteLength <= 128),
     ollamaBaseURL: z
       .string()
       .url()
@@ -237,6 +268,13 @@ export const generationSettingsSchema = z
   })
   .strict()
   .superRefine((settings, context) => {
+    if (!isValidGenerationModel(settings.provider, settings.model)) {
+      context.addIssue({
+        code: "custom",
+        path: ["model"],
+        message: "The model identifier is invalid for this provider",
+      });
+    }
     if (settings.provider === "ollama" && !settings.ollamaBaseURL) {
       context.addIssue({
         code: "custom",
@@ -245,7 +283,17 @@ export const generationSettingsSchema = z
       });
     }
     if (settings.provider === "ollama" && settings.ollamaBaseURL) {
-      const url = new URL(settings.ollamaBaseURL);
+      let url: URL;
+      try {
+        url = new URL(settings.ollamaBaseURL);
+      } catch {
+        context.addIssue({
+          code: "custom",
+          path: ["ollamaBaseURL"],
+          message: "Ollama requires a valid root loopback URL",
+        });
+        return;
+      }
       const host = url.hostname.toLowerCase();
       const octets = host.split(".");
       const loopback =
@@ -269,16 +317,6 @@ export const generationSettingsSchema = z
           message: "Ollama requires a root loopback URL",
         });
       }
-    }
-    if (
-      settings.provider === "apple" &&
-      settings.model !== "system-language-model"
-    ) {
-      context.addIssue({
-        code: "custom",
-        path: ["model"],
-        message: "Apple uses the system language model",
-      });
     }
   });
 export type GenerationSettings = z.infer<typeof generationSettingsSchema>;

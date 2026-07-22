@@ -7,12 +7,12 @@ enum FoundationModelAvailability: Equatable, Sendable {
     case appleIntelligenceNotEnabled
     case modelNotReady
 
-    var unavailableReason: String? {
+    var unavailableReason: FoundationModelUnavailableReason? {
         switch self {
         case .available: nil
-        case .deviceNotEligible: "deviceNotEligible"
-        case .appleIntelligenceNotEnabled: "appleIntelligenceNotEnabled"
-        case .modelNotReady: "modelNotReady"
+        case .deviceNotEligible: .deviceNotEligible
+        case .appleIntelligenceNotEnabled: .appleIntelligenceNotEnabled
+        case .modelNotReady: .modelNotReady
         }
     }
 }
@@ -34,7 +34,7 @@ enum FoundationModelsErrorMapper {
         }
         switch error {
         case .exceededContextWindowSize: return GenerationServiceError.contextWindowExceeded
-        case .assetsUnavailable: return GenerationServiceError.modelUnavailable("modelNotReady")
+        case .assetsUnavailable: return GenerationServiceError.modelUnavailable(.modelNotReady)
         case .guardrailViolation, .refusal: return GenerationServiceError.safetyRefusal
         case .rateLimited: return GenerationServiceError.rateLimited
         case .concurrentRequests: return GenerationServiceError.concurrentRequest
@@ -52,7 +52,7 @@ struct FoundationModelsTextGenerator: TextGenerating, Sendable {
 
     func generate(prompt: String, model: String?) async throws -> String {
         guard availability == .available else {
-            throw GenerationServiceError.modelUnavailable(availability.unavailableReason ?? "unknown")
+            throw GenerationServiceError.modelUnavailable(availability.unavailableReason ?? .modelNotReady)
         }
         try Task.checkCancellation()
         let session = LanguageModelSession(

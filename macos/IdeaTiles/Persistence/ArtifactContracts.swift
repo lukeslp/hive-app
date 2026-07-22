@@ -46,6 +46,25 @@ struct ArtifactFile: Codable, Sendable, Equatable {
     }
 }
 
+enum ArtifactImagePayload {
+    private static let pngSignature = Data([0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A])
+
+    static func decode(file: ArtifactFile) throws -> Data {
+        guard file.mimeType == "image/png",
+              file.encoding == "base64",
+              file.checksum.algorithm == "sha256",
+              let content = file.content,
+              let data = Data(base64Encoded: content, options: []),
+              !data.isEmpty,
+              data.starts(with: pngSignature),
+              data.count == file.sizeBytes
+        else { throw ArtifactContractError.invalidContent }
+        let digest = SHA256.hash(data: data).map { String(format: "%02x", $0) }.joined()
+        guard digest == file.checksum.value else { throw ArtifactContractError.invalidContent }
+        return data
+    }
+}
+
 struct ArtifactGeneratorDescriptor: Codable, Sendable, Equatable {
     let kind: String
     let name: String

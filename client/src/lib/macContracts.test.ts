@@ -217,14 +217,19 @@ describe("Mac artifact contracts", () => {
       model: "gemma3:4b",
       ollamaBaseURL: "http://127.0.0.1:11434/path",
     },
-    { provider: "openai", model: "org/model" },
+    { provider: "gemini", model: "org/model" },
     { provider: "openai", model: "é".repeat(65) },
     { provider: "apple", model: "not-the-system-model" },
+    {
+      provider: "ollama",
+      model: "user\u0000name/model",
+      ollamaBaseURL: "http://127.0.0.1:11434",
+    },
   ])("rejects native-incompatible generation settings %#", settings => {
     expect(generationSettingsSchema.safeParse(settings).success).toBe(false);
   });
 
-  it("accepts only root loopback Ollama settings and the real Apple model", () => {
+  it("accepts provider-specific model identifiers and root loopback Ollama settings", () => {
     expect(
       generationSettingsSchema.safeParse({
         provider: "ollama",
@@ -238,6 +243,45 @@ describe("Mac artifact contracts", () => {
         model: "system-language-model",
       }).success
     ).toBe(true);
+    expect(
+      generationSettingsSchema.safeParse({
+        provider: "ollama",
+        model: "username/model:latest",
+        ollamaBaseURL: "http://127.0.0.1:11434",
+      }).success
+    ).toBe(true);
+    expect(
+      generationSettingsSchema.safeParse({
+        provider: "ollama",
+        model: "hf.co/username/repository:Q4_K_M",
+        ollamaBaseURL: "http://127.0.0.1:11434",
+      }).success
+    ).toBe(true);
+    expect(
+      generationSettingsSchema.safeParse({
+        provider: "openai",
+        model: "organization/model:release",
+      }).success
+    ).toBe(true);
+    expect(
+      generationSettingsSchema.safeParse({
+        provider: "ollama",
+        model: "username/../model",
+        ollamaBaseURL: "http://127.0.0.1:11434",
+      }).success
+    ).toBe(false);
+  });
+
+  it("never throws safeParse when an Ollama URL is malformed", () => {
+    const parse = () =>
+      generationSettingsSchema.safeParse({
+        provider: "ollama",
+        model: "gemma3:4b",
+        ollamaBaseURL: "http://[invalid",
+      });
+
+    expect(parse).not.toThrow();
+    expect(parse().success).toBe(false);
   });
 
   it("validates a semantic image-to-tile attachment response", () => {

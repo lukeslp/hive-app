@@ -66,15 +66,12 @@ struct NativeBridgeRouter: Sendable {
             else { throw invalidParameters() }
             let fileData = try JSONEncoder().encode(fileValue)
             let file = try ArtifactFile.decode(data: fileData)
-            guard file.mimeType == "image/png" else { throw invalidParameters() }
             let saved = try await repository.loadArtifact(id: artifactID)
-            guard let persisted = saved.files.first(where: { $0.id == file.id && $0.path == file.path }),
-                  persisted.checksum == file.checksum,
-                  persisted.sizeBytes == file.sizeBytes,
-                  let content = persisted.content,
-                  let payload = Data(base64Encoded: content),
-                  !payload.isEmpty
+            guard let persisted = saved.files.first(where: { $0.id == file.id && $0.path == file.path })
             else { throw invalidParameters() }
+            let payload: Data
+            do { payload = try ArtifactImagePayload.decode(file: persisted) }
+            catch { throw invalidParameters() }
             return .object([
                 "artifactId": .string(artifactID),
                 "targetNodeId": .string(targetNodeID),
@@ -191,8 +188,12 @@ struct NativeBridgeRouter: Sendable {
 
     private func generationError(_ error: GenerationServiceError) -> NativeRPCError {
         switch error {
-        case .modelUnavailable:
-            NativeRPCError(code: "modelUnavailable", message: error.localizedDescription, retryable: true)
+        case .modelUnavailable(let reason):
+            NativeRPCError(
+                code: "modelUnavailable",
+                message: error.localizedDescription,
+                retryable: reason == .modelNotReady
+            )
         case .missingCredential:
             NativeRPCError(code: "missingCredential", message: error.localizedDescription, retryable: false)
         case .timeout:

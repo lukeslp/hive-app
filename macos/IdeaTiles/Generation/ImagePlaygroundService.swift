@@ -139,9 +139,21 @@ struct ImageArtifactGenerator: ImageArtifactGenerating, Sendable {
         try Task.checkCancellation()
         guard !pngData.isEmpty,
               let bitmap = NSBitmapImageRep(data: pngData),
-              bitmap.representation(using: .png, properties: [:]) != nil
+              let normalizedPNG = bitmap.representation(using: .png, properties: [:]),
+              !normalizedPNG.isEmpty
         else { throw ImagePlaygroundServiceError.invalidImage }
-        let manifest = try factory.imageManifest(request: request, data: pngData)
-        return try await repository.saveArtifact(manifest)
+        let manifest = try factory.imageManifest(request: request, data: normalizedPNG)
+        do {
+            try Task.checkCancellation()
+            let saved = try await repository.saveArtifact(manifest)
+            try Task.checkCancellation()
+            return saved
+        } catch is CancellationError {
+            try await repository.deleteArtifactIfPresent(
+                id: manifest.id,
+                boardID: manifest.provenance.sourceBoardId
+            )
+            throw CancellationError()
+        }
     }
 }

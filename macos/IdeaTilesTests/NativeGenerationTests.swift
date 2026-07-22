@@ -11,7 +11,7 @@ struct NativeGenerationPolicyTests {
     @Test("Apple is the default provider and an unavailable model never falls back")
     func appleDoesNotFallBack() async throws {
         let preferences = InMemoryGenerationPreferences()
-        let apple = FakeTextGenerator(result: .failure(GenerationServiceError.modelUnavailable("modelNotReady")))
+        let apple = FakeTextGenerator(result: .failure(GenerationServiceError.modelUnavailable(.modelNotReady)))
         let cloud = FakeCloudGenerator(result: .success("must not run"))
         let engine = GenerationEngine(
             preferences: preferences,
@@ -91,7 +91,7 @@ struct FoundationModelsMappingTests {
         ) == .concurrentRequest)
         #expect(FoundationModelsErrorMapper.map(
             LanguageModelSession.GenerationError.assetsUnavailable(context)
-        ) == .modelUnavailable("modelNotReady"))
+        ) == .modelUnavailable(.modelNotReady))
         #expect(FoundationModelsErrorMapper.map(
             LanguageModelSession.GenerationError.unsupportedLanguageOrLocale(context)
         ) == .unsupportedLanguage)
@@ -165,12 +165,30 @@ struct NativeGenerationSettingsTests {
     @Test(arguments: [
         GenerationSettings(provider: .ollama, model: "gemma3:4b", ollamaBaseURL: "https://example.com"),
         GenerationSettings(provider: .ollama, model: "gemma3:4b", ollamaBaseURL: "http://127.0.0.1:11434/path"),
-        GenerationSettings(provider: .openAI, model: "org/model", ollamaBaseURL: nil),
+        GenerationSettings(provider: .gemini, model: "org/model", ollamaBaseURL: nil),
         GenerationSettings(provider: .openAI, model: String(repeating: "é", count: 65), ollamaBaseURL: nil),
         GenerationSettings(provider: .apple, model: "not-the-system-model", ollamaBaseURL: nil),
+        GenerationSettings(provider: .ollama, model: "username/../model", ollamaBaseURL: "http://127.0.0.1:11434"),
+        GenerationSettings(provider: .ollama, model: "user\0name/model", ollamaBaseURL: "http://127.0.0.1:11434"),
     ])
     func rejectsContractParityViolations(_ settings: GenerationSettings) {
         #expect(throws: GenerationServiceError.self) { try settings.validated() }
+    }
+
+    @Test(arguments: [
+        GenerationSettings(provider: .ollama, model: "username/model:latest", ollamaBaseURL: "http://127.0.0.1:11434"),
+        GenerationSettings(provider: .ollama, model: "hf.co/username/repository:Q4_K_M", ollamaBaseURL: "http://127.0.0.1:11434"),
+        GenerationSettings(provider: .openAI, model: "organization/model:release", ollamaBaseURL: nil),
+    ])
+    func acceptsProviderSpecificModelNames(_ settings: GenerationSettings) throws {
+        #expect(try settings.validated() == settings)
+    }
+
+    @Test("validation returns the same trimmed model as the TypeScript contract")
+    func returnsCanonicalModel() throws {
+        let settings = GenerationSettings(provider: .openAI, model: "  organization/model  ", ollamaBaseURL: nil)
+
+        #expect(try settings.validated().model == "organization/model")
     }
 }
 
@@ -194,6 +212,39 @@ struct DirectProviderNetworkingTests {
         #expect(request.url?.absoluteString == expectedURL)
         #expect(request.url?.scheme == "https")
         #expect(request.httpMethod == "POST")
+    }
+
+    @Test("request construction applies provider-specific model safety")
+    func providerSpecificModels() throws {
+        let jsonBody = try DirectProviderRequestBuilder().makeRequest(
+            provider: .openAI,
+            model: "organization/model:release",
+            prompt: "hello",
+            credential: "credential"
+        )
+        let jsonData = try #require(jsonBody.httpBody)
+        let jsonObject = try #require(JSONSerialization.jsonObject(with: jsonData) as? [String: Any])
+        #expect(jsonObject["model"] as? String == "organization/model:release")
+
+        #expect(throws: GenerationServiceError.invalidConfiguration) {
+            try DirectProviderRequestBuilder().makeRequest(
+                provider: .gemini,
+                model: "organization/model",
+                prompt: "hello",
+                credential: "credential"
+            )
+        }
+
+        let ollama = try DirectProviderRequestBuilder().makeRequest(
+            provider: .ollama,
+            model: "hf.co/username/repository:Q4_K_M",
+            prompt: "hello",
+            credential: nil,
+            ollamaBaseURL: "http://127.0.0.1:11434"
+        )
+        let ollamaData = try #require(ollama.httpBody)
+        let ollamaObject = try #require(JSONSerialization.jsonObject(with: ollamaData) as? [String: Any])
+        #expect(ollamaObject["model"] as? String == "hf.co/username/repository:Q4_K_M")
     }
 
     @Test("a URLSession adapter can be tested without contacting a provider")
@@ -247,20 +298,24 @@ struct DirectProviderNetworkingTests {
         configuration.protocolClasses = [MockURLProtocol.self]
         let transport = URLSessionHTTPTransport(configuration: configuration)
 
-        MockURLProtocol.recorder = MockURLProtocolRecorder(
+        let declared = MockURLProtocolRecorder(
             responseBody: "{}",
             headers: ["Content-Length": "\(ProviderTransportLimits.maximumResponseBytes + 1)"]
         )
+        MockURLProtocol.recorder = declared
         await #expect(throws: GenerationServiceError.responseTooLarge) {
             try await transport.data(for: URLRequest(url: URL(string: "https://api.openai.com/v1/chat/completions")!))
         }
+        #expect(declared.wasStopped)
 
-        MockURLProtocol.recorder = MockURLProtocolRecorder(
+        let cumulative = MockURLProtocolRecorder(
             responseBody: String(repeating: "x", count: ProviderTransportLimits.maximumResponseBytes + 1)
         )
+        MockURLProtocol.recorder = cumulative
         await #expect(throws: GenerationServiceError.responseTooLarge) {
             try await transport.data(for: URLRequest(url: URL(string: "http://127.0.0.1:11434/api/chat")!))
         }
+        #expect(cumulative.wasStopped)
         MockURLProtocol.recorder = nil
     }
 
@@ -391,10 +446,9 @@ struct ImagePlaygroundArtifactTests {
         let sourceBytes = try #require(bitmap.representation(using: .jpeg, properties: [:]))
         try sourceBytes.write(to: imageURL)
         let repository = try ArtifactRepository(root: root.appending(path: "Repository"), inMemory: true)
-        let ownedPNG = try #require(NSBitmapImageRep(data: sourceBytes)?.representation(using: .png, properties: [:]))
         try FileManager.default.removeItem(at: imageURL)
         let generator = ImageArtifactGenerator(
-            presenter: FakeImagePresenter(isAvailable: true, result: .success(ownedPNG)),
+            presenter: FakeImagePresenter(isAvailable: true, result: .success(sourceBytes)),
             repository: repository
         )
 
@@ -407,10 +461,60 @@ struct ImagePlaygroundArtifactTests {
         let file = try #require(manifest.files.first)
         #expect(file.mimeType == "image/png")
         let imageBytes = try file.payloadData()
+        #expect(imageBytes != sourceBytes)
         #expect(Array(imageBytes.prefix(8)) == [0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A])
         #expect(file.checksum.value == SHA256.hash(data: imageBytes).hexString)
         #expect(try await repository.loadArtifact(id: manifest.id) == manifest)
         #expect(try Data(contentsOf: await repository.payloadURL(artifactID: manifest.id, path: file.path)) == imageBytes)
+    }
+
+    @Test("cancellation racing a committed image save removes the artifact before returning")
+    func cancellationRollsBackCommittedImage() async throws {
+        let root = try TestDirectory.make()
+        let gate = PersistenceCommitGate()
+        let repository = try ArtifactRepository(
+            root: root,
+            inMemory: true,
+            metadataCommitter: { context in
+                gate.markEntered()
+                guard gate.waitForRelease() else {
+                    throw PersistenceCommitGate.GateError.timedOut
+                }
+                try context.save()
+            }
+        )
+        let bitmap = try #require(NSBitmapImageRep(
+            bitmapDataPlanes: nil,
+            pixelsWide: 2,
+            pixelsHigh: 2,
+            bitsPerSample: 8,
+            samplesPerPixel: 4,
+            hasAlpha: true,
+            isPlanar: false,
+            colorSpaceName: .deviceRGB,
+            bytesPerRow: 8,
+            bitsPerPixel: 32
+        ))
+        let png = try #require(bitmap.representation(using: .png, properties: [:]))
+        let generator = ImageArtifactGenerator(
+            presenter: FakeImagePresenter(isAvailable: true, result: .success(png)),
+            repository: repository
+        )
+        let task = Task {
+            try await generator.generate(
+                GenerationRequestFixture.request(recipeID: "image-playground-artwork")
+            )
+        }
+
+        #expect(await gate.waitUntilEntered())
+        task.cancel()
+        gate.open()
+
+        await #expect(throws: CancellationError.self) { try await task.value }
+        #expect(try await repository.artifactCount() == 0)
+        let artifactsRoot = root.appending(path: "Boards/board:1/Artifacts")
+        let remaining = (try? FileManager.default.contentsOfDirectory(atPath: artifactsRoot.path)) ?? []
+        #expect(remaining.filter { !$0.hasPrefix(".") }.isEmpty)
     }
 
     @Test("request lifecycle ignores stale completion and clears before returning completion")
@@ -563,6 +667,26 @@ private enum GenerationRequestFixture {
 
 private extension SHA256.Digest {
     var hexString: String { map { String(format: "%02x", $0) }.joined() }
+}
+
+private final class PersistenceCommitGate: @unchecked Sendable {
+    enum GateError: Error { case timedOut }
+    private let lock = NSLock()
+    private let release = DispatchSemaphore(value: 0)
+    private var entered = false
+
+    func markEntered() { lock.withLock { entered = true } }
+    func waitForRelease() -> Bool { release.wait(timeout: .now() + 2) == .success }
+    func open() { release.signal() }
+
+    func waitUntilEntered() async -> Bool {
+        let deadline = ContinuousClock.now + .seconds(2)
+        while !lock.withLock({ entered }) {
+            if ContinuousClock.now >= deadline { return false }
+            await Task.yield()
+        }
+        return true
+    }
 }
 
 private final class MockURLProtocolRecorder: @unchecked Sendable {

@@ -55,10 +55,7 @@ struct GenerationSettings: Codable, Equatable, Sendable {
 
     func validated() throws -> GenerationSettings {
         let model = model.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !model.isEmpty, model.utf8.count <= 128,
-              model.range(of: #"^[A-Za-z0-9._:-]+$"#, options: .regularExpression) != nil
-        else { throw GenerationServiceError.invalidConfiguration }
-        if provider == .apple, model != GenerationProvider.apple.defaultModel {
+        guard GenerationModelValidator.isValid(model, for: provider) else {
             throw GenerationServiceError.invalidConfiguration
         }
         if provider == .ollama {
@@ -66,6 +63,31 @@ struct GenerationSettings: Codable, Equatable, Sendable {
             _ = try OllamaEndpoint(rawValue: ollamaBaseURL)
         }
         return GenerationSettings(provider: provider, model: model, ollamaBaseURL: ollamaBaseURL)
+    }
+}
+
+enum GenerationModelValidator {
+    static func isValid(_ model: String, for provider: GenerationProvider) -> Bool {
+        guard !model.isEmpty, model.utf8.count <= 128 else { return false }
+        switch provider {
+        case .apple:
+            return model == GenerationProvider.apple.defaultModel
+        case .gemini:
+            return matches(model, pattern: #"^[A-Za-z0-9][A-Za-z0-9._-]*$"#)
+        case .ollama:
+            let segments = model.split(separator: "/", omittingEmptySubsequences: false).map(String.init)
+            guard !segments.contains(where: { $0.isEmpty || $0 == "." || $0 == ".." }),
+                  let last = segments.last,
+                  segments.dropLast().allSatisfy({ matches($0, pattern: #"^[A-Za-z0-9][A-Za-z0-9._-]*$"#) })
+            else { return false }
+            return matches(last, pattern: #"^[A-Za-z0-9][A-Za-z0-9._-]*(?::[A-Za-z0-9][A-Za-z0-9._-]*)?$"#)
+        case .anthropic, .openAI, .xAI, .mistral:
+            return matches(model, pattern: #"^[A-Za-z0-9][A-Za-z0-9._:/-]*$"#)
+        }
+    }
+
+    private static func matches(_ value: String, pattern: String) -> Bool {
+        value.range(of: pattern, options: .regularExpression) != nil
     }
 }
 
@@ -94,10 +116,16 @@ actor UserDefaultsGenerationPreferences: GenerationPreferencesStoring {
     }
 }
 
+enum FoundationModelUnavailableReason: String, Equatable, Sendable {
+    case deviceNotEligible
+    case appleIntelligenceNotEnabled
+    case modelNotReady
+}
+
 enum GenerationServiceError: Error, Equatable, LocalizedError, Sendable {
     case invalidConfiguration
     case missingCredential(GenerationProvider)
-    case modelUnavailable(String)
+    case modelUnavailable(FoundationModelUnavailableReason)
     case invalidResponse
     case providerFailure(statusCode: Int)
     case timeout
@@ -112,7 +140,7 @@ enum GenerationServiceError: Error, Equatable, LocalizedError, Sendable {
         switch self {
         case .invalidConfiguration: "Generation settings are invalid."
         case .missingCredential(let provider): "A credential is required for \(provider.displayName)."
-        case .modelUnavailable(let reason): "Apple Foundation Models is unavailable (\(reason))."
+        case .modelUnavailable(let reason): "Apple Foundation Models is unavailable (\(reason.rawValue))."
         case .invalidResponse: "The selected provider returned an invalid response."
         case .providerFailure(let status): "The selected provider returned HTTP \(status)."
         case .timeout: "Generation timed out."
