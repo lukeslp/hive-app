@@ -13,8 +13,8 @@ enum MacBridgeBootstrap {
           artifactGeneration: true,
           artifactPersistence: true,
           artifactExport: true,
-          imagePlayground: false,
-          keychain: false,
+          imagePlayground: true,
+          keychain: true,
           staticPreview: true
         })
       });
@@ -42,7 +42,7 @@ enum MacBridgeBootstrap {
             options.onProgress?.({ requestId: request.requestId, phase: 'preparing', completed: 0 });
             const cancel = () => { void rpc('artifact.cancel', { requestId: request.requestId }).catch(() => {}); };
             options.signal?.addEventListener('abort', cancel, { once: true });
-            try { return await rpc('artifact.generate', request); }
+            try { return await rpc('artifact.generate', request, request.recipeId === 'image-playground-artwork' ? null : 35000); }
             finally { options.signal?.removeEventListener('abort', cancel); }
           }
         }),
@@ -57,8 +57,17 @@ enum MacBridgeBootstrap {
           await rpc('artifact.attachImage', { artifactId: saved.id, file });
         }
       });
+      const generationSettings = Object.freeze({
+        get: () => rpc('generation.settings.get', {}),
+        set: settings => rpc('generation.settings.set', { settings })
+      });
+      const credentials = Object.freeze({
+        status: () => rpc('credentials.status', {}),
+        set: (provider, credential) => rpc('credentials.set', { provider, credential }),
+        remove: provider => rpc('credentials.remove', { provider })
+      });
       Object.defineProperty(window, 'ideaTilesMac', {
-        value: Object.freeze({ capabilities, artifactStudioServices: services }),
+        value: Object.freeze({ capabilities, artifactStudioServices: services, generationSettings, credentials }),
         configurable: false,
         enumerable: true,
         writable: false

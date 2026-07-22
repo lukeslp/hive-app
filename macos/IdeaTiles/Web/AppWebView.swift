@@ -97,6 +97,8 @@ fileprivate final class MacScriptMessageHandler: NSObject, WKScriptMessageHandle
 @MainActor
 final class MacRuntime {
     let repository: ArtifactRepository
+    let generationPreferences: UserDefaultsGenerationPreferences
+    let credentialStore: KeychainCredentialStore
     fileprivate let dispatcher: BridgeDispatcher
     fileprivate let messageHandler: MacScriptMessageHandler
     fileprivate let schemeHandler: BundleSchemeHandler
@@ -107,12 +109,38 @@ final class MacRuntime {
             throw ResourceServingError.missingResource
         }
         let repository = try ArtifactRepository.applicationSupport()
-        let router = NativeBridgeRouter(repository: repository) { manifest in
+        let generationPreferences = UserDefaultsGenerationPreferences()
+        let credentialStore = KeychainCredentialStore()
+        let engine = GenerationEngine(
+            preferences: generationPreferences,
+            credentials: credentialStore,
+            appleGenerator: DeadlineTextGenerator(
+                base: FoundationModelsTextGenerator(),
+                timeout: GenerationDeadlines.foundationModels
+            ),
+            cloudGenerator: DirectProviderClient(transport: URLSessionHTTPTransport())
+        )
+        let imageGenerator = ImageArtifactGenerator(
+            presenter: AppKitImagePlaygroundPresenter(),
+            repository: repository
+        )
+        let generationCoordinator = ArtifactGenerationCoordinator(
+            engine: engine,
+            imageGenerator: imageGenerator
+        )
+        let router = NativeBridgeRouter(
+            repository: repository,
+            generationCoordinator: generationCoordinator,
+            generationPreferences: generationPreferences,
+            credentialStore: credentialStore
+        ) { manifest in
             let boardPayload = try? await repository.boardPayload(id: manifest.provenance.sourceBoardId)
             return try await FilePanelService.export(manifest, boardPayload: boardPayload)
         }
         let dispatcher = BridgeDispatcher(operation: router.execute)
         self.repository = repository
+        self.generationPreferences = generationPreferences
+        self.credentialStore = credentialStore
         self.dispatcher = dispatcher
         messageHandler = MacScriptMessageHandler(dispatcher: dispatcher)
         schemeHandler = BundleSchemeHandler(root: resourceRoot)

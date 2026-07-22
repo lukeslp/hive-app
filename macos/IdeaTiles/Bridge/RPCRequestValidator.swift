@@ -7,6 +7,11 @@ enum RPCMethod: String, Sendable, CaseIterable {
     case saveArtifact = "artifact.save"
     case exportArtifact = "artifact.export"
     case attachImage = "artifact.attachImage"
+    case getGenerationSettings = "generation.settings.get"
+    case setGenerationSettings = "generation.settings.set"
+    case credentialStatus = "credentials.status"
+    case setCredential = "credentials.set"
+    case removeCredential = "credentials.remove"
 }
 
 struct ValidatedRPCRequest: Sendable, Equatable {
@@ -66,8 +71,28 @@ struct RPCRequestValidator: Sendable {
 
     private func validateParameters(_ params: [String: Any], for method: RPCMethod) throws {
         switch method {
-        case .getCapabilities:
+        case .getCapabilities, .getGenerationSettings, .credentialStatus:
             guard params.isEmpty else { throw RPCValidationError.invalidParameters }
+        case .setGenerationSettings:
+            guard Set(params.keys) == ["settings"],
+                  let settings = params["settings"] as? [String: Any]
+            else { throw RPCValidationError.invalidParameters }
+            try validateGenerationSettings(settings)
+        case .setCredential:
+            guard Set(params.keys) == ["provider", "credential"],
+                  let providerName = params["provider"] as? String,
+                  let provider = GenerationProvider(rawValue: providerName),
+                  provider.requiresCredential,
+                  let credential = params["credential"] as? String,
+                  !credential.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty,
+                  credential.utf8.count <= 16_384
+            else { throw RPCValidationError.invalidParameters }
+        case .removeCredential:
+            guard Set(params.keys) == ["provider"],
+                  let providerName = params["provider"] as? String,
+                  let provider = GenerationProvider(rawValue: providerName),
+                  provider.requiresCredential
+            else { throw RPCValidationError.invalidParameters }
         case .cancelArtifact:
             guard Set(params.keys) == ["requestId"],
                   let requestID = params["requestId"] as? String,
@@ -151,6 +176,34 @@ struct RPCRequestValidator: Sendable {
               ],
               features.values.allSatisfy({ $0 is Bool })
         else { throw RPCValidationError.invalidParameters }
+    }
+
+    private func validateGenerationSettings(_ settings: [String: Any]) throws {
+        let required: Set<String> = ["provider", "model"]
+        let optional: Set<String> = ["ollamaBaseURL"]
+        guard required.isSubset(of: settings.keys),
+              Set(settings.keys).subtracting(required).isSubset(of: optional),
+              let providerName = settings["provider"] as? String,
+              let provider = GenerationProvider(rawValue: providerName),
+              let model = settings["model"] as? String,
+              !model.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty,
+              model.utf8.count <= 128,
+              !model.unicodeScalars.contains(where: CharacterSet.controlCharacters.contains)
+        else { throw RPCValidationError.invalidParameters }
+        let baseURL: String?
+        if let value = settings["ollamaBaseURL"] {
+            guard let string = value as? String, string.utf8.count <= 2_048 else {
+                throw RPCValidationError.invalidParameters
+            }
+            baseURL = string
+        } else {
+            baseURL = nil
+        }
+        do {
+            _ = try GenerationSettings(provider: provider, model: model, ollamaBaseURL: baseURL).validated()
+        } catch {
+            throw RPCValidationError.invalidParameters
+        }
     }
 
     private func positiveInteger(_ value: Any?) -> Int? {

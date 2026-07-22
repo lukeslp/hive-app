@@ -209,6 +209,71 @@ export type ArtifactGenerationProgress = z.infer<
   typeof artifactGenerationProgressSchema
 >;
 
+export const generationProviderSchema = z.enum([
+  "apple",
+  "gemini",
+  "anthropic",
+  "openai",
+  "xai",
+  "mistral",
+  "ollama",
+]);
+export type GenerationProvider = z.infer<typeof generationProviderSchema>;
+
+export const generationSettingsSchema = z
+  .object({
+    provider: generationProviderSchema,
+    model: z.string().trim().min(1).max(128),
+    ollamaBaseURL: z.string().url().max(2_048).optional(),
+  })
+  .strict()
+  .superRefine((settings, context) => {
+    if (settings.provider === "ollama" && !settings.ollamaBaseURL) {
+      context.addIssue({
+        code: "custom",
+        path: ["ollamaBaseURL"],
+        message: "Ollama requires a loopback base URL",
+      });
+    }
+  });
+export type GenerationSettings = z.infer<typeof generationSettingsSchema>;
+
+export const credentialProviderSchema = z.enum([
+  "gemini",
+  "anthropic",
+  "openai",
+  "xai",
+  "mistral",
+]);
+export type CredentialProvider = z.infer<typeof credentialProviderSchema>;
+
+const configuredCredentialSchema = z
+  .object({
+    gemini: z.boolean(),
+    anthropic: z.boolean(),
+    openai: z.boolean(),
+    xai: z.boolean(),
+    mistral: z.boolean(),
+  })
+  .strict();
+export const credentialStatusSchema = z
+  .object({ configured: configuredCredentialSchema })
+  .strict();
+export type CredentialStatus = z.infer<typeof credentialStatusSchema>;
+
+const credentialSetResultSchema = z
+  .object({
+    provider: credentialProviderSchema,
+    configured: z.literal(true),
+  })
+  .strict();
+const credentialRemovalResultSchema = z
+  .object({
+    provider: credentialProviderSchema,
+    configured: z.literal(false),
+  })
+  .strict();
+
 const rpcIdSchema = stableIdSchema;
 export const macRpcRequestSchema = z.discriminatedUnion("method", [
   z
@@ -253,6 +318,46 @@ export const macRpcRequestSchema = z.discriminatedUnion("method", [
       params: z
         .object({ artifactId: stableIdSchema, file: artifactFileSchema })
         .strict(),
+    })
+    .strict(),
+  z
+    .object({
+      id: rpcIdSchema,
+      method: z.literal("generation.settings.get"),
+      params: z.object({}).strict(),
+    })
+    .strict(),
+  z
+    .object({
+      id: rpcIdSchema,
+      method: z.literal("generation.settings.set"),
+      params: z.object({ settings: generationSettingsSchema }).strict(),
+    })
+    .strict(),
+  z
+    .object({
+      id: rpcIdSchema,
+      method: z.literal("credentials.status"),
+      params: z.object({}).strict(),
+    })
+    .strict(),
+  z
+    .object({
+      id: rpcIdSchema,
+      method: z.literal("credentials.set"),
+      params: z
+        .object({
+          provider: credentialProviderSchema,
+          credential: z.string().trim().min(1).max(16_384),
+        })
+        .strict(),
+    })
+    .strict(),
+  z
+    .object({
+      id: rpcIdSchema,
+      method: z.literal("credentials.remove"),
+      params: z.object({ provider: credentialProviderSchema }).strict(),
     })
     .strict(),
 ]);
@@ -307,6 +412,41 @@ export const macRpcResponseSchema = z.union([
     .strict(),
   z
     .object({
+      ...rpcSuccessBase,
+      method: z.literal("generation.settings.get"),
+      result: generationSettingsSchema,
+    })
+    .strict(),
+  z
+    .object({
+      ...rpcSuccessBase,
+      method: z.literal("generation.settings.set"),
+      result: generationSettingsSchema,
+    })
+    .strict(),
+  z
+    .object({
+      ...rpcSuccessBase,
+      method: z.literal("credentials.status"),
+      result: credentialStatusSchema,
+    })
+    .strict(),
+  z
+    .object({
+      ...rpcSuccessBase,
+      method: z.literal("credentials.set"),
+      result: credentialSetResultSchema,
+    })
+    .strict(),
+  z
+    .object({
+      ...rpcSuccessBase,
+      method: z.literal("credentials.remove"),
+      result: credentialRemovalResultSchema,
+    })
+    .strict(),
+  z
+    .object({
       id: rpcIdSchema,
       ok: z.literal(false),
       error: z
@@ -329,6 +469,11 @@ export interface MacRpcResultMap {
   "artifact.save": ArtifactManifest;
   "artifact.export": { exported: boolean };
   "artifact.attachImage": ArtifactManifest;
+  "generation.settings.get": GenerationSettings;
+  "generation.settings.set": GenerationSettings;
+  "credentials.status": CredentialStatus;
+  "credentials.set": { provider: CredentialProvider; configured: true };
+  "credentials.remove": { provider: CredentialProvider; configured: false };
 }
 
 export interface ArtifactGenerator {
@@ -350,6 +495,22 @@ export interface ArtifactStudioServices {
   generator: ArtifactGenerator;
   persistence: ArtifactPersistence;
   attachImageToBoard(manifest: ArtifactManifest): Promise<void>;
+}
+
+export interface NativeGenerationSettingsService {
+  get(): Promise<GenerationSettings>;
+  set(settings: GenerationSettings): Promise<GenerationSettings>;
+}
+
+export interface NativeCredentialService {
+  status(): Promise<CredentialStatus>;
+  set(
+    provider: CredentialProvider,
+    credential: string
+  ): Promise<{ provider: CredentialProvider; configured: true }>;
+  remove(
+    provider: CredentialProvider
+  ): Promise<{ provider: CredentialProvider; configured: false }>;
 }
 
 export interface MacRpcBridge {

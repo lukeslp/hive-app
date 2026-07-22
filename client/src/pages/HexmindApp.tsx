@@ -68,6 +68,8 @@ import { APP_DISPLAY_NAME, APP_EXPORT_FILE_PREFIX } from "@shared/appBrand";
 import {
   hasMacArtifactStudioCapability,
   type ArtifactStudioServices,
+  type NativeCredentialService,
+  type NativeGenerationSettingsService,
 } from "@shared/macArtifacts";
 import {
   HEX_SIZE,
@@ -92,6 +94,8 @@ declare global {
     ideaTilesMac?: {
       capabilities?: unknown;
       artifactStudioServices?: ArtifactStudioServices;
+      generationSettings?: NativeGenerationSettingsService;
+      credentials?: NativeCredentialService;
     };
   }
 }

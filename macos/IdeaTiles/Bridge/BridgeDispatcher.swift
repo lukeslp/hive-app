@@ -80,7 +80,7 @@ final class BridgeDispatcher: Sendable {
 
     init(
         validator: RPCRequestValidator = RPCRequestValidator(),
-        timeout: Duration = .seconds(30),
+        timeout: Duration = GenerationDeadlines.bridge,
         operation: @escaping Operation
     ) {
         self.validator = validator
@@ -106,7 +106,9 @@ final class BridgeDispatcher: Sendable {
             ))
         }
 
-        let outcome = request.method == .exportArtifact
+        let isUserDrivenSheet = request.method == .generateArtifact
+            && request.params["recipeId"]?.stringValue == "image-playground-artwork"
+        let outcome = request.method == .exportArtifact || isUserDrivenSheet
             ? await runWithoutComputationTimeout(request)
             : await runWithComputationTimeout(request)
         await registry.end(request.id)

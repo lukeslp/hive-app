@@ -3,6 +3,8 @@ import {
   ARTIFACT_SCHEMA_VERSION,
   artifactGenerationRequestSchema,
   artifactManifestSchema,
+  credentialStatusSchema,
+  generationSettingsSchema,
   macRpcRequestSchema,
   macRpcResponseSchema,
   hasMacArtifactStudioCapability,
@@ -179,6 +181,72 @@ describe("Mac artifact contracts", () => {
 
     expect(macRpcResponseSchema.parse(success)).toEqual(success);
     expect(macRpcResponseSchema.parse(failure)).toEqual(failure);
+  });
+
+  it("validates generation settings RPC requests and responses", () => {
+    const settings = {
+      provider: "ollama",
+      model: "gemma3:4b",
+      ollamaBaseURL: "http://127.0.0.1:11434",
+    } as const;
+    const request = {
+      id: "rpc:settings:set",
+      method: "generation.settings.set",
+      params: { settings },
+    };
+    const response = {
+      id: request.id,
+      method: request.method,
+      ok: true,
+      result: settings,
+    };
+
+    expect(generationSettingsSchema.parse(settings)).toEqual(settings);
+    expect(macRpcRequestSchema.parse(request)).toEqual(request);
+    expect(macRpcResponseSchema.parse(response)).toEqual(response);
+  });
+
+  it("keeps provider credentials request-only", () => {
+    const request = {
+      id: "rpc:credential:set",
+      method: "credentials.set",
+      params: { provider: "anthropic", credential: "secret-value" },
+    } as const;
+    const response = {
+      id: request.id,
+      method: request.method,
+      ok: true,
+      result: { provider: "anthropic", configured: true },
+    } as const;
+
+    expect(macRpcRequestSchema.parse(request)).toEqual(request);
+    expect(macRpcResponseSchema.parse(response)).toEqual(response);
+    expect(
+      macRpcResponseSchema.safeParse({
+        ...response,
+        result: { ...response.result, credential: "secret-value" },
+      }).success
+    ).toBe(false);
+  });
+
+  it("returns only fixed credential configuration statuses", () => {
+    const result = {
+      configured: {
+        gemini: true,
+        anthropic: false,
+        openai: true,
+        xai: false,
+        mistral: false,
+      },
+    };
+
+    expect(credentialStatusSchema.parse(result)).toEqual(result);
+    expect(
+      credentialStatusSchema.safeParse({
+        ...result,
+        configured: { ...result.configured, apple: true },
+      }).success
+    ).toBe(false);
   });
 
   it("enables Artifact Studio only for a capable native Mac host", () => {

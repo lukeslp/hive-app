@@ -13,6 +13,30 @@ struct BridgeValidationTests {
     }
 
     @Test(arguments: [
+        #"{"id":"rpc:settings:get","method":"generation.settings.get","params":{}}"#,
+        #"{"id":"rpc:settings:set","method":"generation.settings.set","params":{"settings":{"provider":"ollama","model":"gemma3:4b","ollamaBaseURL":"http://127.0.0.1:11434"}}}"#,
+        #"{"id":"rpc:credentials:status","method":"credentials.status","params":{}}"#,
+        #"{"id":"rpc:credentials:set","method":"credentials.set","params":{"provider":"openai","credential":"secret-value"}}"#,
+        #"{"id":"rpc:credentials:remove","method":"credentials.remove","params":{"provider":"openai"}}"#,
+    ])
+    func acceptsSettingsAndCredentialRequests(_ json: String) throws {
+        _ = try RPCRequestValidator().parse(Data(json.utf8))
+    }
+
+    @Test(arguments: [
+        #"{"id":"rpc:settings:set","method":"generation.settings.set","params":{"settings":{"provider":"unknown","model":"model"}}}"#,
+        #"{"id":"rpc:settings:set","method":"generation.settings.set","params":{"settings":{"provider":"apple","model":"","extra":true}}}"#,
+        #"{"id":"rpc:credentials:set","method":"credentials.set","params":{"provider":"apple","credential":"secret-value"}}"#,
+        #"{"id":"rpc:credentials:set","method":"credentials.set","params":{"provider":"openai","credential":""}}"#,
+        #"{"id":"rpc:credentials:remove","method":"credentials.remove","params":{"provider":"ollama"}}"#,
+    ])
+    func rejectsInvalidSettingsAndCredentialRequests(_ json: String) {
+        #expect(throws: RPCValidationError.self) {
+            try RPCRequestValidator().parse(Data(json.utf8))
+        }
+    }
+
+    @Test(arguments: [
         #"{"id":"rpc:1","method":"unknown","params":{}}"#,
         #"{"id":"../bad","method":"platform.getCapabilities","params":{}}"#,
         #"{"id":"rpc:1","method":"platform.getCapabilities","params":{},"extra":true}"#,
@@ -163,6 +187,33 @@ struct BridgeDispatcherTests {
         ])
 
         let response = await dispatcher.dispatch(try JSONEncoder().encode(request))
+        let object = try #require(try JSONSerialization.jsonObject(with: response) as? [String: Any])
+        #expect(object["ok"] as? Bool == true)
+    }
+
+    @Test("does not apply a model-computation timeout while Image Playground is open")
+    func imagePlaygroundIsNotComputationTimed() async throws {
+        let dispatcher = BridgeDispatcher(timeout: .milliseconds(10)) { _ in
+            try await Task.sleep(for: .milliseconds(30))
+            return .object(["kind": .string("image")])
+        }
+        let request: [String: Any] = [
+            "id": "rpc:image",
+            "method": "artifact.generate",
+            "params": [
+                "requestId": "generation:image",
+                "sourceBoardId": "board:1",
+                "sourceNodeIds": ["0,0"],
+                "includedNodeCount": 1,
+                "originalNodeCount": 1,
+                "contextTruncated": false,
+                "recipeId": "image-playground-artwork",
+                "scope": ["kind": "board"],
+                "context": "visual context",
+            ],
+        ]
+
+        let response = await dispatcher.dispatch(try JSONSerialization.data(withJSONObject: request))
         let object = try #require(try JSONSerialization.jsonObject(with: response) as? [String: Any])
         #expect(object["ok"] as? Bool == true)
     }

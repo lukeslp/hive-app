@@ -8,11 +8,18 @@
 
 /* Begin PBXBuildFile section */
 		00215BDE74ABAAA16E7BBD94 /* IdeaTilesPackageCodec.swift in Sources */ = {isa = PBXBuildFile; fileRef = B93022FE0561C8E1FDBD54F4 /* IdeaTilesPackageCodec.swift */; };
+		0BF571F819EE36F106BE1E08 /* CredentialStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 330D76B8B709A62E2DE7CFFC /* CredentialStore.swift */; };
+		1FC909E581FD10B79CBDA774 /* DirectProviderClient.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6CB89740890115CE35EF00FE /* DirectProviderClient.swift */; };
 		270BD15EE913BE7EB77425A0 /* ArtifactPersistenceTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 34F611097139AA29E136FB4A /* ArtifactPersistenceTests.swift */; };
 		2B1A28759511FEC5BE91ED2F /* BundleResourceResolver.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7C0FED78AA66D75D984C901C /* BundleResourceResolver.swift */; };
+		342F5D26DB4EF7D2B84266FF /* GenerationSettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 573072F9CD3B445DCA8A9E53 /* GenerationSettingsView.swift */; };
 		3B5E3AD6E4F085C8E01F0326 /* BundleResourceResolverTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 57B54CF304C22CFE9CCD4883 /* BundleResourceResolverTests.swift */; };
+		3C9397843178FA808C2CC6C1 /* ImagePlaygroundService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 17901CFCD0AA9E127981F9EB /* ImagePlaygroundService.swift */; };
+		3DA9EF688C52836B086C9148 /* GenerationContracts.swift in Sources */ = {isa = PBXBuildFile; fileRef = 20008B51163A1874046161D3 /* GenerationContracts.swift */; };
+		63E67C420968CF92BD884DBE /* NativeGenerationTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9DCAEC30F365345E28CDB7E0 /* NativeGenerationTests.swift */; };
 		68B37D64569D80215B54406C /* ArtifactContracts.swift in Sources */ = {isa = PBXBuildFile; fileRef = 522FC3A76A70FEF021C7AE41 /* ArtifactContracts.swift */; };
 		6A351970193D63B60BBA991D /* MacBridgeBootstrap.swift in Sources */ = {isa = PBXBuildFile; fileRef = 33DBB6B4F992BB6B68FB3FFC /* MacBridgeBootstrap.swift */; };
+		6A4DE27E34A4FE22D8C81073 /* ArtifactGenerationCoordinator.swift in Sources */ = {isa = PBXBuildFile; fileRef = 51494E7FE8DB8552441D42E9 /* ArtifactGenerationCoordinator.swift */; };
 		6D6104CA46D6393660F4026E /* PreviewSecurityTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = AD284C727A48E38482D97D3A /* PreviewSecurityTests.swift */; };
 		6DC99EEB1CF0D8D0449FD3FC /* StaticPreviewHost.swift in Sources */ = {isa = PBXBuildFile; fileRef = A9961A4E9ED71DFDDDB34631 /* StaticPreviewHost.swift */; };
 		82E3C41C27C1338A793ED0EE /* MacHostTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1CFF7077C12A3B5F46C0677F /* MacHostTests.swift */; };
@@ -25,6 +32,7 @@
 		BC8AC055FB36A62F5C2D797C /* BridgeDispatcher.swift in Sources */ = {isa = PBXBuildFile; fileRef = A7A218BBCBB4D4E7882BA100 /* BridgeDispatcher.swift */; };
 		C1BDAFB1E54B9CE16E31A6A8 /* BridgeValidationTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 673EC3CCD0FC6C6F491D17AF /* BridgeValidationTests.swift */; };
 		D4D1A76992B12345E6BE8DB3 /* ArtifactContractParityTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = F0DCFB2EFE9879EA2A4E4251 /* ArtifactContractParityTests.swift */; };
+		D82E6A61EDD77E7BA12A0176 /* GenerationEngine.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1DAC35AEE32E8430F502F24 /* GenerationEngine.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -39,22 +47,30 @@
 
 /* Begin PBXFileReference section */
 		116DECBB13147482B1D5A679 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
+		17901CFCD0AA9E127981F9EB /* ImagePlaygroundService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ImagePlaygroundService.swift; sourceTree = "<group>"; };
 		1CFF7077C12A3B5F46C0677F /* MacHostTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MacHostTests.swift; sourceTree = "<group>"; };
+		20008B51163A1874046161D3 /* GenerationContracts.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GenerationContracts.swift; sourceTree = "<group>"; };
 		30504990C6314B2372FA94E6 /* JSONValue.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = JSONValue.swift; sourceTree = "<group>"; };
+		330D76B8B709A62E2DE7CFFC /* CredentialStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CredentialStore.swift; sourceTree = "<group>"; };
 		33DBB6B4F992BB6B68FB3FFC /* MacBridgeBootstrap.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MacBridgeBootstrap.swift; sourceTree = "<group>"; };
 		34F611097139AA29E136FB4A /* ArtifactPersistenceTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ArtifactPersistenceTests.swift; sourceTree = "<group>"; };
+		51494E7FE8DB8552441D42E9 /* ArtifactGenerationCoordinator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ArtifactGenerationCoordinator.swift; sourceTree = "<group>"; };
 		522FC3A76A70FEF021C7AE41 /* ArtifactContracts.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ArtifactContracts.swift; sourceTree = "<group>"; };
+		573072F9CD3B445DCA8A9E53 /* GenerationSettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GenerationSettingsView.swift; sourceTree = "<group>"; };
 		57B54CF304C22CFE9CCD4883 /* BundleResourceResolverTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BundleResourceResolverTests.swift; sourceTree = "<group>"; };
 		673EC3CCD0FC6C6F491D17AF /* BridgeValidationTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BridgeValidationTests.swift; sourceTree = "<group>"; };
+		6CB89740890115CE35EF00FE /* DirectProviderClient.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DirectProviderClient.swift; sourceTree = "<group>"; };
 		6F3688AFC53854060FB89A84 /* IdeaTiles.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = IdeaTiles.entitlements; sourceTree = "<group>"; };
 		755F109DE328663F8BF6404A /* NativeBridgeRouter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NativeBridgeRouter.swift; sourceTree = "<group>"; };
 		7C0FED78AA66D75D984C901C /* BundleResourceResolver.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BundleResourceResolver.swift; sourceTree = "<group>"; };
 		8F02A24F2ECB327A938620E6 /* ArtifactRepository.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ArtifactRepository.swift; sourceTree = "<group>"; };
 		997316C75DD94DCFA4B81DBE /* IdeaTilesApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = IdeaTilesApp.swift; sourceTree = "<group>"; };
 		997448083B0C2287930EFADD /* AppWebView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppWebView.swift; sourceTree = "<group>"; };
+		9DCAEC30F365345E28CDB7E0 /* NativeGenerationTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NativeGenerationTests.swift; sourceTree = "<group>"; };
 		A7A218BBCBB4D4E7882BA100 /* BridgeDispatcher.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BridgeDispatcher.swift; sourceTree = "<group>"; };
 		A9961A4E9ED71DFDDDB34631 /* StaticPreviewHost.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StaticPreviewHost.swift; sourceTree = "<group>"; };
 		AD284C727A48E38482D97D3A /* PreviewSecurityTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PreviewSecurityTests.swift; sourceTree = "<group>"; };
+		B1DAC35AEE32E8430F502F24 /* GenerationEngine.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GenerationEngine.swift; sourceTree = "<group>"; };
 		B5DFDF3E64D9B10EDCDC5AA6 /* RPCRequestValidator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RPCRequestValidator.swift; sourceTree = "<group>"; };
 		B6C2A60650A679A11CAC4F53 /* IdeaTilesTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = IdeaTilesTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		B93022FE0561C8E1FDBD54F4 /* IdeaTilesPackageCodec.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = IdeaTilesPackageCodec.swift; sourceTree = "<group>"; };
@@ -79,6 +95,7 @@
 				997316C75DD94DCFA4B81DBE /* IdeaTilesApp.swift */,
 				116DECBB13147482B1D5A679 /* Info.plist */,
 				60CD1170007A91B15EC3565C /* Bridge */,
+				6CAC7A5360E50BF9A775A224 /* Generation */,
 				FE5748A41E2B94BDF249D3B8 /* Persistence */,
 				614FE1408A18C539B94969C0 /* Preview */,
 				014F9BDD2A0932971FB894F3 /* Web */,
@@ -115,6 +132,20 @@
 			path = Preview;
 			sourceTree = "<group>";
 		};
+		6CAC7A5360E50BF9A775A224 /* Generation */ = {
+			isa = PBXGroup;
+			children = (
+				51494E7FE8DB8552441D42E9 /* ArtifactGenerationCoordinator.swift */,
+				330D76B8B709A62E2DE7CFFC /* CredentialStore.swift */,
+				6CB89740890115CE35EF00FE /* DirectProviderClient.swift */,
+				20008B51163A1874046161D3 /* GenerationContracts.swift */,
+				B1DAC35AEE32E8430F502F24 /* GenerationEngine.swift */,
+				573072F9CD3B445DCA8A9E53 /* GenerationSettingsView.swift */,
+				17901CFCD0AA9E127981F9EB /* ImagePlaygroundService.swift */,
+			);
+			path = Generation;
+			sourceTree = "<group>";
+		};
 		86893824EAAE8563E18CD288 = {
 			isa = PBXGroup;
 			children = (
@@ -132,6 +163,7 @@
 				673EC3CCD0FC6C6F491D17AF /* BridgeValidationTests.swift */,
 				57B54CF304C22CFE9CCD4883 /* BundleResourceResolverTests.swift */,
 				1CFF7077C12A3B5F46C0677F /* MacHostTests.swift */,
+				9DCAEC30F365345E28CDB7E0 /* NativeGenerationTests.swift */,
 				AD284C727A48E38482D97D3A /* PreviewSecurityTests.swift */,
 			);
 			path = IdeaTilesTests;
@@ -261,11 +293,18 @@
 			files = (
 				A60D88B73957D1330B9ED7CB /* AppWebView.swift in Sources */,
 				68B37D64569D80215B54406C /* ArtifactContracts.swift in Sources */,
+				6A4DE27E34A4FE22D8C81073 /* ArtifactGenerationCoordinator.swift in Sources */,
 				A209A40A4C5785ED1509B691 /* ArtifactRepository.swift in Sources */,
 				BC8AC055FB36A62F5C2D797C /* BridgeDispatcher.swift in Sources */,
 				2B1A28759511FEC5BE91ED2F /* BundleResourceResolver.swift in Sources */,
+				0BF571F819EE36F106BE1E08 /* CredentialStore.swift in Sources */,
+				1FC909E581FD10B79CBDA774 /* DirectProviderClient.swift in Sources */,
+				3DA9EF688C52836B086C9148 /* GenerationContracts.swift in Sources */,
+				D82E6A61EDD77E7BA12A0176 /* GenerationEngine.swift in Sources */,
+				342F5D26DB4EF7D2B84266FF /* GenerationSettingsView.swift in Sources */,
 				A9748AAE70B983BB504F5130 /* IdeaTilesApp.swift in Sources */,
 				00215BDE74ABAAA16E7BBD94 /* IdeaTilesPackageCodec.swift in Sources */,
+				3C9397843178FA808C2CC6C1 /* ImagePlaygroundService.swift in Sources */,
 				B6E16A4D1BDB583617B145FE /* JSONValue.swift in Sources */,
 				6A351970193D63B60BBA991D /* MacBridgeBootstrap.swift in Sources */,
 				87DA9272E656C6B149116E77 /* NativeBridgeRouter.swift in Sources */,
@@ -283,6 +322,7 @@
 				C1BDAFB1E54B9CE16E31A6A8 /* BridgeValidationTests.swift in Sources */,
 				3B5E3AD6E4F085C8E01F0326 /* BundleResourceResolverTests.swift in Sources */,
 				82E3C41C27C1338A793ED0EE /* MacHostTests.swift in Sources */,
+				63E67C420968CF92BD884DBE /* NativeGenerationTests.swift in Sources */,
 				6D6104CA46D6393660F4026E /* PreviewSecurityTests.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;

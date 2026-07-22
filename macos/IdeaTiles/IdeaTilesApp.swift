@@ -39,5 +39,16 @@ struct IdeaTilesApp: App {
                 .disabled(runtime == nil)
             }
         }
+        Settings {
+            if let runtime {
+                GenerationSettingsView(
+                    preferences: runtime.generationPreferences,
+                    credentials: runtime.credentialStore
+                )
+            } else {
+                ContentUnavailableView("Settings unavailable", systemImage: "exclamationmark.triangle")
+                    .frame(width: 420, height: 240)
+            }
+        }
     }
 }

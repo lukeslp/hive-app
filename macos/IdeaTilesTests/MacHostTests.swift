@@ -15,6 +15,12 @@ struct MacHostBootstrapTests {
         #expect(source.contains("artifact.save"))
         #expect(source.contains("artifact.export"))
         #expect(source.contains("artifact.attachImage"))
+        #expect(source.contains("generation.settings.get"))
+        #expect(source.contains("generation.settings.set"))
+        #expect(source.contains("credentials.status"))
+        #expect(source.contains("credentials.set"))
+        #expect(source.contains("credentials.remove"))
+        #expect(!source.contains("localStorage"))
         #expect(source.contains("bridgeVersion: 1"))
     }
 
@@ -75,7 +81,8 @@ struct NativeBridgeRouterTests {
         #expect(object["bridgeVersion"] == .number(1))
         #expect(features["artifactPersistence"] == .bool(true))
         #expect(features["staticPreview"] == .bool(true))
-        #expect(features["keychain"] == .bool(false))
+        #expect(features["keychain"] == .bool(true))
+        #expect(features["imagePlayground"] == .bool(true))
     }
 
     @Test("returns a typed not-configured generation error")
@@ -109,9 +116,65 @@ struct NativeBridgeRouterTests {
         #expect(export.objectValue?["exported"] == .bool(true))
         #expect(await exportProbe.artifactID == manifest.id)
     }
+
+    @Test("routes settings and status-only credential operations")
+    func settingsAndCredentials() async throws {
+        let repository = try ArtifactRepository(root: TestDirectory.make(), inMemory: true)
+        let preferences = TestGenerationPreferences()
+        let credentials = TestCredentialStore()
+        let router = NativeBridgeRouter(
+            repository: repository,
+            generationPreferences: preferences,
+            credentialStore: credentials,
+            exporter: { _ in true }
+        )
+        let settings: JSONValue = .object([
+            "provider": .string("ollama"),
+            "model": .string("gemma3:4b"),
+            "ollamaBaseURL": .string("http://127.0.0.1:11434"),
+        ])
+
+        let saved = try await router.execute(ValidatedRPCRequest(
+            id: "rpc:settings:set", method: .setGenerationSettings,
+            params: ["settings": settings]
+        ))
+        _ = try await router.execute(ValidatedRPCRequest(
+            id: "rpc:credentials:set", method: .setCredential,
+            params: ["provider": .string("openai"), "credential": .string("secret-value")]
+        ))
+        let status = try await router.execute(ValidatedRPCRequest(
+            id: "rpc:credentials:status", method: .credentialStatus, params: [:]
+        ))
+        let statusData = try JSONEncoder().encode(status)
+
+        #expect(saved.objectValue?["provider"] == .string("ollama"))
+        #expect(await preferences.load().provider == .ollama)
+        #expect(status.objectValue?["configured"]?.objectValue?["openai"] == .bool(true))
+        #expect(!String(decoding: statusData, as: UTF8.self).contains("secret-value"))
+
+        let removed = try await router.execute(ValidatedRPCRequest(
+            id: "rpc:credentials:remove", method: .removeCredential,
+            params: ["provider": .string("openai")]
+        ))
+        #expect(removed.objectValue?["configured"] == .bool(false))
+    }
 }
 
 private actor ExportProbe {
     private(set) var artifactID: String?
     func record(_ id: String) { artifactID = id }
+}
+
+private actor TestGenerationPreferences: GenerationPreferencesStoring {
+    private var settings = GenerationSettings.default
+    func load() -> GenerationSettings { settings }
+    func save(_ settings: GenerationSettings) { self.settings = settings }
+}
+
+private actor TestCredentialStore: CredentialStoring {
+    private var values: [GenerationProvider: String] = [:]
+    func set(_ value: String, for provider: GenerationProvider) { values[provider] = value }
+    func credential(for provider: GenerationProvider) -> String? { values[provider] }
+    func containsCredential(for provider: GenerationProvider) -> Bool { values[provider] != nil }
+    func removeCredential(for provider: GenerationProvider) { values[provider] = nil }
 }
