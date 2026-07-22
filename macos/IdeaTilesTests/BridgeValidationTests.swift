@@ -4,6 +4,23 @@ import Testing
 
 @Suite("Native RPC validation")
 struct BridgeValidationTests {
+    @Test("preserves JSON numeric zero and one separately from booleans")
+    func preservesJSONScalarTypes() throws {
+        let raw = try #require(
+            JSONSerialization.jsonObject(with: Data(#"{"zero":0,"one":1,"false":false,"true":true}"#.utf8))
+                as? [String: Any]
+        )
+        let encoded = try JSONEncoder().encode(JSONValue(any: raw))
+        let roundTripped = try #require(
+            JSONSerialization.jsonObject(with: encoded) as? [String: Any]
+        )
+
+        #expect(CFGetTypeID(try #require(roundTripped["zero"] as? NSNumber)) != CFBooleanGetTypeID())
+        #expect(CFGetTypeID(try #require(roundTripped["one"] as? NSNumber)) != CFBooleanGetTypeID())
+        #expect(roundTripped["false"] as? Bool == false)
+        #expect(roundTripped["true"] as? Bool == true)
+    }
+
     @Test("workspace validation matches JavaScript string limits and semantic references")
     func validatesWorkspaceSemantics() throws {
         var request = workspaceSaveRequest()
