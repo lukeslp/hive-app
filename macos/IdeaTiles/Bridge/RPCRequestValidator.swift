@@ -2,6 +2,7 @@ import Foundation
 
 enum RPCMethod: String, Sendable, CaseIterable {
     case getCapabilities = "platform.getCapabilities"
+    case saveWorkspace = "workspace.saveBoard"
     case generateArtifact = "artifact.generate"
     case cancelArtifact = "artifact.cancel"
     case saveArtifact = "artifact.save"
@@ -36,7 +37,8 @@ enum RPCValidationError: Error, Equatable {
 }
 
 struct RPCRequestValidator: Sendable {
-    static let defaultMaximumBytes = 2 * 1_024 * 1_024
+    static let defaultMaximumBytes = 17 * 1_024 * 1_024
+    static let maximumWorkspaceBytes = 16 * 1_024 * 1_024
     private static let stableID = try! NSRegularExpression(pattern: "^[A-Za-z0-9][A-Za-z0-9._:,-]{0,127}$")
     let maximumBytes: Int
 
@@ -87,6 +89,17 @@ struct RPCRequestValidator: Sendable {
                   inviteCode.utf8.count <= 256,
                   inviteCode.range(of: #"^di_[A-Za-z0-9_-]{7,253}$"#, options: .regularExpression) != nil
             else { throw RPCValidationError.invalidParameters }
+        case .saveWorkspace:
+            guard Set(params.keys) == ["boardId", "title", "envelope"],
+                  let boardID = params["boardId"] as? String,
+                  Self.isStableID(boardID),
+                  let title = params["title"] as? String,
+                  title == title.trimmingCharacters(in: .whitespacesAndNewlines),
+                  !title.isEmpty,
+                  title.utf8.count <= 255,
+                  let envelope = params["envelope"] as? [String: Any]
+            else { throw RPCValidationError.invalidParameters }
+            try validateWorkspaceEnvelope(envelope, boardID: boardID)
         case .setGenerationSettings:
             guard Set(params.keys) == ["settings"],
                   let settings = params["settings"] as? [String: Any]
@@ -173,6 +186,214 @@ struct RPCRequestValidator: Sendable {
             do { _ = try ArtifactFile.decode(data: JSONSerialization.data(withJSONObject: file)) }
             catch { throw RPCValidationError.invalidParameters }
         }
+    }
+
+    private func validateWorkspaceEnvelope(
+        _ envelope: [String: Any],
+        boardID: String
+    ) throws {
+        guard Set(envelope.keys) == ["format", "envelopeVersion", "workspace"],
+              envelope["format"] as? String == "app.ideatiles.workspace-envelope",
+              positiveInteger(envelope["envelopeVersion"]) == 1,
+              let workspace = envelope["workspace"] as? [String: Any],
+              Set(workspace.keys) == [
+                "format", "schemaVersion", "id", "activeMode", "graph",
+                "projections", "preferences", "metadata",
+              ],
+              workspace["format"] as? String == "app.ideatiles.workspace",
+              positiveInteger(workspace["schemaVersion"]) == 1,
+              let workspaceID = workspace["id"] as? String,
+              Self.isStableID(workspaceID), workspaceID == boardID,
+              let mode = workspace["activeMode"] as? String,
+              ["tiles", "sphere"].contains(mode),
+              let graph = workspace["graph"] as? [String: Any],
+              Set(graph.keys) == ["nodes", "edges"],
+              let nodes = graph["nodes"] as? [Any], nodes.count <= 4_096,
+              let edges = graph["edges"] as? [Any], edges.count <= 32_768,
+              let projections = workspace["projections"] as? [String: Any],
+              Set(projections.keys) == ["tiles", "sphere"],
+              let preferences = workspace["preferences"] as? [String: Any],
+              Set(preferences.keys) == ["creativity"],
+              boundedNumber(preferences["creativity"], minimum: 0, maximum: 1) != nil,
+              let metadata = workspace["metadata"] as? [String: Any],
+              Set(metadata.keys).isSubset(of: ["name", "createdAt", "source"])
+        else { throw RPCValidationError.invalidParameters }
+        if let name = metadata["name"] {
+            guard let value = name as? String,
+                  !value.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty,
+                  value.utf8.count <= 255
+            else { throw RPCValidationError.invalidParameters }
+        }
+        if let source = metadata["source"] {
+            guard let value = source as? String,
+                  ["ideaTiles", "brainSphere"].contains(value)
+            else { throw RPCValidationError.invalidParameters }
+        }
+        if let createdAt = metadata["createdAt"], !(createdAt is String) {
+            throw RPCValidationError.invalidParameters
+        }
+        try validateWorkspaceNodes(nodes)
+        try validateWorkspaceEdges(edges)
+        try validateWorkspaceProjections(projections)
+        guard let encoded = try? JSONSerialization.data(withJSONObject: envelope),
+              encoded.count <= Self.maximumWorkspaceBytes
+        else { throw RPCValidationError.invalidParameters }
+    }
+
+    private func validateWorkspaceNodes(_ nodes: [Any]) throws {
+        let required: Set<String> = [
+            "id", "text", "type", "depth", "parentId", "isKeyTheme",
+            "pinned", "artifactAttachments",
+        ]
+        let optional: Set<String> = [
+            "description", "contextInfo", "hierarchyLevel", "wasInteracted",
+            "clusterId", "isClusterRoot", "compatibility",
+        ]
+        let types: Set<String> = [
+            "root", "concept", "action", "technical", "question", "risk", "default",
+        ]
+        for rawNode in nodes {
+            guard let node = rawNode as? [String: Any],
+                  required.isSubset(of: node.keys),
+                  Set(node.keys).subtracting(required).isSubset(of: optional),
+                  let id = node["id"] as? String, Self.isStableID(id),
+                  let text = node["text"] as? String,
+                  !text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty,
+                  text.utf8.count <= 512,
+                  let type = node["type"] as? String, types.contains(type),
+                  boundedInteger(node["depth"], minimum: 0, maximum: 512) != nil,
+                  node["isKeyTheme"] is Bool,
+                  node["pinned"] is Bool,
+                  let attachments = node["artifactAttachments"] as? [Any],
+                  attachments.count <= 32
+            else { throw RPCValidationError.invalidParameters }
+            if !(node["parentId"] is NSNull) {
+                guard let parentID = node["parentId"] as? String,
+                      Self.isStableID(parentID)
+                else { throw RPCValidationError.invalidParameters }
+            }
+            for key in ["description", "contextInfo"] {
+                if let value = node[key], !(value is String) {
+                    throw RPCValidationError.invalidParameters
+                }
+            }
+            for attachment in attachments {
+                guard let value = attachment as? [String: Any],
+                      Set(value.keys) == ["artifactId", "fileId", "mimeType", "checksum"],
+                      let artifactID = value["artifactId"] as? String,
+                      let fileID = value["fileId"] as? String,
+                      Self.isStableID(artifactID), Self.isStableID(fileID),
+                      let mimeType = value["mimeType"] as? String,
+                      !mimeType.isEmpty, mimeType.utf8.count <= 128,
+                      let checksum = value["checksum"] as? [String: Any],
+                      Set(checksum.keys) == ["algorithm", "value"],
+                      checksum["algorithm"] as? String == "sha256",
+                      let checksumValue = checksum["value"] as? String,
+                      checksumValue.range(
+                        of: "^[a-f0-9]{64}$",
+                        options: .regularExpression
+                      ) != nil
+                else { throw RPCValidationError.invalidParameters }
+            }
+        }
+    }
+
+    private func validateWorkspaceEdges(_ edges: [Any]) throws {
+        let kinds: Set<String> = ["hierarchy", "linkedContext", "related", "bridge"]
+        for rawEdge in edges {
+            guard let edge = rawEdge as? [String: Any],
+                  Set(edge.keys) == ["sourceId", "targetId", "kind"],
+                  let source = edge["sourceId"] as? String,
+                  let target = edge["targetId"] as? String,
+                  let kind = edge["kind"] as? String,
+                  Self.isStableID(source), Self.isStableID(target), kinds.contains(kind)
+            else { throw RPCValidationError.invalidParameters }
+        }
+    }
+
+    private func validateWorkspaceProjections(_ projections: [String: Any]) throws {
+        guard let tiles = projections["tiles"] as? [String: Any],
+              Set(tiles.keys) == ["nodes", "viewport"],
+              let tileNodes = tiles["nodes"] as? [String: Any],
+              tileNodes.count <= 4_096,
+              let viewport = tiles["viewport"] as? [String: Any],
+              Set(viewport.keys) == ["x", "y", "zoom"],
+              boundedNumber(viewport["x"], minimum: -1_000_000, maximum: 1_000_000) != nil,
+              boundedNumber(viewport["y"], minimum: -1_000_000, maximum: 1_000_000) != nil,
+              boundedNumber(viewport["zoom"], minimum: 0.05, maximum: 20) != nil
+        else { throw RPCValidationError.invalidParameters }
+        for (id, rawPosition) in tileNodes {
+            guard Self.isStableID(id),
+                  let position = rawPosition as? [String: Any],
+                  Set(position.keys) == ["q", "r"],
+                  boundedInteger(position["q"], minimum: -1_000_000, maximum: 1_000_000) != nil,
+                  boundedInteger(position["r"], minimum: -1_000_000, maximum: 1_000_000) != nil
+            else { throw RPCValidationError.invalidParameters }
+        }
+
+        guard let sphere = projections["sphere"] as? [String: Any],
+              Set(sphere.keys) == ["nodes", "alignments", "camera", "subdivisions"],
+              let sphereNodes = sphere["nodes"] as? [String: Any],
+              sphereNodes.count <= 4_096,
+              let alignments = sphere["alignments"] as? [Any],
+              alignments.count <= 32_768,
+              let camera = sphere["camera"] as? [String: Any],
+              Set(camera.keys) == ["position", "target", "fov", "zoom"],
+              validVector(camera["position"]), validVector(camera["target"]),
+              boundedNumber(camera["fov"], minimum: 1, maximum: 179) != nil,
+              boundedNumber(camera["zoom"], minimum: 0.05, maximum: 20) != nil,
+              boundedInteger(sphere["subdivisions"], minimum: 1, maximum: 32) != nil
+        else { throw RPCValidationError.invalidParameters }
+        for (id, rawPosition) in sphereNodes {
+            guard Self.isStableID(id),
+                  let position = rawPosition as? [String: Any],
+                  Set(position.keys) == ["tileIndex", "position"],
+                  boundedInteger(position["tileIndex"], minimum: 0, maximum: 1_000_000) != nil,
+                  validVector(position["position"])
+            else { throw RPCValidationError.invalidParameters }
+        }
+        let categories: Set<String> = [
+            "thematic", "causal", "complementary", "contrasting", "dependent",
+        ]
+        for rawAlignment in alignments {
+            guard let alignment = rawAlignment as? [String: Any],
+                  Set(alignment.keys) == ["sourceId", "targetId", "score", "reason", "category"],
+                  let source = alignment["sourceId"] as? String,
+                  let target = alignment["targetId"] as? String,
+                  let reason = alignment["reason"] as? String,
+                  let category = alignment["category"] as? String,
+                  Self.isStableID(source), Self.isStableID(target),
+                  !reason.isEmpty, reason.utf8.count <= 1_000,
+                  categories.contains(category),
+                  boundedNumber(alignment["score"], minimum: 0, maximum: 1) != nil
+            else { throw RPCValidationError.invalidParameters }
+        }
+    }
+
+    private func validVector(_ value: Any?) -> Bool {
+        guard let values = value as? [Any], values.count == 3 else { return false }
+        return values.allSatisfy {
+            boundedNumber($0, minimum: -1_000_000, maximum: 1_000_000) != nil
+        }
+    }
+
+    private func boundedNumber(_ value: Any?, minimum: Double, maximum: Double) -> Double? {
+        guard let number = value as? NSNumber,
+              CFGetTypeID(number) != CFBooleanGetTypeID(),
+              number.doubleValue.isFinite,
+              number.doubleValue >= minimum,
+              number.doubleValue <= maximum
+        else { return nil }
+        return number.doubleValue
+    }
+
+    private func boundedInteger(_ value: Any?, minimum: Int, maximum: Int) -> Int? {
+        guard let number = boundedNumber(
+            value,
+            minimum: Double(minimum),
+            maximum: Double(maximum)
+        ), number.rounded() == number else { return nil }
+        return Int(number)
     }
 
     private func validateScope(_ scope: [String: Any]) throws {

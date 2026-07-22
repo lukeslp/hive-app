@@ -107,6 +107,9 @@ enum MacBridgeBootstrap {
             get: () => rpc('generation.settings.get', {}),
             set: settings => rpc('generation.settings.set', { settings })
           });
+          const workspacePersistence = Object.freeze({
+            saveBoard: input => rpc('workspace.saveBoard', input)
+          });
           const credentials = Object.freeze({
             status: () => rpc('credentials.status', {}),
             set: (provider, credential) => rpc('credentials.set', { provider, credential }),
@@ -126,7 +129,7 @@ enum MacBridgeBootstrap {
             }
           });
           Object.defineProperty(window, 'ideaTilesMac', {
-            value: Object.freeze({ capabilities, artifactStudioServices: services, generationSettings, credentials, dreamer, auth }),
+            value: Object.freeze({ capabilities, artifactStudioServices: services, workspacePersistence, generationSettings, credentials, dreamer, auth }),
             configurable: false,
             enumerable: true,
             writable: false

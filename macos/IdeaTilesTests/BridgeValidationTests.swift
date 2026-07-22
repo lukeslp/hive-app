@@ -4,6 +4,56 @@ import Testing
 
 @Suite("Native RPC validation")
 struct BridgeValidationTests {
+    @Test("accepts only a bounded canonical workspace envelope")
+    func validatesWorkspacePersistence() throws {
+        let valid = workspaceSaveRequest()
+        _ = try RPCRequestValidator().parse(try JSONSerialization.data(withJSONObject: valid))
+
+        var extra = valid
+        var extraParams = try #require(extra["params"] as? [String: Any])
+        extraParams["unexpected"] = true
+        extra["params"] = extraParams
+        #expect(throws: RPCValidationError.self) {
+            try RPCRequestValidator().parse(try JSONSerialization.data(withJSONObject: extra))
+        }
+
+        var malformed = valid
+        var malformedParams = try #require(malformed["params"] as? [String: Any])
+        var envelope = try #require(malformedParams["envelope"] as? [String: Any])
+        envelope["format"] = "untrusted.workspace"
+        malformedParams["envelope"] = envelope
+        malformed["params"] = malformedParams
+        #expect(throws: RPCValidationError.self) {
+            try RPCRequestValidator().parse(try JSONSerialization.data(withJSONObject: malformed))
+        }
+
+        var mismatched = valid
+        var mismatchedParams = try #require(mismatched["params"] as? [String: Any])
+        mismatchedParams["boardId"] = "board:different"
+        mismatched["params"] = mismatchedParams
+        #expect(throws: RPCValidationError.self) {
+            try RPCRequestValidator().parse(try JSONSerialization.data(withJSONObject: mismatched))
+        }
+
+        var malformedProjection = valid
+        var projectionParams = try #require(malformedProjection["params"] as? [String: Any])
+        var projectionEnvelope = try #require(projectionParams["envelope"] as? [String: Any])
+        var workspace = try #require(projectionEnvelope["workspace"] as? [String: Any])
+        var projections = try #require(workspace["projections"] as? [String: Any])
+        var tiles = try #require(projections["tiles"] as? [String: Any])
+        tiles["nodes"] = ["tile:0:0": ["q": "zero", "r": 0]]
+        projections["tiles"] = tiles
+        workspace["projections"] = projections
+        projectionEnvelope["workspace"] = workspace
+        projectionParams["envelope"] = projectionEnvelope
+        malformedProjection["params"] = projectionParams
+        #expect(throws: RPCValidationError.self) {
+            try RPCRequestValidator().parse(
+                try JSONSerialization.data(withJSONObject: malformedProjection)
+            )
+        }
+    }
+
     @Test("accepts a strictly shaped capabilities request")
     func acceptsCapabilities() throws {
         let request = try RPCRequestValidator().parse(Data(#"{"id":"rpc:1","method":"platform.getCapabilities","params":{}}"#.utf8))
@@ -146,6 +196,47 @@ struct BridgeValidationTests {
             try RPCRequestValidator().parse(JSONSerialization.data(withJSONObject: request))
         }
     }
+}
+
+private func workspaceSaveRequest() -> [String: Any] {
+    [
+        "id": "rpc:workspace:save",
+        "method": "workspace.saveBoard",
+        "params": [
+            "boardId": "board:stable",
+            "title": "Native package seam",
+            "envelope": [
+                "format": "app.ideatiles.workspace-envelope",
+                "envelopeVersion": 1,
+                "workspace": [
+                    "format": "app.ideatiles.workspace",
+                    "schemaVersion": 1,
+                    "id": "board:stable",
+                    "activeMode": "tiles",
+                    "graph": ["nodes": [], "edges": []],
+                    "projections": [
+                        "tiles": [
+                            "nodes": [:],
+                            "viewport": ["x": 0, "y": 0, "zoom": 1],
+                        ],
+                        "sphere": [
+                            "nodes": [:],
+                            "alignments": [],
+                            "camera": [
+                                "position": [0, 0, 15],
+                                "target": [0, 0, 0],
+                                "fov": 60,
+                                "zoom": 1,
+                            ],
+                            "subdivisions": 4,
+                        ],
+                    ],
+                    "preferences": ["creativity": 0.5],
+                    "metadata": [:],
+                ],
+            ],
+        ],
+    ]
 }
 
 @Suite("Native RPC dispatcher")

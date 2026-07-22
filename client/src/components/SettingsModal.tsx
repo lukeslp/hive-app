@@ -26,6 +26,7 @@ import {
   Shield,
   Check,
   Trash2,
+  Map,
 } from "@/lib/icons";
 import type {
   Provider,
@@ -67,6 +68,8 @@ export interface SettingsModalProps {
   serverProviders: ServerProviderInfo | null;
   appleIntelligenceAvailable: boolean;
   visibleProviders: ProviderConfig[];
+  spherePreviewEnabled?: boolean;
+  onRequestSpherePreview?: () => void;
   onDeleteBoard: () => void;
 }
 
@@ -100,6 +103,8 @@ export const SettingsModal = ({
   serverProviders,
   appleIntelligenceAvailable,
   visibleProviders,
+  spherePreviewEnabled = false,
+  onRequestSpherePreview,
   onDeleteBoard,
 }: SettingsModalProps) => {
   const iosOnly = isIos();
@@ -240,6 +245,36 @@ export const SettingsModal = ({
               >
                 <Trash2 className="w-4 h-4" />
                 Delete Current Board
+              </Button>
+            </div>
+          </section>
+
+          <section className="space-y-3 border-t border-border/60 pt-5">
+            <div className="space-y-1">
+              <h3 className="text-sm font-semibold text-foreground">
+                Workspace mode
+              </h3>
+              <p className="text-xs text-muted-foreground">
+                Layout changes never alter the underlying ideas.
+              </p>
+            </div>
+            <div className="grid grid-cols-2 gap-2">
+              <Button variant="default" className="h-11" disabled>
+                Tiles
+              </Button>
+              <Button
+                variant="outline"
+                className="h-11 gap-2"
+                disabled={!spherePreviewEnabled || !onRequestSpherePreview}
+                onClick={onRequestSpherePreview}
+                title={
+                  spherePreviewEnabled
+                    ? "Open the Sphere renderer preview"
+                    : "Sphere mode is preserved in files but its renderer is not enabled"
+                }
+              >
+                <Map className="w-4 h-4" />
+                Sphere preview
               </Button>
             </div>
           </section>

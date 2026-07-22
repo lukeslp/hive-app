@@ -41,6 +41,7 @@ export interface ArtifactStudioProps {
   selectedNodeIds?: string[];
   branchRootNodeId?: string | null;
   services?: ArtifactStudioServices;
+  beforeExport?: () => Promise<void>;
   onAttachImage?: (attachment: ArtifactImageAttachment) => Promise<void> | void;
   cloudSync?: (
     artifact: ArtifactManifest,
@@ -135,6 +136,7 @@ export function ArtifactStudio({
   selectedNodeIds = [],
   branchRootNodeId,
   services,
+  beforeExport,
   onAttachImage,
   cloudSync,
   onCloudSignIn,
@@ -370,6 +372,8 @@ export function ArtifactStudio({
           setMessage("Artifact saved.");
         }
       } else if (action === "export") {
+        await beforeExport?.();
+        if (!isCurrentOperation()) return;
         await services.persistence.export(artifact);
         if (!isCurrentOperation()) return;
         setMessage("Export started.");

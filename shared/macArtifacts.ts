@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { workspaceTransportEnvelopeSchema } from "./workspaceDocument";
 
 export const ARTIFACT_SCHEMA_VERSION = 1 as const;
 export const MAC_BRIDGE_VERSION = 1 as const;
@@ -476,8 +477,32 @@ const credentialRemovalResultSchema = z
   })
   .strict();
 
+export const nativeWorkspaceSaveInputSchema = z
+  .object({
+    boardId: stableIdSchema,
+    title: z.string().trim().min(1).max(255),
+    envelope: workspaceTransportEnvelopeSchema,
+  })
+  .strict();
+export type NativeWorkspaceSaveInput = z.infer<
+  typeof nativeWorkspaceSaveInputSchema
+>;
+const nativeWorkspaceSaveResultSchema = z
+  .object({ boardId: stableIdSchema, saved: z.literal(true) })
+  .strict();
+export type NativeWorkspaceSaveResult = z.infer<
+  typeof nativeWorkspaceSaveResultSchema
+>;
+
 const rpcIdSchema = stableIdSchema;
 export const macRpcRequestSchema = z.discriminatedUnion("method", [
+  z
+    .object({
+      id: rpcIdSchema,
+      method: z.literal("workspace.saveBoard"),
+      params: nativeWorkspaceSaveInputSchema,
+    })
+    .strict(),
   z
     .object({
       id: rpcIdSchema,
@@ -625,6 +650,13 @@ export const macRpcResponseSchema = z.union([
   z
     .object({
       ...rpcSuccessBase,
+      method: z.literal("workspace.saveBoard"),
+      result: nativeWorkspaceSaveResultSchema,
+    })
+    .strict(),
+  z
+    .object({
+      ...rpcSuccessBase,
       method: z.literal("platform.getCapabilities"),
       result: macPlatformCapabilitiesSchema,
     })
@@ -755,6 +787,7 @@ export type MacRpcMethod = MacRpcRequest["method"];
 
 export interface MacRpcResultMap {
   "platform.getCapabilities": MacPlatformCapabilities;
+  "workspace.saveBoard": NativeWorkspaceSaveResult;
   "artifact.generate": ArtifactManifest;
   "artifact.cancel": { cancelled: boolean };
   "artifact.save": ArtifactManifest;
@@ -799,6 +832,12 @@ export interface ArtifactStudioServices {
 export interface NativeGenerationSettingsService {
   get(): Promise<GenerationSettings>;
   set(settings: GenerationSettings): Promise<GenerationSettings>;
+}
+
+export interface NativeWorkspacePersistenceService {
+  saveBoard(
+    input: NativeWorkspaceSaveInput
+  ): Promise<NativeWorkspaceSaveResult>;
 }
 
 export interface NativeCredentialService {
