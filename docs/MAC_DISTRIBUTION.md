@@ -1,6 +1,6 @@
 # Mac Distribution
 
-Idea Tiles ships one native Mac target through two distribution lanes: Mac App Store and Developer ID. Both use bundle identifier `app.hexmind.ios`, Apple marketing version `1.1`, build `2`, App Sandbox, and hardened runtime. Package and Android metadata use the semantically equivalent version `1.1.0`.
+Idea Tiles ships one universal native Mac target through two distribution lanes: Mac App Store and Developer ID. Release builds use Xcode's standard `arm64` and `x86_64` architectures. Both lanes use bundle identifier `app.hexmind.ios`, Apple marketing version `1.1`, build `2`, App Sandbox, and hardened runtime. Package and Android metadata use the semantically equivalent version `1.1.0`.
 
 ## Xcode Layout
 

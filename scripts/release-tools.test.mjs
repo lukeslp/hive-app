@@ -182,6 +182,20 @@ test("Mac target compiles the existing Idea Tiles artwork as its app icon", () =
   assert.ok(common.includes("Contents/Resources/AppIcon.icns"));
 });
 
+test("Mac distribution uses Xcode standard architectures", () => {
+  const project = fs.readFileSync(path.join(root, "macos/project.yml"), "utf8");
+  assert.equal(
+    /^\s*ARCHS:\s*arm64\s*$/m.test(project),
+    false,
+    "Mac releases must not be restricted to Apple Silicon"
+  );
+  assert.equal(
+    /^\s*ONLY_ACTIVE_ARCH:\s*true\s*$/m.test(project),
+    false,
+    "Mac releases must include every standard architecture"
+  );
+});
+
 test("cloud defaults and their release review date remain explicit", () => {
   const proxy = fs.readFileSync(path.join(root, "server/llmProxy.ts"), "utf8");
   assert.ok(proxy.includes('const model = "gemini-3.6-flash"'));

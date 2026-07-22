@@ -6,8 +6,6 @@ options:
   xcodeVersion: "26.0"
 settings:
   base:
-    ARCHS: arm64
-    ONLY_ACTIVE_ARCH: true
     SWIFT_VERSION: "6.0"
     SWIFT_STRICT_CONCURRENCY: complete
     MACOSX_DEPLOYMENT_TARGET: "26.0"
