@@ -10,7 +10,10 @@ import {
   waitFor,
 } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { ArtifactStudio } from "@/components/ArtifactStudio";
+import {
+  ArtifactCloudSyncError,
+  ArtifactStudio,
+} from "@/components/ArtifactStudio";
 import type {
   ArtifactManifest,
   ArtifactStudioServices,
@@ -92,7 +95,7 @@ describe("Artifact Studio", () => {
         },
       ],
     };
-    const cloudSync = vi.fn(async () => undefined);
+    const cloudSync = vi.fn(async () => ({ remoteId: "artifact:remote" }));
     const services: ArtifactStudioServices = {
       generator: { generate: vi.fn(async () => imageArtifact) },
       persistence: {
@@ -148,6 +151,154 @@ describe("Artifact Studio", () => {
       }),
       ["file:image:cloud"]
     );
+  });
+
+  it("persists pending before upload and synced after cloud success", async () => {
+    const events: string[] = [];
+    const save = vi.fn(async (value: ArtifactManifest) => {
+      events.push(`save:${value.sync.status}`);
+      return value;
+    });
+    const cloudSync = vi.fn(async (value: ArtifactManifest) => {
+      events.push(`cloud:${value.sync.status}`);
+      return { remoteId: "artifact:remote:1" };
+    });
+    const services: ArtifactStudioServices = {
+      generator: { generate: vi.fn(async () => artifact) },
+      persistence: { save, export: vi.fn(async () => undefined) },
+      attachImageToBoard: vi.fn(async () => attachment),
+    };
+    render(
+      React.createElement(ArtifactStudio, {
+        isOpen: true,
+        onClose: vi.fn(),
+        boardId: "board:cloud:41",
+        nodes,
+        services,
+        cloudSync,
+      })
+    );
+    fireEvent.click(screen.getByRole("button", { name: "Review generation" }));
+    fireEvent.click(screen.getByRole("button", { name: "Generate artifact" }));
+    fireEvent.click(await screen.findByRole("button", { name: "Save" }));
+
+    expect(
+      await screen.findByText("Artifact saved locally and synced.")
+    ).toBeTruthy();
+    expect(events).toEqual(["save:pending", "cloud:pending", "save:synced"]);
+    expect(save.mock.calls[1]?.[0].sync).toMatchObject({
+      status: "synced",
+      remoteId: "artifact:remote:1",
+      includeImages: false,
+    });
+  });
+
+  it("persists a bounded safe error after cloud failure", async () => {
+    const save = vi.fn(async (value: ArtifactManifest) => value);
+    const services: ArtifactStudioServices = {
+      generator: { generate: vi.fn(async () => artifact) },
+      persistence: { save, export: vi.fn(async () => undefined) },
+      attachImageToBoard: vi.fn(async () => attachment),
+    };
+    render(
+      React.createElement(ArtifactStudio, {
+        isOpen: true,
+        onClose: vi.fn(),
+        boardId: "board:cloud:41",
+        nodes,
+        services,
+        cloudSync: vi.fn(async () => {
+          throw new Error("server leaked secret-key-value");
+        }),
+      })
+    );
+    fireEvent.click(screen.getByRole("button", { name: "Review generation" }));
+    fireEvent.click(screen.getByRole("button", { name: "Generate artifact" }));
+    fireEvent.click(await screen.findByRole("button", { name: "Save" }));
+
+    expect(
+      await screen.findByText("Artifact saved locally. Cloud sync failed.")
+    ).toBeTruthy();
+    expect(save).toHaveBeenCalledTimes(2);
+    expect(save.mock.calls[0]?.[0].sync.status).toBe("pending");
+    expect(save.mock.calls[1]?.[0].sync).toMatchObject({
+      status: "error",
+      includeImages: false,
+      error: "Cloud sync failed. Try again.",
+    });
+    expect(JSON.stringify(save.mock.calls[1]?.[0])).not.toContain(
+      "secret-key-value"
+    );
+  });
+
+  it("reports cloud success accurately when the final local status save fails", async () => {
+    const save = vi
+      .fn<(value: ArtifactManifest) => Promise<ArtifactManifest>>()
+      .mockImplementationOnce(async value => value)
+      .mockRejectedValueOnce(new Error("disk full"));
+    const services: ArtifactStudioServices = {
+      generator: { generate: vi.fn(async () => artifact) },
+      persistence: { save, export: vi.fn(async () => undefined) },
+      attachImageToBoard: vi.fn(async () => attachment),
+    };
+    render(
+      React.createElement(ArtifactStudio, {
+        isOpen: true,
+        onClose: vi.fn(),
+        boardId: "board:cloud:41",
+        nodes,
+        services,
+        cloudSync: vi.fn(async () => ({ remoteId: "artifact:remote:2" })),
+      })
+    );
+    fireEvent.click(screen.getByRole("button", { name: "Review generation" }));
+    fireEvent.click(screen.getByRole("button", { name: "Generate artifact" }));
+    fireEvent.click(await screen.findByRole("button", { name: "Save" }));
+
+    expect(
+      await screen.findByText(
+        "Artifact synced to cloud, but its local status remains pending."
+      )
+    ).toBeTruthy();
+    expect(save.mock.calls[0]?.[0].sync.status).toBe("pending");
+    expect(save.mock.calls[1]?.[0].sync.status).toBe("synced");
+  });
+
+  it("surfaces guidance for a signed-in board that is not a cloud session", async () => {
+    const save = vi.fn(async (value: ArtifactManifest) => value);
+    const services: ArtifactStudioServices = {
+      generator: { generate: vi.fn(async () => artifact) },
+      persistence: { save, export: vi.fn(async () => undefined) },
+      attachImageToBoard: vi.fn(async () => attachment),
+    };
+    render(
+      React.createElement(ArtifactStudio, {
+        isOpen: true,
+        onClose: vi.fn(),
+        boardId: "board:local",
+        nodes,
+        services,
+        cloudSync: vi.fn(async () => {
+          throw new ArtifactCloudSyncError(
+            "cloudSessionRequired",
+            "Save this board as a cloud session before syncing."
+          );
+        }),
+      })
+    );
+    fireEvent.click(screen.getByRole("button", { name: "Review generation" }));
+    fireEvent.click(screen.getByRole("button", { name: "Generate artifact" }));
+    fireEvent.click(await screen.findByRole("button", { name: "Save" }));
+
+    expect(
+      await screen.findByText(
+        "Save this board as a cloud session before syncing."
+      )
+    ).toBeTruthy();
+    expect(save.mock.calls[1]?.[0].sync).toMatchObject({
+      status: "error",
+      error: "Save this board as a cloud session before syncing.",
+    });
   });
 
   it("requires confirmation, reports progress, previews, and delegates actions", async () => {

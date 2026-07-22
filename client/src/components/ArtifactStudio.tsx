@@ -38,8 +38,25 @@ export interface ArtifactStudioProps {
   cloudSync?: (
     artifact: ArtifactManifest,
     imageFileIds: string[]
-  ) => Promise<void>;
+  ) => Promise<{ remoteId: string }>;
   onCloudSignIn?: () => Promise<void>;
+}
+
+export class ArtifactCloudSyncError extends Error {
+  constructor(
+    readonly code: "cloudSessionRequired",
+    message: string
+  ) {
+    super(message);
+    this.name = "ArtifactCloudSyncError";
+  }
+}
+
+function safeCloudSyncError(error: unknown): string {
+  if (error instanceof ArtifactCloudSyncError) {
+    return error.message.slice(0, 1_000);
+  }
+  return "Cloud sync failed. Try again.";
 }
 
 function createRequestId(): string {
@@ -237,19 +254,27 @@ export function ArtifactStudio({
     setMessage(null);
     try {
       if (action === "save") {
-        const saved = await services.persistence.save(artifact);
-        setArtifact(saved);
         if (cloudSync) {
-          const imageFileIds = saved.files
+          const imageFileIds = artifact.files
             .filter(
               file =>
                 file.mimeType.startsWith("image/") &&
                 cloudImageFileIds.has(file.id)
             )
             .map(file => file.id);
-          const artifactForSync: ArtifactManifest = {
-            ...saved,
-            files: saved.files.map(file => {
+          const pendingArtifact: ArtifactManifest = {
+            ...artifact,
+            sync: {
+              status: "pending",
+              includeImages: imageFileIds.length > 0,
+              updatedAt: new Date().toISOString(),
+            },
+          };
+          const pendingSaved = await services.persistence.save(pendingArtifact);
+          setArtifact(pendingSaved);
+          const uploadArtifact: ArtifactManifest = {
+            ...pendingSaved,
+            files: pendingSaved.files.map(file => {
               if (
                 file.mimeType.startsWith("image/") &&
                 !cloudImageFileIds.has(file.id)
@@ -259,23 +284,54 @@ export function ArtifactStudio({
               }
               return file;
             }),
-            sync: {
-              status: "pending",
-              includeImages: imageFileIds.length > 0,
-              updatedAt: new Date().toISOString(),
-            },
           };
           try {
-            await cloudSync(artifactForSync, imageFileIds);
-            setMessage("Artifact saved locally and synced.");
+            const { remoteId } = await cloudSync(uploadArtifact, imageFileIds);
+            const syncedArtifact: ArtifactManifest = {
+              ...pendingSaved,
+              sync: {
+                status: "synced",
+                includeImages: imageFileIds.length > 0,
+                remoteId,
+                updatedAt: new Date().toISOString(),
+              },
+            };
+            try {
+              const syncedSaved =
+                await services.persistence.save(syncedArtifact);
+              setArtifact(syncedSaved);
+              setMessage("Artifact saved locally and synced.");
+            } catch {
+              setMessage(
+                "Artifact synced to cloud, but its local status remains pending."
+              );
+            }
           } catch (error) {
-            setMessage(
-              `Artifact saved locally. Cloud sync failed: ${
-                error instanceof Error ? error.message : "unknown error"
-              }`
-            );
+            const safeMessage = safeCloudSyncError(error);
+            const errorArtifact: ArtifactManifest = {
+              ...pendingSaved,
+              sync: {
+                status: "error",
+                includeImages: imageFileIds.length > 0,
+                updatedAt: new Date().toISOString(),
+                error: safeMessage,
+              },
+            };
+            try {
+              const errorSaved = await services.persistence.save(errorArtifact);
+              setArtifact(errorSaved);
+              setMessage(
+                error instanceof ArtifactCloudSyncError
+                  ? safeMessage
+                  : "Artifact saved locally. Cloud sync failed."
+              );
+            } catch {
+              setMessage(`${safeMessage} The local status remains pending.`);
+            }
           }
         } else {
+          const saved = await services.persistence.save(artifact);
+          setArtifact(saved);
           setMessage("Artifact saved.");
         }
       } else if (action === "export") {

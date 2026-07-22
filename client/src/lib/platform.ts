@@ -113,9 +113,9 @@ export function getTrpcUrl(): string {
   return `${trimTrailingSlashes(getApiBaseUrl())}/trpc`;
 }
 
-/** Hosted collaboration endpoint for native shells; same-origin on web. */
+/** Hosted collaboration is enabled only for the dedicated Mac shell. */
 export function getCollaborationWebSocketUrl(): string {
-  if (isCapacitor() || isNativeMac()) {
+  if (isNativeMac()) {
     const origin = new URL(APP_PUBLIC_WEB_ORIGIN);
     const protocol = origin.protocol === "https:" ? "wss:" : "ws:";
     return `${protocol}//${origin.host}/ws/collab`;

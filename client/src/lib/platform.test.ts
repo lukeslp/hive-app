@@ -55,4 +55,25 @@ describe("native Mac URL resolution", () => {
       "wss://preview.example/ws/collab"
     );
   });
+
+  it.each(["ios", "android"])(
+    "preserves the existing %s Capacitor socket origin",
+    platform => {
+      vi.stubGlobal("window", {
+        location: {
+          protocol: "capacitor:",
+          host: "localhost",
+          origin: "capacitor://localhost",
+        },
+        Capacitor: {
+          isNativePlatform: () => true,
+          getPlatform: () => platform,
+        },
+      });
+
+      const socket = getCollaborationWebSocketUrl();
+      expect(socket).toBe("ws://localhost/ws/collab");
+      expect(socket).not.toContain("ideatiles.app");
+    }
+  );
 });

@@ -39,7 +39,10 @@ import { ContextPromptModal } from "@/components/ContextPromptModal";
 import { ShareModal } from "@/components/ShareModal";
 import { SettingsModal } from "@/components/SettingsModal";
 import { ConfirmationModal } from "@/components/ConfirmationModal";
-import { ArtifactStudio } from "@/components/ArtifactStudio";
+import {
+  ArtifactCloudSyncError,
+  ArtifactStudio,
+} from "@/components/ArtifactStudio";
 import {
   CollabModal,
   getCollabRoomFromUrl,
@@ -519,13 +522,17 @@ export default function HexmindApp() {
   const syncArtifactToCloud = useCallback(
     async (artifact: ArtifactManifest, imageFileIds: string[]) => {
       if (!sessions.activeCloudSessionId) {
-        throw new Error("Save this board as a cloud session before syncing.");
+        throw new ArtifactCloudSyncError(
+          "cloudSessionRequired",
+          "Save this board as a cloud session before syncing."
+        );
       }
-      await cloudArtifactMutation.mutateAsync({
+      const result = await cloudArtifactMutation.mutateAsync({
         sessionId: sessions.activeCloudSessionId,
         artifact,
         imageFileIds,
       });
+      return { remoteId: result.id };
     },
     [cloudArtifactMutation, sessions.activeCloudSessionId]
   );
@@ -2295,11 +2302,7 @@ Generate 6 diverse related ideas. Connect to key themes when relevant.`;
           branchRootNodeId={selectedNodeId}
           services={macArtifactHost?.artifactStudioServices}
           onAttachImage={attachArtifactImage}
-          cloudSync={
-            isAuthenticated && sessions.activeCloudSessionId
-              ? syncArtifactToCloud
-              : undefined
-          }
+          cloudSync={isAuthenticated ? syncArtifactToCloud : undefined}
           onCloudSignIn={!isAuthenticated ? login : undefined}
         />
       )}
