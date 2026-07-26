@@ -104,7 +104,8 @@ export async function noteExportAndMaybeRequestReview() {
 
   try {
     const { Capacitor } = await import("@capacitor/core");
-    if (!Capacitor.isNativePlatform()) return;
+    // App Store path only for now — Android In-App Review is untested here.
+    if (Capacitor.getPlatform() !== "ios") return;
     const { InAppReview } = await import("@capacitor-community/in-app-review");
     await new Promise((r) => setTimeout(r, 2500));
     const fresh = load();
