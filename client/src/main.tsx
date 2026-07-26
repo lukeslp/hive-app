@@ -17,7 +17,12 @@ import App from "./App";
 import { getLoginUrl } from "./const";
 import { getTrpcUrl, isCapacitor, isNativeMac } from "@/lib/platform";
 import { BootErrorBoundary } from "@/lib/BootErrorBoundary";
+import { recordReviewSession } from "@/lib/reviewPrompt";
 import "./index.css";
+
+if (isCapacitor()) {
+  recordReviewSession();
+}
 
 // Analytics (web only): inject at runtime so missing env never loads a bogus URL as script (404 HTML → SyntaxError).
 const analyticsEndpoint = import.meta.env.VITE_ANALYTICS_ENDPOINT;

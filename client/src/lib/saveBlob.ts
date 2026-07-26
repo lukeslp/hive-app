@@ -15,6 +15,7 @@ import { Filesystem, Directory } from "@capacitor/filesystem";
 import { Share } from "@capacitor/share";
 import { APP_DISPLAY_NAME } from "@shared/appBrand";
 import { isCapacitor, isNativeMac } from "@/lib/platform";
+import { noteExportAndMaybeRequestReview } from "@/lib/reviewPrompt";
 
 const MAX_NATIVE_MAC_EXPORT_BYTES = 12_000_000;
 const MAC_EXPORT_MIME_TYPES = new Set([
@@ -98,6 +99,8 @@ async function saveBlobNative(
     // User cancelled the share sheet. The file is already in
     // Documents — they can find it in Files.app. No error surface.
   }
+  // File is on disk either way — that counts as a completed export.
+  void noteExportAndMaybeRequestReview();
 }
 
 function blobToBase64(blob: Blob): Promise<string> {
