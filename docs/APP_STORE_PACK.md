@@ -1,4 +1,4 @@
-# App Store Pack — Idea Tiles 1.3
+# App Store Pack — Idea Tiles 1.3.1
 
 Release-ready metadata and screenshot inventory for the iOS/iPadOS and native macOS listings. The files in `ios/fastlane` and `macos/fastlane` are canonical; this document is the human review sheet.
 
@@ -6,8 +6,8 @@ Release-ready metadata and screenshot inventory for the iOS/iPadOS and native ma
 
 | Platform        | Version | Bundle ID         | Listing focus                                 |
 | --------------- | ------- | ----------------- | --------------------------------------------- |
-| iPhone and iPad | 1.3     | `app.hexmind.ios` | Private, on-device visual brainstorming       |
-| Native Mac      | 1.3     | `app.hexmind.ios` | Turning mapped thinking into useful artifacts |
+| iPhone and iPad | 1.3.1   | `app.hexmind.ios` | Private, on-device visual brainstorming       |
+| Native Mac      | 1.3.1   | `app.hexmind.ios` | Turning mapped thinking into useful artifacts |
 
 Both apps are free, have no in-app purchase, and use Productivity as the primary category. The iOS app requires Apple Intelligence for model-assisted generation. The native Mac app can use Apple Foundation Models, configured cloud providers, or local Ollama models; its selected provider and privacy disclosure must remain visible before generation.
 
@@ -33,7 +33,7 @@ The complete description and version notes are in:
 
 The description accurately limits assisted generation to supported iPhone and iPad hardware with Apple Intelligence enabled. It promises no cloud fallback for iOS generation and identifies PNG, JPG, SVG, and JSON as the supported export formats.
 
-### iOS 1.3 version notes
+### iOS 1.3.1 version notes
 
 - Adds JPG export alongside PNG, SVG, and JSON.
 - Adds template customization using Apple on-device models.
@@ -54,7 +54,7 @@ The complete description and version notes are in:
 
 The Mac description centers Artifact Studio: select the whole board, a branch, or chosen tiles; choose a recipe; review context and provider disclosure; generate; then preview, save, attach, or export. It does not imply that cloud generation is private or on-device.
 
-### macOS 1.3 version notes
+### macOS 1.3.1 version notes
 
 - Introduces the native Mac app and Artifact Studio.
 - Generates briefs, reports, plans, diagrams, images, code scaffolds, and static prototypes.
