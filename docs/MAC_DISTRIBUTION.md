@@ -38,7 +38,45 @@ pnpm versions:check
 pnpm workspace:list
 ```
 
-The version check rejects drift across package, iOS, Android, generated Mac metadata, bundle identifiers, workspace references, schemes, and the Capacitor symlink.
+The version check rejects drift across package, iOS, Android, generated Mac metadata, bundle identifiers, workspace references, schemes, export compliance, and the Capacitor symlink.
+
+### Export compliance
+
+Both platforms declare `ITSAppUsesNonExemptEncryption = false` in their `Info.plist`. Idea Tiles uses only HTTPS and Keychain, which is exempt encryption, so App Store Connect stops asking the question at submission time. `pnpm versions:check` fails if either platform drops the key or changes the value — it was previously set on iOS only, which made every Mac submission stop for a manual answer.
+
+The key reached macOS after build 4 was already uploaded, so the **1.3.1 Mac submission still asks once**; answer that the app uses exempt encryption. Build 5 onward carries the declaration.
+
+### Submitting for review
+
+`pnpm mac:archive:app-store` and the `asc_ship.py` staging subcommands (`state`, `metadata`, `screenshots`, `attach`) leave the version in `PREPARE_FOR_SUBMISSION`, where everything is still editable. Only `asc_ship.py submit` sends it to review.
+
+`scripts/hooks/confirm-app-store-submit.sh` forces a confirmation prompt on any command that would submit for review — `asc_ship.py submit` or fastlane's `submit_for_review: true`. It asks rather than blocks: submission stays available, but never as a silent step inside a longer run. Run the script against a payload to check it still matches:
+
+```bash
+echo '{"tool_input":{"command":"asc_ship.py submit x"}}' | scripts/hooks/confirm-app-store-submit.sh
+```
+
+The repository ignores `.claude/`, so the wiring is per-checkout rather than shared. To enable it, put this in `.claude/settings.json`:
+
+```json
+{
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "$CLAUDE_PROJECT_DIR/scripts/hooks/confirm-app-store-submit.sh",
+            "if": "Bash(*submit*)",
+            "timeout": 5
+          }
+        ]
+      }
+    ]
+  }
+}
+```
 
 ### Provider model review
 

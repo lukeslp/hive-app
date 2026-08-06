@@ -244,6 +244,20 @@ expectOnly(
   EXPECTED_ANDROID_CODE
 );
 
+// Keys every Apple target must declare identically. iOS and macOS ship as one
+// App Store product, so a submission-affecting key present on one platform and
+// absent on the other is drift, not a platform difference. Export compliance
+// drifted exactly that way: iOS declared ITSAppUsesNonExemptEncryption and
+// macOS did not, so every Mac submission stopped to ask the encryption
+// question by hand. Both apps use only HTTPS and Keychain, which is exempt.
+const REQUIRED_APPLE_PLIST_KEYS = { ITSAppUsesNonExemptEncryption: "false" };
+const plistValue = (contents, key) => {
+  const match = contents.match(
+    new RegExp(`<key>${key}</key>\\s*(?:<(true|false)/>|<string>([^<]*)</string>)`)
+  );
+  return match ? (match[1] ?? match[2]) : null;
+};
+
 for (const plist of ["ios/App/App/Info.plist", "macos/IdeaTiles/Info.plist"]) {
   const contents = read(plist);
   if (
@@ -251,6 +265,14 @@ for (const plist of ["ios/App/App/Info.plist", "macos/IdeaTiles/Info.plist"]) {
     !contents.includes("$(CURRENT_PROJECT_VERSION)")
   ) {
     fail(`${plist} must resolve both version values from build settings`);
+  }
+  for (const [key, expected] of Object.entries(REQUIRED_APPLE_PLIST_KEYS)) {
+    const actual = plistValue(contents, key);
+    if (actual !== expected) {
+      fail(
+        `${plist} declares ${key} as ${actual ?? "absent"}; expected ${expected} on every Apple platform`
+      );
+    }
   }
 }
 
