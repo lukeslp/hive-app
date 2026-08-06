@@ -55,8 +55,8 @@ else
   echo "Notary Keychain profile: not configured; set IDEATILES_NOTARY_KEYCHAIN_PROFILE for a release"
 fi
 
-xcodebuild -list -workspace IdeaTiles.xcworkspace | grep -Eq '^[[:space:]]+IdeaTiles$' \
-  || release_error "IdeaTiles Mac scheme is not discoverable from the root workspace"
+xcodebuild -list -workspace IdeaTiles.xcworkspace | grep -Eq '^[[:space:]]+Idea Tiles \(macOS\)$' \
+  || release_error "the 'Idea Tiles (macOS)' scheme is not discoverable from the root workspace"
 xcrun notarytool --help >/dev/null
 
 if [[ "$mode" == "preflight" ]]; then
@@ -80,7 +80,7 @@ mkdir -p "$release_dir"
 archive_args=(
   archive
   -workspace "$IDEATILES_REPO_ROOT/IdeaTiles.xcworkspace"
-  -scheme IdeaTiles
+  -scheme "Idea Tiles (macOS)"
   -configuration Release
   -destination "generic/platform=macOS"
   -archivePath "$archive_path"

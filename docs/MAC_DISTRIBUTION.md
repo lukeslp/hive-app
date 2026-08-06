@@ -10,9 +10,25 @@ Open the root workspace with:
 pnpm workspace:open
 ```
 
-`IdeaTiles.xcworkspace` contains the renamed iOS project and the generated Mac project. Use the `Idea Tiles` scheme for iOS and `IdeaTiles` for macOS. `ios/App/IdeaTiles.xcodeproj` is the iOS source project; the relative `ios/App/App.xcodeproj` symlink exists only because Capacitor expects that path. Keep both.
+`IdeaTiles.xcworkspace` contains the renamed iOS project and the generated Mac project. `ios/App/IdeaTiles.xcodeproj` is the iOS source project; the relative `ios/App/App.xcodeproj` symlink exists only because Capacitor expects that path. Keep both.
 
-The root workspace is the normal Xcode entry point; do not open the repository folder as a project. If the iOS `.xcodeproj` is opened directly, select the shared `IdeaTiles Mac` scheme to build the linked native Mac subproject for `My Mac` or `Any Mac`.
+The root workspace is the normal Xcode entry point; do not open the repository folder as a project. It exposes exactly three shared schemes:
+
+| Scheme | Builds | Use it for |
+|---|---|---|
+| `Idea Tiles (iOS)` | Capacitor `App` target → `hexmind.app` | iOS development, simulator/device runs, App Store archives |
+| `Idea Tiles (macOS)` | Native `IdeaTiles` target + unit tests → `IdeaTiles.app` | Mac development, `pnpm mac:test`, both Mac release lanes |
+| `Idea Tiles (All)` | Both apps in one invocation | Checking that a shared-web-client change still compiles on both platforms |
+
+Both apps carry bundle identifier `app.hexmind.ios`, so they are one App Store product and one universal purchase. The two platform schemes are the only ones that archive.
+
+`Idea Tiles (All)` deliberately has archiving disabled. A scheme spanning two platforms builds each target against its own SDK regardless of the `-destination` you pass, which is exactly what you want for a compile check and exactly what you do not want for a release — a submission archive must contain a single platform. Build it with:
+
+```bash
+pnpm apple:build
+```
+
+Adding a fourth scheme, or a second scheme pointing at a target that already has one, is what produced the earlier `Idea Tiles` / `IdeaTiles` / `Idea Tiles 1` / `Hexmind` / `App` pile-up. `pnpm versions:check` now fails if the scheme count or names drift.
 
 After editing `macos/project.yml`, regenerate and validate:
 

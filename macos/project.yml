@@ -91,7 +91,7 @@ targets:
         GENERATE_INFOPLIST_FILE: true
         CODE_SIGNING_ALLOWED: false
 schemes:
-  IdeaTiles:
+  Idea Tiles (macOS):
     build:
       targets:
         IdeaTiles: all

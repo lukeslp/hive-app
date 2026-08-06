@@ -41,7 +41,7 @@ archive_path="$output_root/IdeaTiles-${IDEATILES_VERSION}-${IDEATILES_BUILD}-$(r
 archive_args=(
   archive
   -workspace "$IDEATILES_REPO_ROOT/IdeaTiles.xcworkspace"
-  -scheme IdeaTiles
+  -scheme "Idea Tiles (macOS)"
   -configuration Release
   -destination "generic/platform=macOS"
   -archivePath "$archive_path"

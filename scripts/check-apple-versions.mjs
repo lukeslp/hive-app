@@ -96,6 +96,10 @@ if (
   );
 }
 
+// Exactly three shared schemes, one per entry point: the two platform schemes
+// each archive their own store submission, and the workspace scheme builds both
+// at once. Duplicates here are what produced the "Idea Tiles" / "IdeaTiles" /
+// "Idea Tiles 1" / "Hexmind" pile-up, so the count is asserted, not just the names.
 const iosSchemeDirectory = path.join(
   root,
   "ios/App/IdeaTiles.xcodeproj/xcshareddata/xcschemes"
@@ -103,35 +107,67 @@ const iosSchemeDirectory = path.join(
 const iosSchemes = fs
   .readdirSync(iosSchemeDirectory)
   .filter(name => name.endsWith(".xcscheme"));
-if (!iosSchemes.includes("Idea Tiles.xcscheme")) {
-  fail('the canonical shared iOS scheme "Idea Tiles" is missing');
-}
-if (!iosSchemes.includes("IdeaTiles Mac.xcscheme")) {
-  fail('the shared native Mac scheme "IdeaTiles Mac" is missing');
-}
-for (const scheme of iosSchemes) {
-  const contents = fs.readFileSync(
-    path.join(iosSchemeDirectory, scheme),
-    "utf8"
+if (
+  iosSchemes.length !== 1 ||
+  iosSchemes[0] !== "Idea Tiles (iOS).xcscheme"
+) {
+  fail(
+    `iOS shared schemes are ${JSON.stringify(iosSchemes)}; expected only ["Idea Tiles (iOS).xcscheme"]`
   );
-  if (scheme === "IdeaTiles Mac.xcscheme") {
-    if (
-      !contents.includes(
-        'ReferencedContainer = "container:../../macos/IdeaTiles.xcodeproj"'
-      )
-    ) {
-      fail(`${scheme} does not reference the native Mac subproject`);
-    }
-    continue;
+}
+
+const macSchemeDirectory = path.join(
+  root,
+  "macos/IdeaTiles.xcodeproj/xcshareddata/xcschemes"
+);
+const macSchemes = fs
+  .readdirSync(macSchemeDirectory)
+  .filter(name => name.endsWith(".xcscheme"));
+if (
+  macSchemes.length !== 1 ||
+  macSchemes[0] !== "Idea Tiles (macOS).xcscheme"
+) {
+  fail(
+    `Mac shared schemes are ${JSON.stringify(macSchemes)}; expected only ["Idea Tiles (macOS).xcscheme"]`
+  );
+}
+
+const iosSchemeContents = fs.readFileSync(
+  path.join(iosSchemeDirectory, "Idea Tiles (iOS).xcscheme"),
+  "utf8"
+);
+if (
+  iosSchemeContents.includes('ReferencedContainer = "container:App.xcodeproj"')
+) {
+  fail("the iOS scheme still references the compatibility project name");
+}
+if (
+  !iosSchemeContents.includes(
+    'ReferencedContainer = "container:IdeaTiles.xcodeproj"'
+  )
+) {
+  fail("the iOS scheme does not reference the renamed iOS project");
+}
+
+// The combined scheme lives at workspace level so `xcodegen generate` cannot
+// clobber it, and so its container paths resolve from the repository root.
+const combinedScheme = read(
+  "IdeaTiles.xcworkspace/xcshareddata/xcschemes/Idea Tiles (All).xcscheme"
+);
+for (const container of [
+  'ReferencedContainer = "container:ios/App/IdeaTiles.xcodeproj"',
+  'ReferencedContainer = "container:macos/IdeaTiles.xcodeproj"',
+]) {
+  if (!combinedScheme.includes(container)) {
+    fail(`the combined "Idea Tiles (All)" scheme is missing ${container}`);
   }
-  if (contents.includes('ReferencedContainer = "container:App.xcodeproj"')) {
-    fail(`${scheme} still references the compatibility project name`);
-  }
-  if (
-    !contents.includes('ReferencedContainer = "container:IdeaTiles.xcodeproj"')
-  ) {
-    fail(`${scheme} does not reference the renamed iOS project`);
-  }
+}
+// A two-platform scheme cannot produce a single submittable archive, so the
+// combined scheme must never be the thing a release reaches for.
+if (combinedScheme.includes("buildForArchiving = \"YES\"")) {
+  fail(
+    'the combined "Idea Tiles (All)" scheme must not enable archiving; archive the per-platform schemes instead'
+  );
 }
 
 const macYAML = read("macos/project.yml");
