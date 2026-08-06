@@ -19,7 +19,7 @@ while [[ $# -gt 0 ]]; do
       ;;
     --help)
       echo "Usage: $0 [--unsigned] [--output-dir PATH]"
-      echo "Archives the IdeaTiles Mac scheme for App Store Connect without uploading it."
+      echo "Archives the 'Idea Tiles (macOS)' scheme for App Store Connect without uploading it."
       exit 0
       ;;
     *) release_error "unknown option: $1" ;;
