@@ -1,4 +1,4 @@
-import { buildApiUrl } from "@/lib/api";
+import { buildApiUrl, fetchApi } from "@/lib/api";
 import { isNativeMac } from "@/lib/platform";
 import type {
   ArtifactStudioServices,
@@ -61,11 +61,13 @@ export async function generateTextForCurrentPlatform(
     };
   }
 
-  const response = await fetch(buildApiUrl("generate"), {
+  // fetchApi, not fetch: CapacitorHttp drops `signal` on cross-origin POSTs,
+  // so on iOS a bare fetch here ignores cancellation and hangs for 600s.
+  const response = await fetchApi(buildApiUrl("generate"), {
     method: "POST",
     headers: input.headers ?? { "Content-Type": "application/json" },
     body: JSON.stringify(input.cloudPayload),
-    signal: input.signal,
+    ...(input.signal ? { signal: input.signal } : {}),
   });
   const result = await response.json();
   const apiError =
