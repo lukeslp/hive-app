@@ -212,7 +212,15 @@ export function createWebArtifactStudioServices(
 
     persistence: {
       async save(manifest: ArtifactManifest): Promise<ArtifactManifest> {
-        await save(manifest);
+        // Reporting success when nothing was stored is a data-loss trap: the
+        // Studio would show the artifact as saved and the user would close it.
+        // Failing loudly keeps the artifact on screen, where Export still
+        // works, and says what to do about it.
+        if (!(await save(manifest))) {
+          throw new Error(
+            "This artifact could not be stored locally. Export it before closing — private browsing and some in-app browsers block local storage."
+          );
+        }
         return manifest;
       },
       async export(manifest: ArtifactManifest): Promise<void> {

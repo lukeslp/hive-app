@@ -201,6 +201,21 @@ describe("persistence", () => {
     expect(d.save).toHaveBeenCalledWith(manifest);
   });
 
+  it("fails loudly when local storage rejected the artifact", async () => {
+    // A silent success here would show the artifact as saved and let the user
+    // close the Studio on nothing.
+    generateTextForCurrentPlatform.mockResolvedValue({
+      text: "# T\n\nb",
+      viaNativeMac: false,
+    });
+    const d = { ...deps(), save: vi.fn(async () => false) };
+    const services = createWebArtifactStudioServices(d);
+    const manifest = await run(services, "report").promise;
+    await expect(services.persistence.save(manifest)).rejects.toThrow(
+      /could not be stored locally/
+    );
+  });
+
   it("exports the first file with content, using its own name and mime", async () => {
     generateTextForCurrentPlatform.mockResolvedValue({
       text: "# T\n\nb",
