@@ -75,6 +75,21 @@ Learned by reading the enforcement, not by assumption:
   ``` makes an SVG fail to render and feeds the preview iframe invalid HTML, so
   non-markdown kinds are unwrapped. Markdown keeps its fences.
 
+## Apple Intelligence is not used for artifacts off macOS
+
+macOS runs artifact generation through `GenerationEngine`, which tries Apple
+Foundation Models on device first. The web services do not: they call
+`generateTextForCurrentPlatform`, which posts to the LLM proxy. So on iOS with
+Apple Intelligence selected, an artifact is generated in the cloud while a tile
+expansion on the same device is generated on device.
+
+This is a deliberate Phase 1 limitation, not an oversight. Tile expansion emits
+a couple of hundred tokens; artifacts request up to 8192 against as much as
+12,000 characters of board context, which is a poor fit for the on-device
+context window. Routing artifacts through `tryOnDeviceFirst` for parity is
+worth doing, but it needs its own measurement of where Foundation Models
+starts truncating — not an assumption.
+
 ## Cancellation
 
 Generation POSTs are cross-origin under Capacitor, where `CapacitorHttp`
