@@ -14,6 +14,7 @@ import { appRouter } from "../routers";
 import { createContext } from "./context";
 import { serveStatic, setupVite } from "./vite";
 import { createLlmProxyRouter } from "../llmProxy";
+import { createImageProxyRouter } from "../imageProxy";
 import { setupCollabWebSocket } from "../collab";
 import { createOGRouter } from "../ogRoute";
 import { nativeOriginMiddleware } from "../nativeOrigin";
@@ -114,6 +115,7 @@ async function startServer() {
   registerOAuthRoutes(app);
   // Hexpand LLM proxy routes
   app.use("/api", createLlmProxyRouter());
+  app.use("/api", createImageProxyRouter());
   // OG meta tags for social crawlers
   app.use("/api", createOGRouter());
   // tRPC API
