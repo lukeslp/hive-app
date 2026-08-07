@@ -17,6 +17,7 @@ import { useSearch } from "@/hooks/useSearch";
 import { useSessionManagement } from "@/hooks/useSessionManagement";
 import { useTemplates } from "@/hooks/useTemplates";
 import { useProviderSettings } from "@/hooks/useProviderSettings";
+import { createWebArtifactStudioServices } from "@/lib/webArtifactServices";
 import { useTouchDrag } from "@/hooks/useTouchDrag";
 import { haptics } from "@/lib/haptics";
 import { synthesizeMerge } from "@/lib/synthesizeMerge";
@@ -147,9 +148,15 @@ export default function HexmindApp() {
   const appStoreShowcase = getAppStoreShowcase();
   const macArtifactHost =
     typeof window !== "undefined" ? window.ideaTilesMac : undefined;
+  // Artifact Studio now has an implementation on every platform: the native
+  // Mac services when the shell injects them, the web services otherwise.
+  // The Mac capability check is still consulted so a Mac build that reports
+  // the feature off keeps it off.
   const macArtifactStudioAvailable =
     appStoreShowcase === "artifact" ||
-    hasMacArtifactStudioCapability(macArtifactHost?.capabilities);
+    (macArtifactHost
+      ? hasMacArtifactStudioCapability(macArtifactHost.capabilities)
+      : true);
   const spherePreviewEnabled =
     import.meta.env.VITE_ENABLE_SPHERE_MODE_PREVIEW === "true";
   const requestSpherePreview = () => {
@@ -231,6 +238,21 @@ export default function HexmindApp() {
 
   // Provider settings (API keys, provider selection)
   const providerSettings = useProviderSettings();
+  // Depend on the stable pieces, not the hook result: useProviderSettings
+  // returns a fresh object every render, so depending on it would rebuild the
+  // services on each render and defeat the memo. getRequestHeaders is a
+  // useCallback, and provider is a string, so this rebuilds only on a real
+  // provider change — which is what provenance should follow anyway.
+  const { getRequestHeaders: getProviderHeaders, provider: activeProvider } =
+    providerSettings;
+  const webArtifactServices = useMemo(
+    () =>
+      createWebArtifactStudioServices({
+        getRequestHeaders: getProviderHeaders,
+        getProvider: () => activeProvider,
+      }),
+    [getProviderHeaders, activeProvider]
+  );
 
   // Collaboration
   const collab = useCollaboration(nodes, commitNodes);
@@ -2309,7 +2331,9 @@ Generate 6 diverse related ideas. Connect to key themes when relevant.`;
           nodes={nodes}
           selectedNodeIds={selectedNodeId ? [selectedNodeId] : []}
           branchRootNodeId={selectedNodeId}
-          services={macArtifactHost?.artifactStudioServices}
+          services={
+            macArtifactHost?.artifactStudioServices ?? webArtifactServices
+          }
           beforeExport={sessions.flushNativeWorkspace}
           onAttachImage={attachArtifactImage}
           cloudSync={isAuthenticated ? syncArtifactToCloud : undefined}
