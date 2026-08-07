@@ -43,6 +43,45 @@ the dreamer gateway's `POST /v1/llm/images/generate`, which needs:
 
 Until then the recipe fails loudly. It never produces an empty artifact.
 
+## The gateway image contract (confirmed 2026-08-07)
+
+`POST /v1/llm/images/generate` was returning 500 on every call with a `size`.
+Two separate bugs in `/home/coolhand/shared/llm_providers/xai_provider.py`, both
+now fixed: `aspect_ratio` was passed as a top-level kwarg to the OpenAI SDK,
+which validates its signature and raised `TypeError` before sending; and the
+account is Zero Data Retention, which xAI refuses to serve URL-format images to,
+so the response format is now `b64_json`.
+
+Verified live. The response the OpenAPI document leaves unspecified is:
+
+```json
+{
+  "image_data": "<base64, no data: prefix>",
+  "model": "grok-imagine-image-quality",
+  "provider": "xai",
+  "revised_prompt": null
+}
+```
+
+**`image_data` is JPEG, not PNG** — magic bytes `ffd8ff`. That matters twice:
+
+- `artifactImageAttachmentSchema` pins `mimeType` to the literal `"image/png"`
+  and the dataURL to a matching prefix, so a generated image **cannot be
+  attached to a board** without transcoding to PNG first.
+- `server/artifactPolicy.ts` checks PNG magic bytes for raster files, so a
+  JPEG stored under `image/png` is rejected on sync.
+
+So the image recipe needs a canvas transcode to PNG before it can produce an
+`ArtifactFile`, or the schema needs to admit `image/jpeg` on both platforms.
+Transcoding is the smaller change and keeps the Mac bridge untouched.
+
+A dedicated gateway key exists ("Idea Tiles artifacts", 10k req/day). Set it as
+`DREAMER_API_KEY` in the server environment; `server/imageProxy.ts` reads it and
+answers 503 naming the variable until it is present.
+
+Document export now has PDF as well: `reportlab` is installed on the gateway, so
+`/v1/documents/formats` reports `markdown`, `pdf`, `docx`.
+
 ## Decisions taken, and how to reverse them
 
 These were settled to keep Phase 1 unblocked. Each is cheap to revisit.
