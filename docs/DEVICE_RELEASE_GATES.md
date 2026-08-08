@@ -4,7 +4,7 @@ Run on **real hardware** after production DNS/Caddy/deploy pass [`scripts/check-
 
 ## Pre-archive (local)
 
-- [ ] `pnpm check` && `pnpm test` && `pnpm build` && `npx cap sync ios`
+- [ ] `pnpm check` && `pnpm test` && `pnpm cap:sync:ios`
 - [ ] Xcode: destination **Any iOS Device (arm64)** — not simulator for Archive
 - [ ] Confirm `pnpm versions:check` reports Apple 1.3.1 build 5
 - [ ] Confirm **Associated Domains** in signed settings include `applinks:ideatiles.app` (see [`ios/App/App/App.entitlements`](../ios/App/App/App.entitlements))
