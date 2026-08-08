@@ -15,7 +15,7 @@
     "cap:build": "pnpm build && pnpm exec cap sync ios",
     "cap:open": "pnpm exec cap open ios",
     "cap:sync:android": "pnpm build && CAPACITOR_APP_ID=app.ideatiles.android pnpm exec cap sync android",
-    "android:test": "cd android && ANDROID_HOME=${ANDROID_HOME:-$HOME/Library/Android/sdk} JAVA_HOME=$(/usr/libexec/java_home -v 21) ./gradlew test",
+    "android:test": "pnpm cap:sync:android && cd android && ANDROID_HOME=${ANDROID_HOME:-$HOME/Library/Android/sdk} JAVA_HOME=$(/usr/libexec/java_home -v 21) ./gradlew test",
     "android:release": "pnpm cap:sync:android && cd android && ANDROID_HOME=${ANDROID_HOME:-$HOME/Library/Android/sdk} JAVA_HOME=$(/usr/libexec/java_home -v 21) ./gradlew clean assembleRelease bundleRelease",
     "android:stage": "bash scripts/stage-android-release.sh",
     "cap:sync:ios": "pnpm build && pnpm exec cap sync ios",
