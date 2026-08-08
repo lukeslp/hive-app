@@ -1,25 +1,25 @@
 # PROJECT_PLAN
 
-Last updated: 2026-07-14
+Last updated: 2026-08-08
 
 ## Objectives
 
-1. Ship **Idea Tiles** as a stable cross-platform brainstorming tool (web + iOS first, Android next).
-2. Preserve user trust with privacy-first AI behavior and transparent platform differences.
+1. Maintain **Idea Tiles** as a stable cross-platform brainstorming tool across web, iOS, Android, and native Mac.
+2. Preserve user trust with privacy-first generation behavior and explicit platform differences.
 3. Keep launch and maintenance work focused: proof-of-concept MVP defers **native** live collaboration; snapshot sharing + web collab remain the split (see [`docs/RELEASE_SPEC.md`](docs/RELEASE_SPEC.md)).
 
 ## Current State
 
-- **Public TestFlight** is live; ongoing work is App Store polish, accurate metadata, and operational hardening—not “getting to TF.”
+- Apple version 1.3.1 is public for iPhone, iPad, and native Mac. The next aligned Apple build is 5.
 - Core app is functional across web and Capacitor shells.
-- Collaboration, session persistence, merge workflows, and export flows are implemented **on web**; iOS ships snapshot share + local sessions for this MVP ([`docs/SHARING_MVP_POLICY.md`](docs/SHARING_MVP_POLICY.md)).
+- Web and native Mac can create snapshot links and start collaboration. iOS and Android remain local-first: they export files and open received links but do not create hosted links or start collaboration ([`docs/SHARING_MVP_POLICY.md`](docs/SHARING_MVP_POLICY.md)).
 - Display name **Idea Tiles** is wired through UI, legal pages, and native `appName` / `CFBundleDisplayName`; legacy storage keys remain intentionally unchanged.
-- Native share-link reliability: fallback API base now resolves to canonical `${APP_PUBLIC_WEB_ORIGIN}/api` (instead of legacy `/hexpand/api` path that can serve static HTML on some hosts).
-- **Concurrent AI expansion:** `useHistory` now uses atomic `{ entries, index }` state with functional `push` updaters; `HexmindApp` neighbor commits merge via `(prev) => …` plus `flushSync` where post-commit UI reads keys from the same turn—fixes tiles vanishing when two generations overlap (web + iOS).
+- The native hosted API fallback resolves to canonical `${APP_PUBLIC_WEB_ORIGIN}/api`; iOS still rejects hosted generation.
+- **Concurrent model expansion:** `useHistory` now uses atomic `{ entries, index }` state with functional `push` updaters; `HexmindApp` neighbor commits merge via `(prev) => …` plus `flushSync` where post-commit UI reads keys from the same turn—fixes tiles vanishing when two generations overlap (web + iOS).
 - Cross-platform handoff UX: share modal now exposes a dedicated “Bring to iOS” action using canonical universal-link URLs for easier web→iOS board continuation.
 - Settings UX compaction + accessibility controls: removed non-essential heading copy, added one-row quick controls, persisted accessibility fonts and manual high-contrast mode, and added explicit board deletion from settings.
 - Mobile readability pass: improved in-hex label wrapping behavior (balanced wrap, non-forced uppercase, reduced hard word-splitting) to avoid fragmented words in constrained tile geometry.
-- Provider regression containment: non-iOS builds now lock app-level provider selection to Anthropic and suppress provider-management UI in Settings to align with hosted product behavior.
+- Hosted builds lock app-level provider selection to OpenAI and suppress provider-management UI in Settings.
 - Settings visual cohesion pass: shifted modal styling away from dense "admin panel" controls toward cleaner card/glass presentation aligned with the main canvas tone.
 - Android local generation now dispatches in order: ML Kit Prompt API through
   AICore Gemini Nano, checksum-verified LiteRT-LM Gemma, then the existing
@@ -36,16 +36,16 @@ Last updated: 2026-07-14
 ### 1) Release Readiness (highest priority)
 
 - Use [`docs/RELEASE_SPEC.md`](docs/RELEASE_SPEC.md) + [`docs/APP_STORE_PACK.md`](docs/APP_STORE_PACK.md) for ASC submission and beta copy.
-- Resolve **High** items in [`docs/RELEASE_REVIEW.md`](docs/RELEASE_REVIEW.md) before App Store (share URL origin fixed in code; optional `VITE_PUBLIC_WEB_APP_URL` overrides `APP_PUBLIC_WEB_ORIGIN` / default `https://ideatiles.app`).
+- Resolve the external privacy-metadata and hardware-validation items in [`docs/RELEASE_REVIEW.md`](docs/RELEASE_REVIEW.md) before the next App Store submission.
 - Complete **edge** verification for AASA + legal URLs on public hostnames (`pnpm verify:canonical` after Caddy/DNS); **localhost** checks alone are insufficient ([`NEXT_STEPS.md`](NEXT_STEPS.md) production Node section).
 
 ### 2) iOS Lifecycle and Stability
 
 - Finish the partially landed UIScene lifecycle migration (see status snapshot at the top of `MIGRATION_PLAN.md`): remove `UIMainStoryboardFile` once duplicate-ownership risk is mitigated, trim `AppDelegate`, implement `scene(_:willConnectTo:options:)` with deferred cold-start URL forwarding.
 - Verify splash behavior, deep-link handling, and plugin registration remain stable after the UIScene cleanup.
-- Keep iOS AI behavior aligned with privacy commitments (on-device only).
+- Keep iOS generation behavior aligned with privacy commitments (on-device only).
 
-### 3) AI UX Reliability
+### 3) Generation UX Reliability
 
 - Continue hardening JSON/schema-constrained generation paths.
 - Avoid misleading placeholder outputs on failure paths.
@@ -71,7 +71,7 @@ Use council runs intentionally:
 
 ## Near-Term Execution Queue
 
-1. App Store submission using `docs/APP_STORE_PACK.md` + `docs/RELEASE_SPEC.md`.
+1. Correct Mac App Privacy answers in App Store Connect, then upload Apple build 5 using `docs/APP_STORE_PACK.md` + `docs/RELEASE_SPEC.md`.
 2. Land UIScene migration with verification pass (`MIGRATION_PLAN.md`).
 3. Optional: persist `/api/share` payloads beyond in-memory (if 404s after deploy hurt users).
 4. Phase 2: native live collab only as a deliberate project (WS host, UX, ASC copy).
@@ -79,7 +79,7 @@ Use council runs intentionally:
 
 ## Risks
 
-- Delayed server deploy keeps Universal Links validation blocked.
+- Source and production can diverge until the current web bundle is deliberately deployed and smoke-tested.
 - iOS lifecycle warnings can become future hard failures if migration slips.
 - Overusing strategic council workflows can create noise and slow execution.
 

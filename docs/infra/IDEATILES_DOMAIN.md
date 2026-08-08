@@ -1,53 +1,44 @@
-# Canonical domain: `ideatiles.app` (Porkbun + Caddy)
+# Canonical Idea Tiles production route
 
-This app’s Node process already serves `/.well-known/apple-app-site-association`, `/privacy`, and `/terms` correctly when traffic reaches it (see [`server/_core/index.ts`](../../server/_core/index.ts)). **What you must do outside the repo** is point **ideatiles.app** at the same reverse proxy and upstream as the legacy brand domains (`hexmind.app`, `hivemind.cx`, …).
+`https://ideatiles.app` is the web, marketing, legal, and Universal Link origin.
 
-## 1. Porkbun DNS
+## Current ownership
 
-1. Log into Porkbun → **DNS** for `ideatiles.app`.
-2. Match the **same routing pattern** you use for `hexmind.app`:
-   - If legacy domains use an **A record** to the VPS IP → add the same **A** for `@` and `www` (or only `@ if www unused).
-   - If they use **CNAME** to a CDN/hostname → add the same **CNAME** for `@` (and `www` if needed).
-3. Remove or disable **parking** / **URL redirect** records that override the apex.
-4. Wait for propagation (often minutes; TTL-dependent).
+| Item | Canonical value |
+|---|---|
+| Service | `ideatiles` |
+| Loopback port | `5065` |
+| Server checkout | `~/servers/ideatiles` |
+| Public origin | `https://ideatiles.app` |
+| Apple application identifier | `596T7J7FB6.app.hexmind.ios` |
 
-## 2. TLS
+The legacy `hexmind` service on port 5057 runs the separate HiveMind community
+canvas from `~/projects/hivemind`. Never deploy the Idea Tiles bundle there.
 
-- Caddy will obtain Let’s Encrypt certs automatically once DNS resolves to this server and port **443** is reachable.
-- If you terminate TLS elsewhere (Cloudflare “Full”), ensure the origin still receives correct `Host` and that `/.well-known` is not blocked.
+## Deployment sequence
 
-## 3. Caddy (same site block as other brand domains)
+Deployment changes external state and must be explicitly authorized.
 
-Add a **server block** for `ideatiles.app` (and `www.ideatiles.app` if you use it) that is **byte-for-byte equivalent** to your existing `hexmind.app` block: same `reverse_proxy` upstream, same headers, **no** special rule that rewrites `/.well-known/*` to the SPA.
+1. Build and test the exact commit intended for production.
+2. Confirm the target service with `sm status`; do not infer it from a legacy
+   domain or historical document.
+3. Deploy to `~/servers/ideatiles` and restart only the `ideatiles` service.
+4. Run `pnpm verify:canonical`.
+5. Smoke `https://ideatiles.app`, `/privacy`, `/terms`,
+   `/.well-known/apple-app-site-association`, snapshot sharing, and
+   collaboration.
 
-Example shape (adjust upstream/socket to match your real config):
+If Caddy routing needs a change, back up `/etc/caddy/Caddyfile`, edit that file
+directly on `dr.eamer.dev`, run `caddy validate`, and reload only after
+validation succeeds.
 
-```caddy
-ideatiles.app, www.ideatiles.app {
-    reverse_proxy 127.0.0.1:PORT
-}
-```
+## Expected edge behavior
 
-Reload Caddy (`caddy reload` or your process manager).
+- AASA returns JSON and contains `596T7J7FB6.app.hexmind.ios`.
+- `/privacy` and `/terms` return standalone HTML, not the SPA fallback.
+- Unknown `/api/*` paths return JSON 404 responses.
+- The Node service remains bound to loopback behind the trusted reverse proxy.
 
-## 4. Post-change verification (from any machine)
-
-```bash
-cd /path/to/hexmind
-./scripts/check-aasa.sh
-./scripts/verify-canonical-endpoints.sh
-```
-
-Expect **7/7** AASA passes and privacy/terms checks green on `ideatiles.app` and legacy domains.
-
-## 5. Deploy the Node app (production: `hexmind.service`)
-
-**systemd** unit **`hexmind.service`** on `dr.eamer.dev` (see **NEXT_STEPS.md** → _production Node_) runs **`node ~/projects/hivemind/dist/index.js`** with `PORT=5057` and `WorkingDirectory=/home/coolhand/projects/hivemind` (`.env` lives there). **Source code** is built from GitHub **`lukeslp/hive-app`** into a clone at `~/projects/hive-app`, then **`dist/`** is rsynced into **`~/projects/hivemind/dist/`** (atomically replacing the bundle). Restart with **`sm restart hexmind`** (wraps `systemctl restart hexmind`).
-
-See the exact one-liner block in [`NEXT_STEPS.md`](../../NEXT_STEPS.md) under **Right now — production Node**.
-
-**Bypass Caddy smoke:** on the server, `curl -sSI http://127.0.0.1:5057/.well-known/apple-app-site-association` must return `application/json`. If that passes but public HTTPS still returns HTML, fix **Caddy** routing (see §3), not Node.
-
-## 6. iOS Associated Domains
-
-After Caddy + DNS are live, ship a **new** iOS build: [`ios/App/App/App.entitlements`](../../ios/App/App/App.entitlements) already includes `applinks:ideatiles.app`. Apple only trusts Universal Links for hosts that resolve AASA successfully at install/update time.
+Installed apps may still rely on legacy associated domains. Retire those only
+after confirming the release and migration impact; DNS cleanup is not part of a
+normal web deploy.

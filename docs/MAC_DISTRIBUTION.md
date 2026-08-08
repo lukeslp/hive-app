@@ -1,6 +1,6 @@
 # Mac Distribution
 
-Idea Tiles ships one universal native Mac target through two distribution lanes: Mac App Store and Developer ID. Release builds use Xcode's standard `arm64` and `x86_64` architectures. Both lanes use bundle identifier `app.hexmind.ios`, Apple marketing version `1.3.1`, build `4`, App Sandbox, and hardened runtime. Package and Android metadata use the same `1.3.1` version.
+Idea Tiles ships one universal native Mac target through two distribution lanes: Mac App Store and Developer ID. Release builds use Xcode's standard `arm64` and `x86_64` architectures. Both lanes use bundle identifier `app.hexmind.ios`, Apple marketing version `1.3.1`, build `5`, App Sandbox, and hardened runtime. Package and Android metadata use the same `1.3.1` version.
 
 ## Xcode Layout
 
@@ -44,7 +44,7 @@ The version check rejects drift across package, iOS, Android, generated Mac meta
 
 Both platforms declare `ITSAppUsesNonExemptEncryption = false` in their `Info.plist`. Idea Tiles uses only HTTPS and Keychain, which is exempt encryption, so App Store Connect stops asking the question at submission time. `pnpm versions:check` fails if either platform drops the key or changes the value — it was previously set on iOS only, which made every Mac submission stop for a manual answer.
 
-The key reached macOS after build 4 was already uploaded, so the **1.3.1 Mac submission still asks once**; answer that the app uses exempt encryption. Build 5 onward carries the declaration.
+Uploaded build 4 predates this key. Build 5 onward carries the declaration; verify the processed build before submission rather than relying on the old upload's manual answer.
 
 ### Submitting for review
 

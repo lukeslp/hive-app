@@ -6,7 +6,7 @@ Run on **real hardware** after production DNS/Caddy/deploy pass [`scripts/check-
 
 - [ ] `pnpm check` && `pnpm test` && `pnpm build` && `npx cap sync ios`
 - [ ] Xcode: destination **Any iOS Device (arm64)** — not simulator for Archive
-- [ ] Bump **Marketing version** + **Build** in Xcode project
+- [ ] Confirm `pnpm versions:check` reports Apple 1.3.1 build 5
 - [ ] Confirm **Associated Domains** in signed settings include `applinks:ideatiles.app` (see [`ios/App/App/App.entitlements`](../ios/App/App/App.entitlements))
 - [ ] **Product → Archive** → Validate → Distribute to App Store Connect
 
@@ -16,16 +16,17 @@ Run on **real hardware** after production DNS/Caddy/deploy pass [`scripts/check-
 - [ ] Tap `https://ideatiles.app/privacy` — opens in **Safari** with Idea Tiles policy HTML (AASA excludes `/privacy*`)
 - [ ] Repeat on at least one **legacy** domain (`hexmind.app`, …) still in entitlements
 
-## Apple Intelligence
+## On-device generation
 
-- [ ] **Eligible** device (15 Pro / 16+ / M iPad, iOS 26+, AI on): tap tile → expansion succeeds **10×** without hang
+- [ ] **Eligible** device (15 Pro / 16+ / M iPad, iOS 26+, Apple Intelligence on): tap tile → expansion succeeds **10×** without hang
 - [ ] **Ineligible** device: tap tile → **clear** “not available” message, no crash, no silent cloud send
+- [ ] Artifact Studio is absent and no iOS request reaches `/api/generate`
 
 ## Share + export
 
-- [ ] Create **snapshot** share link from iOS → copy URL → open on second device/browser → board loads
-- [ ] Confirm URL host is **`ideatiles.app`** (unless you set `VITE_PUBLIC_WEB_APP_URL`)
-- [ ] Export **PNG** / **SVG** / **JSON** → share sheet / Files.app path **On My iPhone → Idea Tiles**
+- [ ] Confirm there is no native **Share link** creation action
+- [ ] Open a web-created `https://ideatiles.app/?s=…` link and confirm the board loads
+- [ ] Export **PNG** / **JPG** / **SVG** / **JSON** → share sheet / Files.app path **On My iPhone → Idea Tiles**
 
 ## Appearance
 

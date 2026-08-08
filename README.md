@@ -13,18 +13,19 @@
   - Android app (AICore Gemini Nano, then checksum-verified Gemma, then cloud)
   - macOS app (native SwiftUI/WebKit shell with Artifact Studio)
 
-## Current Product State (July 2026)
+## Current Product State (August 2026)
 
-- **App Store:** 1.0 live; the **1.1 release train is open** (availability fixes, JPG export, on-device template customization). Listing metadata is managed as code in `ios/fastlane/` (`bundle exec fastlane upload_listing`).
+- **Apple distribution:** version 1.3.1 is public for iPhone, iPad, and native Mac. Source is prepared for Apple build 5, but this repository pass does not upload or submit it. Listing metadata is managed as code in `ios/fastlane/` and `macos/fastlane/`.
 - **Android:** release in testing; no signed Android artifact is published.
 - Brand display name is **Idea Tiles** while legacy storage keys intentionally remain `hexpand_*` for data continuity.
-- **Sharing MVP:** iOS sharing is **local exports only** — PNG / JPG / SVG / JSON through the native share sheet (AirDrop, Messages, Files). **Share-link creation and live collaboration are web-only**; iOS still opens web-created `?s=` links via Universal Links. See [`docs/SHARING_MVP_POLICY.md`](docs/SHARING_MVP_POLICY.md).
+- **Sharing MVP:** iOS and Android use **local exports only** — PNG / JPG / SVG / JSON through native sharing. **Share-link creation and live collaboration are web/native-Mac capabilities**; both mobile shells still open received `?s=` links. See [`docs/SHARING_MVP_POLICY.md`](docs/SHARING_MVP_POLICY.md).
 - Share modal includes a dedicated **Bring to iOS** action that prefers the canonical universal-link origin (`APP_PUBLIC_WEB_ORIGIN`) so boards can be handed off to the iOS app flow more reliably.
 - Settings modal now uses a compact, screen-space-first control row: theme toggle, accessibility font cycling (Atkinson/Lexend/OpenDyslexic/Aptos/System), font size +/- controls, animation toggle, high-contrast toggle, prominent Auto-Save, and a destructive "Delete Current Board" action.
 - Hex tile title rendering now favors readability: removed forced uppercase in-node labels and switched to balanced wrapping with normal word breaking to reduce awkward mid-word splits on mobile.
-- Hosted/web provider behavior is locked to Anthropic in-app (no provider picker exposed), matching ideatiles.app's managed default path.
+- Hosted/web provider behavior is locked to OpenAI in-app; the provider picker remains hidden.
 - Settings visual treatment now uses a softer glass/card style and removes dense provider-management controls for a cleaner, on-brand surface.
 - iOS behavior is intentionally privacy-first: tile generation on iOS is on-device only (no cloud fallback).
+- Artifact Studio is unavailable on iOS because its shared-client transport is hosted. Web, Android, and native Mac retain Artifact Studio; the transport also rejects hosted generation on iOS as defense in depth.
 - The native Mac app defaults to Apple Foundation Models. Optional direct-provider keys stay in Keychain; Dreamer access is a single curated choice redeemed with a one-time invite. Request access at `https://dr.eamer.dev/api/docs/access.html`.
 - On iOS, neighbor-generation failures no longer synthesize placeholder tiles or fall through to cloud — empty slots stay empty and the user gets an explicit availability/parse error toast. On web/Android the cloud path may still pad to six branches when the model returns fewer; see `client/src/hooks/useAIGeneration.ts` (`buildNeighborNodes`).
 - Universal Links/AASA and server operations remain in [`NEXT_STEPS.md`](NEXT_STEPS.md).
@@ -136,7 +137,7 @@ The server entrypoint is `server/_core/index.ts` and mounts:
 In production the server binds a fixed loopback address and port. Unknown
 `/api/*` paths return JSON 404 responses rather than the SPA document.
 
-## AI Dispatch Model
+## Generation Dispatch Model
 
 Client generation paths use on-device-first logic with platform-specific behavior:
 
@@ -144,7 +145,8 @@ Client generation paths use on-device-first logic with platform-specific behavio
 - Android: AICore Gemini Nano first when available, then checksum-verified
   Gemma when installed, otherwise cloud `/api/generate`. Settings discloses the
   ordered fallback.
-- Web: cloud `/api/generate`.
+- Web: hosted `/api/generate`.
+- Native Mac: Apple Foundation Models first, then explicitly configured local or remote providers.
 
 See `client/src/hooks/useAIGeneration.ts` and `client/src/lib/foundationModelsPlugin.ts`.
 

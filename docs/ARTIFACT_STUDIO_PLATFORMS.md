@@ -1,31 +1,24 @@
 # Artifact Studio across platforms
 
-Artifact Studio has always lived in the shared web client — the UI, the twelve
-recipes, board context extraction, and the preview all ship on every platform.
-Until now only macOS could use it, because `HexmindApp` could only supply
-`services` from `window.ideaTilesMac`, and `ArtifactStudio` shows
-*"Artifact generation is available in the Idea Tiles Mac app"* when `services`
-is absent.
-
-`client/src/lib/webArtifactServices.ts` supplies that missing object for web,
-iOS, and Android. macOS is unaffected: the call site is
-`macArtifactHost?.artifactStudioServices ?? webArtifactServices`, so a Mac shell
-always wins.
+Artifact Studio lives in the shared client, but availability follows an explicit
+platform capability contract. Web and Android use `webArtifactServices`; native
+Mac uses `window.ideaTilesMac`; iOS does not render or open the studio. The text
+transport also rejects hosted generation on iOS before any network request, so
+a future missed UI gate cannot violate the iOS on-device-only promise.
 
 ## What works where
 
-| Recipe kind | Recipes | Web / iOS / Android | macOS |
+| Recipe kind | Recipes | Web / Android | iOS | macOS |
 |---|---|---|---|
-| `markdown` | brief, report, action-plan, narrative, custom-markdown, deep-dive, implementation-plan | Yes | Yes |
-| `mermaid` | mermaid-diagram | Yes | Yes |
-| `svg` | svg-asset | Yes | Yes |
-| `staticWeb` | static-web-prototype | Yes | Yes |
-| `codeBundle` | code-scaffold | Yes | Yes |
-| `image` | image-playground-artwork | **No** — fails with a message naming what does work | Yes, via Image Playground |
+| `markdown` | brief, report, action-plan, narrative, custom-markdown, deep-dive, implementation-plan | Yes | No | Yes |
+| `mermaid` | mermaid-diagram | Yes | No | Yes |
+| `svg` | svg-asset | Yes | No | Yes |
+| `staticWeb` | static-web-prototype | Yes | No | Yes |
+| `codeBundle` | code-scaffold | Yes | No | Yes |
+| `image` | image-playground-artwork | **No** — fails with a message naming what does work | No | Yes, via Image Playground |
 
-Eleven of twelve recipes are text-shaped, and text generation already ran on
-every platform through `generateTextForCurrentPlatform`. Those eleven therefore
-need no API key, no new endpoint, and no server work.
+Eleven of twelve recipes are text-shaped and use the established hosted
+generation route on web and Android. They require no client-side provider key.
 
 ## Why image generation is not here yet
 
@@ -34,10 +27,8 @@ the dreamer gateway's `POST /v1/llm/images/generate`, which needs:
 
 1. A server-side proxy route, so the gateway key never reaches the client —
    mirroring how `server/llmProxy.ts` fronts the text providers.
-2. A `DREAMER_API_KEY` in the server environment. The app has no gateway
-   credential today: `llmProxy.ts` calls Google, Anthropic, Mistral, and OpenAI
-   directly, and `BUILT_IN_FORGE_API_URL` / `_KEY` point at a different service
-   (`server/_core/imageGeneration.ts`, kernel scaffold, imported nowhere).
+2. A `DREAMER_API_KEY` in the server environment. The app has no client-side
+   gateway credential; provider secrets remain server-side.
 3. A rate limit. Image Playground is on-device and free; every gateway image is
    a paid DALL·E or Aurora call.
 
@@ -114,20 +105,13 @@ Learned by reading the enforcement, not by assumption:
   ``` makes an SVG fail to render and feeds the preview iframe invalid HTML, so
   non-markdown kinds are unwrapped. Markdown keeps its fences.
 
-## Apple Intelligence is not used for artifacts off macOS
+## iOS intentionally has no Artifact Studio
 
 macOS runs artifact generation through `GenerationEngine`, which tries Apple
-Foundation Models on device first. The web services do not: they call
-`generateTextForCurrentPlatform`, which posts to the LLM proxy. So on iOS with
-Apple Intelligence selected, an artifact is generated in the cloud while a tile
-expansion on the same device is generated on device.
-
-This is a deliberate Phase 1 limitation, not an oversight. Tile expansion emits
-a couple of hundred tokens; artifacts request up to 8192 against as much as
-12,000 characters of board context, which is a poor fit for the on-device
-context window. Routing artifacts through `tryOnDeviceFirst` for parity is
-worth doing, but it needs its own measurement of where Foundation Models
-starts truncating — not an assumption.
+Foundation Models on device first. The shared web service posts to the hosted
+LLM proxy, so exposing it on iOS would contradict the published no-cloud-fallback
+promise. iOS remains gated until a measured, on-device artifact path exists or
+the product deliberately changes its privacy contract and store disclosures.
 
 ## Cancellation
 

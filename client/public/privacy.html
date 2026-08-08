@@ -90,7 +90,7 @@
   <body>
     <main>
       <h1>Idea Tiles Privacy Policy</h1>
-      <p class="meta">Last updated 21 July 2026</p>
+      <p class="meta">Last updated 8 August 2026</p>
 
       <p>
         Idea Tiles is a hexagonal mind-mapping tool from Bridge City Lab LLC. It
@@ -142,7 +142,7 @@
         Uninstalling the app removes them.
       </p>
       <p>
-        Files you export (PNG, SVG, JSON) are saved to your app's Documents
+        Files you export (PNG, JPG, SVG, JSON) are saved to your app's Documents
         directory, visible in Files.app under "On My iPhone → Idea Tiles." We
         don't read or transmit them.
       </p>
@@ -175,11 +175,12 @@
       </p>
       <h2>What the web and Android versions do</h2>
       <p>
-        If you choose to use a cloud language-model provider, the app sends your
-        prompt directly to the provider you selected, authenticated with the API
-        key you supplied. We don't proxy these calls through our infrastructure
-        unless you've explicitly entered our shared provider key. We don't log,
-        store, or analyse the prompts or responses.
+        The web and Android versions can send prompts and relevant board context
+        to the Idea Tiles hosted generation endpoint. The service relays those
+        requests to its configured language-model provider. Android tries its
+        supported local runtimes first and uses the hosted path only when neither
+        local runtime is usable. The interface identifies this fallback before
+        the content leaves the device.
       </p>
 
       <h2>Artifact storage and optional sync</h2>
@@ -208,8 +209,8 @@
 
       <h2>Collaboration sessions</h2>
       <p>
-        You can invite others to a shared board via a temporary collaboration
-        link. While the session is open, board changes and presence cursors are
+        On the web and native Mac, you can invite others to a shared board via a
+        temporary collaboration link. While the session is open, board changes and presence cursors are
         relayed through our WebSocket server so all participants stay in sync.
         Session state is held in memory only and is discarded when the last
         participant disconnects. We do not record or persist session content.

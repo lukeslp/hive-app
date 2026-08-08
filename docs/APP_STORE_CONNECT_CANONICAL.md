@@ -11,7 +11,7 @@ Paste URLs exactly as below after production passes [`scripts/verify-canonical-e
 ## App Information (copy from pack)
 
 - **Name:** Idea Tiles (fallback: `Idea Tiles: Brainstorm` if rejected)
-- **Subtitle:** Brainstorm with local AI
+- **Subtitle:** Brainstorm with local models
 - **Primary category:** Productivity
 - **Secondary:** Graphics & Design
 

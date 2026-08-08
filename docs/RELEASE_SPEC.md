@@ -1,8 +1,11 @@
 # Release Specification: Idea Tiles
 
-**Version**: 1.3.x (match Xcode `MARKETING_VERSION`)
-**Last updated**: 2026-05-12  
-**Platform**: iOS 26+ (Capacitor), web companion  
+**Version**: 1.3.1, next Apple build 5
+
+**Last updated**: 2026-08-08
+
+**Platforms**: web, iOS 26+ (Capacitor), Android, native macOS 26+
+
 **Related docs**: [`RELEASE_REVIEW.md`](./RELEASE_REVIEW.md), [`APP_STORE_PACK.md`](./APP_STORE_PACK.md)
 
 ---
@@ -14,7 +17,8 @@
 - [ ] `pnpm check` and `pnpm test` green
 - [ ] Cold launch: splash hides, canvas interactive
 - [ ] Tile expand on **eligible** hardware; clear error on ineligible
-- [ ] Share link from iOS: opens in Safari as **https** public URL (not `capacitor://`)
+- [ ] iOS and Android have no Share Link creation entry point
+- [ ] A received `https://ideatiles.app/?s=…` link opens and loads on both mobile platforms
 - [ ] Export PNG/JPG/SVG/JSON on device
 - [ ] Privacy + Terms URLs return real HTML (`/privacy`, `/terms`)
 
@@ -36,11 +40,11 @@
 
 **Locked for this proof-of-concept release:**
 
-| Capability                                                  | Web | iOS (Capacitor)                                                                                   |
-| ----------------------------------------------------------- | --- | ------------------------------------------------------------------------------------------------- |
-| **Snapshot share — create** (`POST /api/share` → `?s=` link) | Yes | **No** — "Share link" UI hidden; share boards via PNG/JPG/SVG/JSON exports + native share sheet |
-| **Snapshot share — open** (`?s=` link received)              | Yes | **Yes** — Universal Links still load shared boards in the app                               |
-| **Live collaboration** (WebSocket `/ws/collab`, `?collab=`)  | Yes | **No** — UI entry hidden; not MVP for native                                                |
+| Capability | Web | iOS | Android | Native Mac |
+|---|---:|---:|---:|---:|
+| **Snapshot share — create** (`POST /api/share` → `?s=` link) | Yes | No | No | Yes |
+| **Snapshot share — open** (`?s=` link received) | Yes | Yes | Yes | Yes |
+| **Live collaboration** (WebSocket `/ws/collab`, `?collab=`) | Yes | No | No | Yes |
 
 **Rationale:** Live collab requires a production-safe WebSocket URL strategy and full UX parity; partial implementation would confuse testers and reviewers. Share-link *creation* is web-only because links route recipients to the web app, where cloud generation is billed to the operator's API keys, and the share store is in-memory (links expire on every deploy) — exports are the reliable native sharing path.
 
@@ -89,13 +93,15 @@ Document chosen values in internal release notes (not committed secrets).
 
 > Idea Tiles is a hexagonal mind map. On supported devices, expansions use Apple Intelligence on-device. Merge tiles, then export and share boards as images (PNG/JPG/SVG) or JSON files. Snapshot share links and real-time “Collaborate” sessions are on the website in this build, not inside the iOS shell.
 
-**What to test:**
+**What to test on iOS:**
 
 > • Create a board, tap to expand  
 > • Merge two tiles  
-> • Share link — open in Safari (should be https, not capacitor)  
-> • Export PNG  
-> • Optional: open same snapshot on desktop web
+> • Export PNG, JPG, SVG, and JSON
+>
+> • Open a snapshot link created on the website
+>
+> • Confirm Artifact Studio and hosted Share Link creation are absent
 
 ---
 
@@ -134,3 +140,4 @@ Document chosen values in internal release notes (not committed secrets).
 | Version | Date       | Notes                                     |
 | ------- | ---------- | ----------------------------------------- |
 | 1.0     | 2026-05-12 | Initial MVP release spec + sharing policy |
+| 1.3.1   | 2026-08-08 | Cross-platform capability and build-5 release contract |
