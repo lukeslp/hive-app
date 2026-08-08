@@ -84,6 +84,26 @@ describe("native Mac generation transport", () => {
       })
     ).resolves.toEqual({ text: "result", provider: "xai", viaNativeMac: false });
   });
+
+  it("rejects hosted generation on iOS before any request can leave the device", async () => {
+    const fetch = vi.fn();
+    vi.stubGlobal("fetch", fetch);
+    Object.defineProperty(window, "Capacitor", {
+      configurable: true,
+      value: {
+        isNativePlatform: () => true,
+        getPlatform: () => "ios",
+      },
+    });
+
+    await expect(
+      generateTextForCurrentPlatform({
+        prompt: "Generate an artifact from private board context",
+        cloudPayload: { contents: [] },
+      })
+    ).rejects.toThrow("Hosted generation is disabled on iOS");
+    expect(fetch).not.toHaveBeenCalled();
+  });
 });
 
 describe("native workspace import handoff", () => {

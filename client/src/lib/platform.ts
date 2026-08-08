@@ -46,6 +46,25 @@ export function isIos(): boolean {
   return isCapacitor() && getPlatform() === "ios";
 }
 
+/**
+ * Artifact Studio may use hosted generation outside the native Mac shell.
+ * Keep it unavailable on iOS until an on-device implementation can satisfy
+ * the App Store promise that board context never leaves the device.
+ */
+export function supportsArtifactStudio(): boolean {
+  return !isIos();
+}
+
+/** Hosted snapshot creation stays in browser-class clients for this release. */
+export function supportsHostedShareCreation(): boolean {
+  return !isCapacitor();
+}
+
+/** Live collaboration is enabled for web and the dedicated native Mac shell. */
+export function supportsLiveCollaboration(): boolean {
+  return !isCapacitor();
+}
+
 /** True when the device has no network connectivity. */
 export function isOffline(): boolean {
   return typeof navigator !== "undefined" && !navigator.onLine;

@@ -1,5 +1,5 @@
 import { buildApiUrl, fetchApi } from "@/lib/api";
-import { isNativeMac } from "@/lib/platform";
+import { isIos, isNativeMac } from "@/lib/platform";
 import type {
   ArtifactStudioServices,
   NativeAuthenticationService,
@@ -59,6 +59,10 @@ export async function generateTextForCurrentPlatform(
       })),
       viaNativeMac: true,
     };
+  }
+
+  if (isIos()) {
+    throw new Error("Hosted generation is disabled on iOS.");
   }
 
   // fetchApi, not fetch: CapacitorHttp drops `signal` on cross-origin POSTs,

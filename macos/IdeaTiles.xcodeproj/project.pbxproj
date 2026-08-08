@@ -294,6 +294,7 @@
 				"$(SRCROOT)/../client",
 				"$(SRCROOT)/../shared",
 				"$(SRCROOT)/../package.json",
+				"$(SRCROOT)/../pnpm-workspace.yaml",
 				"$(SRCROOT)/../pnpm-lock.yaml",
 				"$(SRCROOT)/../vite.mac.config.ts",
 				"$(SRCROOT)/../vite.config.ts",
@@ -452,7 +453,7 @@
 				CLANG_WARN_UNREACHABLE_CODE = YES;
 				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
 				COPY_PHASE_STRIP = NO;
-				CURRENT_PROJECT_VERSION = 4;
+				CURRENT_PROJECT_VERSION = 5;
 				DEAD_CODE_STRIPPING = YES;
 				DEBUG_INFORMATION_FORMAT = dwarf;
 				ENABLE_HARDENED_RUNTIME = YES;
@@ -561,7 +562,7 @@
 				CLANG_WARN_UNREACHABLE_CODE = YES;
 				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
 				COPY_PHASE_STRIP = NO;
-				CURRENT_PROJECT_VERSION = 4;
+				CURRENT_PROJECT_VERSION = 5;
 				DEAD_CODE_STRIPPING = YES;
 				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
 				ENABLE_HARDENED_RUNTIME = YES;

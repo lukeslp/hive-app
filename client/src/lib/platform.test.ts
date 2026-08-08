@@ -6,6 +6,9 @@ import {
   getPublicWebAppUrl,
   getTrpcUrl,
   isNativeMac,
+  supportsArtifactStudio,
+  supportsHostedShareCreation,
+  supportsLiveCollaboration,
 } from "./platform";
 import { getLoginUrl } from "@/const";
 
@@ -74,6 +77,65 @@ describe("native Mac URL resolution", () => {
       const socket = getCollaborationWebSocketUrl();
       expect(socket).toBe("ws://localhost/ws/collab");
       expect(socket).not.toContain("ideatiles.app");
+    }
+  );
+});
+
+describe("platform capability policy", () => {
+  it.each([
+    {
+      name: "web",
+      windowValue: {
+        location: { protocol: "https:", host: "ideatiles.app" },
+      },
+      artifactStudio: true,
+      hostedShare: true,
+      liveCollaboration: true,
+    },
+    {
+      name: "native Mac",
+      windowValue: {
+        location: { protocol: "ideatiles:", host: "app" },
+        ideaTilesMac: { capabilities: { nativeMac: true } },
+      },
+      artifactStudio: true,
+      hostedShare: true,
+      liveCollaboration: true,
+    },
+    {
+      name: "iOS",
+      windowValue: {
+        location: { protocol: "capacitor:", host: "localhost" },
+        Capacitor: {
+          isNativePlatform: () => true,
+          getPlatform: () => "ios",
+        },
+      },
+      artifactStudio: false,
+      hostedShare: false,
+      liveCollaboration: false,
+    },
+    {
+      name: "Android",
+      windowValue: {
+        location: { protocol: "capacitor:", host: "localhost" },
+        Capacitor: {
+          isNativePlatform: () => true,
+          getPlatform: () => "android",
+        },
+      },
+      artifactStudio: true,
+      hostedShare: false,
+      liveCollaboration: false,
+    },
+  ])(
+    "applies the $name capability contract",
+    ({ windowValue, artifactStudio, hostedShare, liveCollaboration }) => {
+      vi.stubGlobal("window", windowValue);
+
+      expect(supportsArtifactStudio()).toBe(artifactStudio);
+      expect(supportsHostedShareCreation()).toBe(hostedShare);
+      expect(supportsLiveCollaboration()).toBe(liveCollaboration);
     }
   );
 });

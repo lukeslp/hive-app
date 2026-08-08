@@ -57,7 +57,14 @@ import { RemoteCursors } from "@/components/RemoteCursors";
 import { MergeSuggestionIndicator } from "@/components/MergeSuggestionIndicator";
 
 import { generateTextForCurrentPlatform } from "@/lib/macGeneration";
-import { isCapacitor, getPlatform, isIos } from "@/lib/platform";
+import {
+  isCapacitor,
+  getPlatform,
+  isIos,
+  supportsArtifactStudio,
+  supportsHostedShareCreation,
+  supportsLiveCollaboration,
+} from "@/lib/platform";
 import {
   tryOnDeviceFirst,
   tryOnDeviceBranchesFirst,
@@ -152,11 +159,14 @@ export default function HexmindApp() {
   // Mac services when the shell injects them, the web services otherwise.
   // The Mac capability check is still consulted so a Mac build that reports
   // the feature off keeps it off.
-  const macArtifactStudioAvailable =
-    appStoreShowcase === "artifact" ||
-    (macArtifactHost
-      ? hasMacArtifactStudioCapability(macArtifactHost.capabilities)
-      : true);
+  const artifactStudioAvailable =
+    supportsArtifactStudio() &&
+    (appStoreShowcase === "artifact" ||
+      (macArtifactHost
+        ? hasMacArtifactStudioCapability(macArtifactHost.capabilities)
+        : true));
+  const hostedShareCreationAvailable = supportsHostedShareCreation();
+  const liveCollaborationAvailable = supportsLiveCollaboration();
   const spherePreviewEnabled =
     import.meta.env.VITE_ENABLE_SPHERE_MODE_PREVIEW === "true";
   const requestSpherePreview = () => {
@@ -1893,7 +1903,7 @@ Generate 6 diverse related ideas. Connect to key themes when relevant.`;
         }}
         onShowSessions={() => sessions.setShowSessionsModal(true)}
         onShowArtifactStudio={
-          macArtifactStudioAvailable
+          artifactStudioAvailable
             ? () => setShowArtifactStudio(true)
             : undefined
         }
@@ -1906,16 +1916,20 @@ Generate 6 diverse related ideas. Connect to key themes when relevant.`;
         // leaving this wired on iOS would put board content on the server and break
         // the "No cloud" promise. iOS users still get the native share sheet via
         // Export PNG/SVG/JSON. See docs/RELEASE_SPEC.md §1.
-        onShare={isIos() ? undefined : sessions.generateShareUrl}
+        onShare={
+          hostedShareCreationAvailable ? sessions.generateShareUrl : undefined
+        }
         onShowSettings={() => setShowSettingsModal(true)}
         onSetFilterType={setFilterType}
         // MVP: Live collab is web-only. Native WebSocket URL + UX are not
         // production-complete for Capacitor — see docs/RELEASE_SPEC.md §1.
         onShowCollab={
-          !isCapacitor() ? () => setShowCollabModal(true) : undefined
+          liveCollaborationAvailable ? () => setShowCollabModal(true) : undefined
         }
-        isCollabConnected={!isCapacitor() && collab.isConnected}
-        collabParticipantCount={!isCapacitor() ? collab.participants.length : 0}
+        isCollabConnected={liveCollaborationAvailable && collab.isConnected}
+        collabParticipantCount={
+          liveCollaborationAvailable ? collab.participants.length : 0
+        }
       />
 
       {/* Main Canvas */}
@@ -2323,7 +2337,7 @@ Generate 6 diverse related ideas. Connect to key themes when relevant.`;
         message={confirmModal.message}
       />
 
-      {macArtifactStudioAvailable && (
+      {artifactStudioAvailable && (
         <ArtifactStudio
           isOpen={showArtifactStudio}
           onClose={() => setShowArtifactStudio(false)}
@@ -2415,7 +2429,7 @@ Generate 6 diverse related ideas. Connect to key themes when relevant.`;
 
       {/* Share-link Modal — hidden on iOS (export-only sharing), matching
           the onShare gate above */}
-      {!isIos() && (
+      {hostedShareCreationAvailable && (
         <ShareModal
           isOpen={sessions.showShareModal}
           onClose={() => sessions.setShowShareModal(false)}
@@ -2561,7 +2575,7 @@ Generate 6 diverse related ideas. Connect to key themes when relevant.`;
       />
 
       {/* Collaboration Modal — hidden in Capacitor (offline) mode */}
-      {!isCapacitor() && (
+      {liveCollaborationAvailable && (
         <CollabModal
           isOpen={showCollabModal}
           onClose={() => setShowCollabModal(false)}

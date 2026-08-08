@@ -141,6 +141,18 @@ test("every Mac release lane verifies the bundled privacy manifest", () => {
   }
 });
 
+test("every Mac release lane verifies export compliance in the built app", () => {
+  const common = fs.readFileSync(
+    path.join(root, "scripts/lib/mac-release-common.sh"),
+    "utf8"
+  );
+  assert.ok(common.includes("ITSAppUsesNonExemptEncryption"));
+  assert.ok(
+    common.includes('[[ "$exempt_encryption" == "false" ]]'),
+    "release metadata verification must reject a missing or true declaration"
+  );
+});
+
 test("public privacy copy covers each native Mac data path and artifact sync control", () => {
   const privacy = fs
     .readFileSync(path.join(root, "client/public/privacy.html"), "utf8")

@@ -66,9 +66,11 @@ afterEach(cleanup);
 
 /**
  * The regression this guards is the whole point of the feature: before the web
- * services existed, every non-Mac platform got "Artifact generation is
- * available in the Idea Tiles Mac app" instead of an artifact. Unit-testing the
- * services alone would not have caught a Studio that never received them.
+ * services existed, web and Android got "Artifact generation is available in
+ * the Idea Tiles Mac app" instead of an artifact. iOS intentionally does not
+ * expose the Studio because its release contract prohibits hosted generation.
+ * Unit-testing the services alone would not catch a supported platform that
+ * never received them.
  */
 describe("Artifact Studio without a Mac shell", () => {
   it("still refuses when no services are supplied at all", async () => {

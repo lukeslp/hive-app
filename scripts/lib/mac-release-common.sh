@@ -5,7 +5,7 @@ set -euo pipefail
 IDEATILES_TEAM_ID="596T7J7FB6"
 IDEATILES_BUNDLE_ID="app.hexmind.ios"
 IDEATILES_VERSION="1.3.1"
-IDEATILES_BUILD="4"
+IDEATILES_BUILD="5"
 
 release_error() {
   echo "error: $*" >&2
@@ -39,15 +39,17 @@ verify_release_metadata() {
     release_error "bundled Mac web app contains inline source maps or local user paths"
   fi
 
-  local bundle version build local_networking
+  local bundle version build local_networking exempt_encryption
   bundle="$(/usr/libexec/PlistBuddy -c 'Print :CFBundleIdentifier' "$plist")"
   version="$(/usr/libexec/PlistBuddy -c 'Print :CFBundleShortVersionString' "$plist")"
   build="$(/usr/libexec/PlistBuddy -c 'Print :CFBundleVersion' "$plist")"
   local_networking="$(/usr/libexec/PlistBuddy -c 'Print :NSAppTransportSecurity:NSAllowsLocalNetworking' "$plist")"
+  exempt_encryption="$(/usr/libexec/PlistBuddy -c 'Print :ITSAppUsesNonExemptEncryption' "$plist")"
   [[ "$bundle" == "$IDEATILES_BUNDLE_ID" ]] || release_error "archive bundle is $bundle, expected $IDEATILES_BUNDLE_ID"
   [[ "$version" == "$IDEATILES_VERSION" ]] || release_error "archive version is $version, expected $IDEATILES_VERSION"
   [[ "$build" == "$IDEATILES_BUILD" ]] || release_error "archive build is $build, expected $IDEATILES_BUILD"
   [[ "$local_networking" == "true" ]] || release_error "NSAllowsLocalNetworking must be enabled for loopback providers"
+  [[ "$exempt_encryption" == "false" ]] || release_error "ITSAppUsesNonExemptEncryption must be false"
   if /usr/libexec/PlistBuddy -c 'Print :NSAppTransportSecurity:NSAllowsArbitraryLoads' "$plist" >/dev/null 2>&1; then
     release_error "archive must not allow arbitrary network loads"
   fi
