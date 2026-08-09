@@ -10,7 +10,7 @@
 
 Native Mac build 7, including the integrated Rind launch choice and toolbar
 workspace control, is valid in internal TestFlight. The separately
-signed/notarized build 5 remains published on the downloads page. App Store privacy answers,
+signed/notarized build 7 is published on the downloads page. App Store privacy answers,
 current production deployment, and real-device behavior remain external
 evidence gates before review submission.
 
@@ -45,7 +45,7 @@ evidence gates before review submission.
   metadata in produced artifacts.
 - Native Mac build 7 passed App Store validation and processing and is in the
   `Hexmind Internal` TestFlight group; the direct
-  universal build 5 passed Developer ID signing, notarization, stapling,
+  universal build 7 passed Developer ID signing, notarization, stapling,
   Gatekeeper, hosted-byte, and checksum verification.
 - Canonical server routes reject unknown API requests with JSON instead of
   falling through to the SPA.

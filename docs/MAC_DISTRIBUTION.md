@@ -157,7 +157,7 @@ The script never accepts Apple ID passwords. It refuses a release unless one of 
 
 The full command refuses to start without a complete credential source. It archives, exports with Developer ID, submits the ZIP, waits for acceptance, staples and validates the ticket, runs Gatekeeper assessment, recreates the ZIP, and writes a SHA-256 checksum. No credential values belong in this repository.
 
-The current public direct release is `IdeaTiles-1.3.1-5.zip` at `https://dr.eamer.dev/downloads/idea-tiles/IdeaTiles-1.3.1-5.zip`. Its SHA-256 is `3c7cc13336a1d32906ee1a2778e00d187792d7f8f893ae4a2a12f98d2117f525`; Apple accepted notarization submission `b1c1b192-91ba-429a-8213-576d250a4eaa` before the ticket was stapled and the final ZIP was regenerated.
+The current public direct release is `IdeaTiles-1.3.1-7.zip` at `https://dr.eamer.dev/downloads/idea-tiles/IdeaTiles-1.3.1-7.zip`. Its SHA-256 is `59b2d10fde47a49b9dfae1d0ca7e513226be9bb82590994a3dec81c3889499e2`; Apple accepted notarization submission `5c924d29-4d6f-4e6d-9c8a-089c06079b40` before the ticket was stapled and the final ZIP was regenerated.
 
 After automated verification, perform first-launch testing only in a disposable macOS user account or clean virtual machine. Copying the app to a temporary directory does not isolate Application Support, defaults, or Keychain data for its bundle identity.
 
