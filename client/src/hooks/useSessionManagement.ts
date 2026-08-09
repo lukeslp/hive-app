@@ -66,6 +66,7 @@ export interface UseSessionManagementProps {
   enableAutoSave: boolean;
   isAuthenticated: boolean;
   workspaceMode: WorkspaceMode;
+  defaultWorkspaceMode: WorkspaceMode;
   setWorkspaceMode: (mode: WorkspaceMode) => void;
   rindModeAvailable: boolean;
 }
@@ -98,6 +99,7 @@ export function useSessionManagement({
   enableAutoSave,
   isAuthenticated,
   workspaceMode,
+  defaultWorkspaceMode,
   setWorkspaceMode,
   rindModeAvailable,
 }: UseSessionManagementProps) {
@@ -788,8 +790,8 @@ export function useSessionManagement({
     const emptySphere = createEmptySphereProjection();
     sphereProjectionRef.current = emptySphere;
     setSphereProjection(emptySphere);
-    setWorkspaceMode("tiles");
-  }, [setWorkspaceMode]);
+    setWorkspaceMode(defaultWorkspaceMode);
+  }, [defaultWorkspaceMode, setWorkspaceMode]);
 
   const artifactBoardId = activeCloudSessionId
     ? `board:cloud:${activeCloudSessionId}`

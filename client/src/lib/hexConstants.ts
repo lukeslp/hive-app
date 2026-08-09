@@ -89,6 +89,11 @@ export const AUTOSAVE_ENABLED_KEY = "hexpand_autosave_enabled";
 // `components/OnboardingTour.tsx`'s `useOnboardingTour`).
 export const TOUR_COMPLETED_KEY = "hexpand_tour_completed";
 
+// Device-local default for newly created native Mac boards. Saved workspace
+// documents keep their own active mode and override this preference on load.
+export const WORKSPACE_MODE_PREFERENCE_KEY =
+  "hexpand_workspace_mode_preference";
+
 // User-facing accessibility preferences. Persisted across launches so
 // the UI matches the user's last choice without re-applying defaults.
 export const FONT_SIZE_KEY = "hexpand_font_size"; // number, default 1.0

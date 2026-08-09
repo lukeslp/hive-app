@@ -31,9 +31,9 @@ import {
   Settings,
   Filter,
   Users,
-  Map,
 } from "@/lib/icons";
 import { NODE_TYPES } from "@/lib/nodeTypes";
+import { WorkspaceModeControl } from "@/components/WorkspaceModeControl";
 import type { WorkspaceMode } from "@shared/workspaceDocument";
 
 interface ToolbarProps {
@@ -233,6 +233,20 @@ export const Toolbar = ({
           >
             <span className="w-px h-5 bg-border/70 mx-0.5" aria-hidden="true" />
 
+            {rindModeAvailable && (
+              <>
+                <WorkspaceModeControl
+                  value={workspaceMode}
+                  onChange={onWorkspaceModeChange}
+                  className="shrink-0"
+                />
+                <span
+                  className="w-px h-5 bg-border/70 mx-0.5"
+                  aria-hidden="true"
+                />
+              </>
+            )}
+
             {/* Generation counter — purely informational, when used. */}
             {nodeCount > 0 && generationsThisSession > 0 && (
               <span
@@ -355,34 +369,6 @@ export const Toolbar = ({
                       Artifact Studio
                     </button>
                   )}
-                  <button
-                    type="button"
-                    disabled={!rindModeAvailable}
-                    onClick={() => {
-                      onWorkspaceModeChange(
-                        workspaceMode === "sphere" ? "tiles" : "sphere"
-                      );
-                      setFilesMenuOpen(false);
-                    }}
-                    className="w-full flex items-center gap-3 px-4 py-2.5 text-sm hover:bg-accent text-foreground disabled:opacity-45 disabled:cursor-not-allowed"
-                    title={
-                      rindModeAvailable
-                        ? workspaceMode === "sphere"
-                          ? "Return to the Tiles workspace"
-                          : "Open the Rind spatial workspace"
-                        : "Rind is available in Idea Tiles for macOS"
-                    }
-                  >
-                    <Map className="w-4 h-4 text-muted-foreground" />
-                    <span className="flex-1 text-left">
-                      {workspaceMode === "sphere"
-                        ? "Tiles workspace"
-                        : "Rind workspace"}
-                    </span>
-                    <span className="text-[10px] uppercase tracking-wide text-muted-foreground">
-                      {workspaceMode === "sphere" ? "Active" : "Mac"}
-                    </span>
-                  </button>
                   <div className="h-px bg-border my-1" />
                   <button
                     onClick={() => {

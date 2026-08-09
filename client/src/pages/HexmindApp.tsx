@@ -51,6 +51,7 @@ import { TemplateContextModal } from "@/components/TemplateContextModal";
 import { ContextPromptModal } from "@/components/ContextPromptModal";
 import { ShareModal } from "@/components/ShareModal";
 import { SettingsModal } from "@/components/SettingsModal";
+import { WorkspaceLaunchDialog } from "@/components/WorkspaceLaunchDialog";
 import { ConfirmationModal } from "@/components/ConfirmationModal";
 import {
   ArtifactCloudSyncError,
@@ -117,6 +118,12 @@ import {
   getAppStoreShowcase,
 } from "@/lib/appStoreShowcase";
 import type { WorkspaceMode } from "@shared/workspaceDocument";
+import {
+  initialWorkspaceMode,
+  readWorkspaceModePreference,
+  shouldOfferWorkspaceChoice,
+  writeWorkspaceModePreference,
+} from "@/lib/workspaceModePreference";
 
 declare const __IDEATILES_MAC_BUILD__: boolean;
 
@@ -184,7 +191,13 @@ export default function HexmindApp() {
   const hostedShareCreationAvailable = supportsHostedShareCreation();
   const liveCollaborationAvailable = supportsLiveCollaboration();
   const rindModeAvailable = supportsRindMode();
-  const [workspaceMode, setWorkspaceMode] = useState<WorkspaceMode>("tiles");
+  const [defaultWorkspaceMode, setDefaultWorkspaceMode] =
+    useState<WorkspaceMode>(() => initialWorkspaceMode(rindModeAvailable));
+  const [workspaceMode, setWorkspaceMode] = useState<WorkspaceMode>(() =>
+    initialWorkspaceMode(rindModeAvailable)
+  );
+  const [showWorkspaceLaunchChoice, setShowWorkspaceLaunchChoice] =
+    useState(false);
   // ── Core state ──────────────────────────────────────────────────────────
   const [loadingNodes, setLoadingNodes] = useState<Set<string>>(new Set());
   const [generatingNeighbors, setGeneratingNeighbors] = useState<Set<string>>(
@@ -480,9 +493,28 @@ export default function HexmindApp() {
   // anyone who just closed it.
   const dismissedOnboardingRef = useRef(false);
 
+  // Offer the native Mac workspace choice once, after giving package/session
+  // restoration a brief chance to establish its saved active mode. A loaded
+  // board always wins over the device-local default.
+  useEffect(() => {
+    if (
+      !shouldOfferWorkspaceChoice(
+        rindModeAvailable,
+        Boolean(appStoreShowcase)
+      ) ||
+      Object.keys(nodes).length > 0
+    ) {
+      setShowWorkspaceLaunchChoice(false);
+      return;
+    }
+    const timer = setTimeout(() => setShowWorkspaceLaunchChoice(true), 150);
+    return () => clearTimeout(timer);
+  }, [appStoreShowcase, nodes, rindModeAvailable]);
+
   // Auto-show the onboarding prompt when the board is empty
   useEffect(() => {
     if (appStoreShowcase) return;
+    if (showWorkspaceLaunchChoice) return;
     if (dismissedOnboardingRef.current) return;
     if (Object.keys(nodes).length === 0 && !showOnboardingPrompt) {
       const reduced = window.matchMedia(
@@ -494,7 +526,7 @@ export default function HexmindApp() {
       );
       return () => clearTimeout(timer);
     }
-  }, [nodes, showOnboardingPrompt]);
+  }, [nodes, showOnboardingPrompt, showWorkspaceLaunchChoice]);
 
   // Theme & accessibility
   const { theme, toggleTheme } = useTheme();
@@ -577,6 +609,7 @@ export default function HexmindApp() {
     enableAutoSave,
     isAuthenticated,
     workspaceMode,
+    defaultWorkspaceMode,
     setWorkspaceMode,
     rindModeAvailable,
   });
@@ -592,6 +625,32 @@ export default function HexmindApp() {
     },
     [rindModeAvailable]
   );
+  const handleDefaultWorkspaceModeChange = useCallback(
+    (mode: WorkspaceMode) => {
+      if (mode === "sphere" && !rindModeAvailable) return;
+      writeWorkspaceModePreference(mode);
+      setDefaultWorkspaceMode(mode);
+      toast.success(
+        `New boards start in ${mode === "sphere" ? "Rind" : "Tiles"}`
+      );
+    },
+    [rindModeAvailable]
+  );
+  const handleWorkspaceLaunchChoice = useCallback((mode: WorkspaceMode) => {
+    writeWorkspaceModePreference(mode);
+    setDefaultWorkspaceMode(mode);
+    setWorkspaceMode(mode);
+    setHoveredNodeId(null);
+    setShowWorkspaceLaunchChoice(false);
+    toast.success(mode === "sphere" ? "Rind workspace" : "Tiles workspace");
+  }, []);
+  const handleWorkspaceLaunchDismiss = useCallback(() => {
+    if (readWorkspaceModePreference() === null) {
+      writeWorkspaceModePreference("tiles");
+      setDefaultWorkspaceMode("tiles");
+    }
+    setShowWorkspaceLaunchChoice(false);
+  }, []);
   const cloudArtifactMutation = trpc.artifacts.upsert.useMutation();
   const syncArtifactToCloud = useCallback(
     async (artifact: ArtifactManifest, imageFileIds: string[]) => {
@@ -786,6 +845,14 @@ export default function HexmindApp() {
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
+      const target = e.target as HTMLElement | null;
+      if (
+        target?.closest(
+          "button, input, textarea, select, [contenteditable='true'], [role='dialog']"
+        )
+      ) {
+        return;
+      }
       if (e.key.startsWith("Arrow")) {
         e.preventDefault();
         if (!selectedNodeId) {
@@ -2314,6 +2381,14 @@ Generate 6 diverse related ideas. Connect to key themes when relevant.`;
 
       {/* ── Modals ─────────────────────────────────────────────────────── */}
 
+      {rindModeAvailable && (
+        <WorkspaceLaunchDialog
+          isOpen={showWorkspaceLaunchChoice}
+          onChoose={handleWorkspaceLaunchChoice}
+          onDismiss={handleWorkspaceLaunchDismiss}
+        />
+      )}
+
       <EditModal
         isOpen={!!editingNodeId}
         onClose={() => setEditingNodeId(null)}
@@ -2552,6 +2627,8 @@ Generate 6 diverse related ideas. Connect to key themes when relevant.`;
         workspaceMode={workspaceMode}
         rindModeAvailable={rindModeAvailable}
         onWorkspaceModeChange={handleWorkspaceModeChange}
+        defaultWorkspaceMode={defaultWorkspaceMode}
+        onDefaultWorkspaceModeChange={handleDefaultWorkspaceModeChange}
         onDeleteBoard={requestDeleteBoard}
       />
 

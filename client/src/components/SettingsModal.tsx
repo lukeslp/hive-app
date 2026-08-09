@@ -27,8 +27,8 @@ import {
   Shield,
   Check,
   Trash2,
-  Map,
 } from "@/lib/icons";
+import { WorkspaceModeControl } from "@/components/WorkspaceModeControl";
 import type {
   Provider,
   ApiKeys,
@@ -80,6 +80,8 @@ export interface SettingsModalProps {
   workspaceMode: WorkspaceMode;
   rindModeAvailable: boolean;
   onWorkspaceModeChange: (mode: WorkspaceMode) => void;
+  defaultWorkspaceMode: WorkspaceMode;
+  onDefaultWorkspaceModeChange: (mode: WorkspaceMode) => void;
   onDeleteBoard: () => void;
 }
 
@@ -128,6 +130,8 @@ export const SettingsModal = ({
   workspaceMode,
   rindModeAvailable,
   onWorkspaceModeChange,
+  defaultWorkspaceMode,
+  onDefaultWorkspaceModeChange,
   onDeleteBoard,
 }: SettingsModalProps) => {
   const iosOnly = isIos();
@@ -279,40 +283,41 @@ export const SettingsModal = ({
             </div>
           </section>
 
-          <section className="space-y-3 border-t border-border/60 pt-5">
-            <div className="space-y-1">
-              <h3 className="text-sm font-semibold text-foreground">
-                Workspace mode
-              </h3>
-              <p className="text-xs text-muted-foreground">
-                Layout changes never alter the underlying ideas.
-              </p>
-            </div>
-            <div className="grid grid-cols-2 gap-2">
-              <Button
-                variant={workspaceMode === "tiles" ? "default" : "outline"}
-                className="h-11"
-                onClick={() => onWorkspaceModeChange("tiles")}
-                disabled={workspaceMode === "tiles"}
-              >
-                Tiles
-              </Button>
-              <Button
-                variant={workspaceMode === "sphere" ? "default" : "outline"}
-                className="h-11 gap-2"
-                disabled={!rindModeAvailable || workspaceMode === "sphere"}
-                onClick={() => onWorkspaceModeChange("sphere")}
-                title={
-                  rindModeAvailable
-                    ? "Open the Rind spatial workspace"
-                    : "Rind is available in Idea Tiles for macOS"
-                }
-              >
-                <Map className="w-4 h-4" />
-                Rind
-              </Button>
-            </div>
-          </section>
+          {rindModeAvailable && (
+            <section className="space-y-4 border-t border-border/60 pt-5">
+              <div className="space-y-1">
+                <h3 className="text-sm font-semibold text-foreground">
+                  Workspaces
+                </h3>
+                <p className="text-xs text-muted-foreground">
+                  Both views use the same ideas. Saved boards remember their
+                  active workspace.
+                </p>
+              </div>
+              <div className="space-y-2">
+                <Label className="text-xs font-medium text-muted-foreground">
+                  Current board
+                </Label>
+                <WorkspaceModeControl
+                  value={workspaceMode}
+                  onChange={onWorkspaceModeChange}
+                  ariaLabel="Current board workspace"
+                  className="w-fit"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label className="text-xs font-medium text-muted-foreground">
+                  New boards start in
+                </Label>
+                <WorkspaceModeControl
+                  value={defaultWorkspaceMode}
+                  onChange={onDefaultWorkspaceModeChange}
+                  ariaLabel="Default workspace for new boards"
+                  className="w-fit"
+                />
+              </div>
+            </section>
+          )}
 
           {/* Generation setup and status */}
           <section className="space-y-4 border-t border-border/60 pt-5">

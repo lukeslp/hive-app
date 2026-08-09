@@ -45,29 +45,33 @@ function renderToolbar(
   };
   render(React.createElement(Toolbar, props));
   fireEvent.click(screen.getByRole("button", { name: "Open board controls" }));
-  fireEvent.click(screen.getByRole("button", { name: "Files and sharing" }));
   return props;
 }
 
 describe("Toolbar workspace switch", () => {
   it("opens Rind on supported native Mac builds", () => {
     const props = renderToolbar();
-    fireEvent.click(screen.getByRole("button", { name: /Rind workspace/i }));
+    fireEvent.click(screen.getByRole("radio", { name: "Rind" }));
     expect(props.onWorkspaceModeChange).toHaveBeenCalledWith("sphere");
   });
 
   it("offers a return to Tiles while Rind is active", () => {
     const props = renderToolbar({ workspaceMode: "sphere" });
-    fireEvent.click(screen.getByRole("button", { name: /Tiles workspace/i }));
+    fireEvent.click(screen.getByRole("radio", { name: "Tiles" }));
     expect(props.onWorkspaceModeChange).toHaveBeenCalledWith("tiles");
   });
 
-  it("keeps Rind disabled outside native macOS", () => {
+  it("does not expose the workspace switch outside native macOS", () => {
     renderToolbar({ rindModeAvailable: false });
+    expect(screen.queryByRole("radiogroup", { name: "Workspace mode" })).toBe(
+      null
+    );
+  });
+
+  it("exposes the current workspace without opening Files and sharing", () => {
+    renderToolbar({ workspaceMode: "sphere" });
     expect(
-      screen
-        .getByRole("button", { name: /Rind workspace/i })
-        .hasAttribute("disabled")
-    ).toBe(true);
+      screen.getByRole("radio", { name: "Rind" }).getAttribute("aria-checked")
+    ).toBe("true");
   });
 });
