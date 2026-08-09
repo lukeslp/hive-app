@@ -6,11 +6,11 @@ Last updated: 2026-08-08
 
 1. Maintain **Idea Tiles** as a stable cross-platform brainstorming tool across web, iOS, Android, and native Mac.
 2. Preserve user trust with privacy-first generation behavior and explicit platform differences.
-3. Keep launch and maintenance work focused: proof-of-concept MVP defers **native** live collaboration; snapshot sharing + web collab remain the split (see [`docs/RELEASE_SPEC.md`](docs/RELEASE_SPEC.md)).
+3. Keep launch and maintenance work focused: proof-of-concept MVP defers live collaboration in the Capacitor mobile shells; web and native Mac retain snapshot sharing and collaboration (see [`docs/RELEASE_SPEC.md`](docs/RELEASE_SPEC.md)).
 
 ## Current State
 
-- Apple version 1.3.1 is public for iPhone, iPad, and native Mac. The next aligned Apple build is 5.
+- App Store version 1.3.1 is public for iPhone/iPad; native Mac remains on 1.3 in the App Store. The aligned 1.3.1 build 5 is valid in Mac TestFlight and is also published as a signed/notarized universal direct download. It has not been submitted for App Store review.
 - Core app is functional across web and Capacitor shells.
 - Web and native Mac can create snapshot links and start collaboration. iOS and Android remain local-first: they export files and open received links but do not create hosted links or start collaboration ([`docs/SHARING_MVP_POLICY.md`](docs/SHARING_MVP_POLICY.md)).
 - Display name **Idea Tiles** is wired through UI, legal pages, and native `appName` / `CFBundleDisplayName`; legacy storage keys remain intentionally unchanged.
@@ -71,7 +71,7 @@ Use council runs intentionally:
 
 ## Near-Term Execution Queue
 
-1. Correct Mac App Privacy answers in App Store Connect, then upload Apple build 5 using `docs/APP_STORE_PACK.md` + `docs/RELEASE_SPEC.md`.
+1. Correct Mac App Privacy answers in App Store Connect, complete the build-5 TestFlight hardware smoke, and only then decide whether to attach and submit it using `docs/APP_STORE_PACK.md` + `docs/RELEASE_SPEC.md`.
 2. Land UIScene migration with verification pass (`MIGRATION_PLAN.md`).
 3. Optional: persist `/api/share` payloads beyond in-memory (if 404s after deploy hurt users).
 4. Phase 2: native live collab only as a deliberate project (WS host, UX, ASC copy).

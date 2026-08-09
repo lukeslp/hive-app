@@ -44,7 +44,12 @@ notes belong in Git history, not in this pickup document.
 - [ ] Produce, sign, and publish Android only after the release owner approves
   the artifact and Play metadata.
 
-## Platform contract to preserve
+## Current 1.3.1 source contract to preserve
+
+Public channels are intentionally staggered: iPhone/iPad App Store is 1.3.1,
+Mac App Store is 1.3, Mac TestFlight/direct is 1.3.1 (5), and Android direct is
+1.3.0. The matrix below describes current source and build 5, not every older
+download already in circulation.
 
 | Capability | Web | iOS | Android | Native Mac |
 |---|---:|---:|---:|---:|
