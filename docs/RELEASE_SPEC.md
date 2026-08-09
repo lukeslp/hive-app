@@ -1,6 +1,6 @@
 # Release Specification: Idea Tiles
 
-**Version**: 1.3.1, current Apple build 5
+**Version**: 1.3.1, current Apple build 6
 
 **Last updated**: 2026-08-08
 

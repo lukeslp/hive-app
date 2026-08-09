@@ -2,7 +2,7 @@
 
 **Review date:** 2026-08-08
 
-**Source version:** 1.3.1, Apple build 5
+**Source version:** 1.3.1, Apple build 6
 
 **Public App Store version:** iPhone/iPad 1.3.1; native Mac 1.3
 
