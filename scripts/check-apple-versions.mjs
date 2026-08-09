@@ -202,6 +202,17 @@ expectOnly(
   uniqueMatches(macYAML, /^\s*CURRENT_PROJECT_VERSION:\s*([^\s]+)\s*$/gm),
   EXPECTED_APPLE_BUILD
 );
+const macReleaseCommon = read("scripts/lib/mac-release-common.sh");
+expectOnly(
+  "Mac release helper marketing version",
+  uniqueMatches(macReleaseCommon, /^IDEATILES_VERSION="([^"]+)"$/gm),
+  EXPECTED_APPLE_VERSION
+);
+expectOnly(
+  "Mac release helper build number",
+  uniqueMatches(macReleaseCommon, /^IDEATILES_BUILD="([^"]+)"$/gm),
+  EXPECTED_APPLE_BUILD
+);
 const macSourceBundleIDs = uniqueMatches(
   macYAML,
   /^\s*PRODUCT_BUNDLE_IDENTIFIER:\s*([^\s]+)\s*$/gm
