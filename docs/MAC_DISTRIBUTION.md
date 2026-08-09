@@ -44,7 +44,7 @@ The version check rejects drift across package, iOS, Android, generated Mac meta
 
 Both platforms declare `ITSAppUsesNonExemptEncryption = false` in their `Info.plist`. Idea Tiles uses only HTTPS and Keychain, which is exempt encryption, so App Store Connect stops asking the question at submission time. `pnpm versions:check` fails if either platform drops the key or changes the value — it was previously set on iOS only, which made every Mac submission stop for a manual answer.
 
-Uploaded build 4 predates this key. Build 5 carries the declaration and processed as valid in App Store Connect on 2026-08-08. It remains staged for TestFlight and has not been submitted for App Store review.
+Uploaded build 4 predates this key. Builds 5 and 6 carry the declaration and processed as valid in App Store Connect on 2026-08-08. Build 6 adds Rind workspace mode and remains available in TestFlight; it has not been submitted for App Store review.
 
 ### Submitting for review
 

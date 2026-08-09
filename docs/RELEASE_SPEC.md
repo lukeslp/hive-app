@@ -31,7 +31,7 @@
 
 ### After upload
 
-- [x] Processing completes for native Mac build 5
+- [x] Processing completes for native Mac build 6
 - [ ] Internal TestFlight install smoke test on real hardware
 - [ ] External testing text matches “What to Test”
 
@@ -141,4 +141,4 @@ Document chosen values in internal release notes (not committed secrets).
 | Version | Date       | Notes                                     |
 | ------- | ---------- | ----------------------------------------- |
 | 1.0     | 2026-05-12 | Initial MVP release spec + sharing policy |
-| 1.3.1   | 2026-08-08 | Cross-platform capability and build-5 release contract |
+| 1.3.1   | 2026-08-08 | Cross-platform capability and build-6 Rind release contract |

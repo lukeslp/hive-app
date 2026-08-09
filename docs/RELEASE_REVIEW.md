@@ -8,8 +8,8 @@
 
 ## Verdict
 
-Native Mac build 5 is valid in TestFlight, and the separately signed/notarized
-universal build is published on the downloads page. App Store privacy answers,
+Native Mac build 6, including Rind workspace mode, is valid in TestFlight. The
+separately signed/notarized build 5 remains published on the downloads page. App Store privacy answers,
 current production deployment, and real-device behavior remain external
 evidence gates before review submission.
 
@@ -42,8 +42,8 @@ evidence gates before review submission.
   behavior instead of synthetic placeholder content.
 - Release scripts align Apple versions and validate privacy/export-compliance
   metadata in produced artifacts.
-- Native Mac build 5 passed App Store validation and processing; the direct
-  universal build passed Developer ID signing, notarization, stapling,
+- Native Mac build 6 passed App Store validation and processing; the direct
+  universal build 5 passed Developer ID signing, notarization, stapling,
   Gatekeeper, hosted-byte, and checksum verification.
 - Canonical server routes reject unknown API requests with JSON instead of
   falling through to the SPA.
