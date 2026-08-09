@@ -1,6 +1,6 @@
 # Release Specification: Idea Tiles
 
-**Version**: 1.3.1, next Apple build 5
+**Version**: 1.3.1, current Apple build 5
 
 **Last updated**: 2026-08-08
 
@@ -31,7 +31,8 @@
 
 ### After upload
 
-- [ ] Processing completes; internal TestFlight install smoke test
+- [x] Processing completes for native Mac build 5
+- [ ] Internal TestFlight install smoke test on real hardware
 - [ ] External testing text matches “What to Test”
 
 ---

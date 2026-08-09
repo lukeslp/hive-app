@@ -44,7 +44,7 @@ The version check rejects drift across package, iOS, Android, generated Mac meta
 
 Both platforms declare `ITSAppUsesNonExemptEncryption = false` in their `Info.plist`. Idea Tiles uses only HTTPS and Keychain, which is exempt encryption, so App Store Connect stops asking the question at submission time. `pnpm versions:check` fails if either platform drops the key or changes the value — it was previously set on iOS only, which made every Mac submission stop for a manual answer.
 
-Uploaded build 4 predates this key. Build 5 onward carries the declaration; verify the processed build before submission rather than relying on the old upload's manual answer.
+Uploaded build 4 predates this key. Build 5 carries the declaration and processed as valid in App Store Connect on 2026-08-08. It remains staged for TestFlight and has not been submitted for App Store review.
 
 ### Submitting for review
 
@@ -156,6 +156,8 @@ pnpm mac:release:direct
 The script never accepts Apple ID passwords. It refuses a release unless one of these explicit credential paths is complete and the API key file, when selected, is readable.
 
 The full command refuses to start without a complete credential source. It archives, exports with Developer ID, submits the ZIP, waits for acceptance, staples and validates the ticket, runs Gatekeeper assessment, recreates the ZIP, and writes a SHA-256 checksum. No credential values belong in this repository.
+
+The current public direct release is `IdeaTiles-1.3.1-5.zip` at `https://dr.eamer.dev/downloads/idea-tiles/IdeaTiles-1.3.1-5.zip`. Its SHA-256 is `3c7cc13336a1d32906ee1a2778e00d187792d7f8f893ae4a2a12f98d2117f525`; Apple accepted notarization submission `b1c1b192-91ba-429a-8213-576d250a4eaa` before the ticket was stapled and the final ZIP was regenerated.
 
 After automated verification, perform first-launch testing only in a disposable macOS user account or clean virtual machine. Copying the app to a temporary directory does not isolate Application Support, defaults, or Keychain data for its bundle identity.
 

@@ -15,8 +15,8 @@
 
 ## Current Product State (August 2026)
 
-- **Apple distribution:** version 1.3.1 is public for iPhone, iPad, and native Mac. Source is prepared for Apple build 5, but this repository pass does not upload or submit it. Listing metadata is managed as code in `ios/fastlane/` and `macos/fastlane/`.
-- **Android:** release in testing; no signed Android artifact is published.
+- **Apple distribution:** version 1.3.1 is public for iPhone and iPad; the Mac App Store remains on 1.3. Native Mac build 5 is valid in TestFlight, and the signed/notarized universal 1.3.1 (5) ZIP is available from the [Idea Tiles downloads page](https://dr.eamer.dev/downloads/apps/idea-tiles/). It has not been submitted for App Store review. Listing metadata is managed as code in `ios/fastlane/` and `macos/fastlane/`.
+- **Android:** signed version 1.3.0 is available as a direct download; the current 1.3.1 source still needs a separate signed device/store release pass.
 - Brand display name is **Idea Tiles** while legacy storage keys intentionally remain `hexpand_*` for data continuity.
 - **Sharing MVP:** iOS and Android use **local exports only** — PNG / JPG / SVG / JSON through native sharing. **Share-link creation and live collaboration are web/native-Mac capabilities**; both mobile shells still open received `?s=` links. See [`docs/SHARING_MVP_POLICY.md`](docs/SHARING_MVP_POLICY.md).
 - Share modal includes a dedicated **Bring to iOS** action that prefers the canonical universal-link origin (`APP_PUBLIC_WEB_ORIGIN`) so boards can be handed off to the iOS app flow more reliably.

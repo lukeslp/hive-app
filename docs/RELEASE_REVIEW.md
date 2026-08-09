@@ -4,25 +4,24 @@
 
 **Source version:** 1.3.1, Apple build 5
 
-**Public Apple version:** 1.3.1
+**Public App Store version:** iPhone/iPad 1.3.1; native Mac 1.3
 
 ## Verdict
 
-Repository checks can make build 5 release-ready, but repository work alone
-cannot make the next submission complete. App Store privacy answers, current
-production deployment, signed upload state, and real-device behavior are
-external evidence gates.
+Native Mac build 5 is valid in TestFlight, and the separately signed/notarized
+universal build is published on the downloads page. App Store privacy answers,
+current production deployment, and real-device behavior remain external
+evidence gates before review submission.
 
 ## Open release risks
 
 | Priority | Risk | Required action |
 |---|---|---|
 | High | The public listing says Data Not Collected while native Mac supports optional account and cloud artifact/session data. | Correct Mac App Privacy answers before the next submission. |
-| High | Uploaded build 4 predates the bundled export-compliance declaration. | Upload build 5 or later and verify the archive's `ITSAppUsesNonExemptEncryption = false`. |
 | Medium | Source may be ahead of `ideatiles.app`. | Deploy deliberately, then run canonical endpoint and product smoke tests. |
 | Medium | UIScene migration remains partial. | Finish the migration and verify cold-start Universal Links on hardware. |
 | Medium | Snapshot links are stored in process memory. | Keep the limitation explicit or add durable TTL storage before promising persistence. |
-| Medium | Android has no recorded signed public release. | Complete signing, device tests, metadata review, and publish as a separate release action. |
+| Medium | The public direct Android build is 1.3.0 while source is 1.3.1; no store release is recorded. | Complete signing, device tests, metadata review, and publish the current Android source as a separate release action. |
 
 ## Enforced product boundaries
 
@@ -43,6 +42,9 @@ external evidence gates.
   behavior instead of synthetic placeholder content.
 - Release scripts align Apple versions and validate privacy/export-compliance
   metadata in produced artifacts.
+- Native Mac build 5 passed App Store validation and processing; the direct
+  universal build passed Developer ID signing, notarization, stapling,
+  Gatekeeper, hosted-byte, and checksum verification.
 - Canonical server routes reject unknown API requests with JSON instead of
   falling through to the SPA.
 
