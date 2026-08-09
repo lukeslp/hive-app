@@ -1,15 +1,16 @@
 # Release review — Idea Tiles
 
-**Review date:** 2026-08-08
+**Review date:** 2026-08-09
 
-**Source version:** 1.3.1, Apple build 6
+**Source version:** 1.3.1, Apple build 7
 
 **Public App Store version:** iPhone/iPad 1.3.1; native Mac 1.3
 
 ## Verdict
 
-Native Mac build 6, including Rind workspace mode, is valid in TestFlight. The
-separately signed/notarized build 5 remains published on the downloads page. App Store privacy answers,
+Native Mac build 7, including the integrated Rind launch choice and toolbar
+workspace control, is valid in internal TestFlight. The separately
+signed/notarized build 5 remains published on the downloads page. App Store privacy answers,
 current production deployment, and real-device behavior remain external
 evidence gates before review submission.
 
@@ -42,7 +43,8 @@ evidence gates before review submission.
   behavior instead of synthetic placeholder content.
 - Release scripts align Apple versions and validate privacy/export-compliance
   metadata in produced artifacts.
-- Native Mac build 6 passed App Store validation and processing; the direct
+- Native Mac build 7 passed App Store validation and processing and is in the
+  `Hexmind Internal` TestFlight group; the direct
   universal build 5 passed Developer ID signing, notarization, stapling,
   Gatekeeper, hosted-byte, and checksum verification.
 - Canonical server routes reject unknown API requests with JSON instead of

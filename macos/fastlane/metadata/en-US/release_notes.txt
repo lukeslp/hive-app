@@ -2,6 +2,7 @@ Idea Tiles 1.3.1 introduces the native Mac workspace and Artifact Studio.
 
 NEW
 • Explore the same Idea Tiles board in Rind, a native Mac spatial workspace that maps ideas onto an interactive sphere.
+• Choose Tiles or Rind when you first launch, switch directly from the toolbar, and set the default workspace for new boards.
 • Turn a board, branch, or selected tiles into reports, briefs, plans, diagrams, code scaffolds, SVG assets, static prototypes, or Image Playground artwork.
 • Review, save, export, and trace artifacts back to their source tiles.
 • Choose Apple Foundation Models, loopback Ollama, supported direct providers, or an authorized Dreamer profile.

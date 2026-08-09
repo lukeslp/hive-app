@@ -6,7 +6,7 @@ Run on **real hardware** after production DNS/Caddy/deploy pass [`scripts/check-
 
 - [ ] `pnpm check` && `pnpm test` && `pnpm cap:sync:ios`
 - [ ] Xcode: destination **Any iOS Device (arm64)** — not simulator for Archive
-- [ ] Confirm `pnpm versions:check` reports Apple 1.3.1 build 6
+- [ ] Confirm `pnpm versions:check` reports Apple 1.3.1 build 7
 - [ ] Confirm **Associated Domains** in signed settings include `applinks:ideatiles.app` (see [`ios/App/App/App.entitlements`](../ios/App/App/App.entitlements))
 - [ ] **Product → Archive** → Validate → Distribute to App Store Connect
 

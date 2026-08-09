@@ -1,6 +1,6 @@
 # Mac Distribution
 
-Idea Tiles ships one universal native Mac target through two distribution lanes: Mac App Store and Developer ID. Release builds use Xcode's standard `arm64` and `x86_64` architectures. Both lanes use bundle identifier `app.hexmind.ios`, Apple marketing version `1.3.1`, build `6`, App Sandbox, and hardened runtime. Package and Android metadata use the same `1.3.1` version.
+Idea Tiles ships one universal native Mac target through two distribution lanes: Mac App Store and Developer ID. Release builds use Xcode's standard `arm64` and `x86_64` architectures. Both lanes use bundle identifier `app.hexmind.ios`, Apple marketing version `1.3.1`, build `7`, App Sandbox, and hardened runtime. Package and Android metadata use the same `1.3.1` version.
 
 ## Xcode Layout
 
@@ -44,7 +44,7 @@ The version check rejects drift across package, iOS, Android, generated Mac meta
 
 Both platforms declare `ITSAppUsesNonExemptEncryption = false` in their `Info.plist`. Idea Tiles uses only HTTPS and Keychain, which is exempt encryption, so App Store Connect stops asking the question at submission time. `pnpm versions:check` fails if either platform drops the key or changes the value — it was previously set on iOS only, which made every Mac submission stop for a manual answer.
 
-Uploaded build 4 predates this key. Builds 5 and 6 carry the declaration and processed as valid in App Store Connect on 2026-08-08. Build 6 adds Rind workspace mode and remains available in TestFlight; it has not been submitted for App Store review.
+Uploaded build 4 predates this key. Builds 5 through 7 carry the declaration and have processed as valid in App Store Connect. Build 7 integrates Rind as a first-launch workspace choice, a direct toolbar control, and a remembered default for new boards. It is available to `Hexmind Internal` in TestFlight and has not been submitted for App Store review.
 
 ### Submitting for review
 
