@@ -139,14 +139,23 @@ pnpm mac:release:direct:archive-only
 
 Archive-only output is not notarized and must not be distributed.
 
-For a real release, first store notarization credentials in Keychain using `xcrun notarytool store-credentials`, then explicitly name that profile:
+For a real release, explicitly select one notarization credential source. A Keychain profile works well for an interactive release Mac:
 
 ```bash
 export IDEATILES_NOTARY_KEYCHAIN_PROFILE="IdeaTiles-Notary"
 pnpm mac:release:direct
 ```
 
-The full command refuses to start without that environment variable. It archives, exports with Developer ID, submits the ZIP, waits for acceptance, staples and validates the ticket, runs Gatekeeper assessment, recreates the ZIP, and writes a SHA-256 checksum. No credential values belong in this repository.
+The release script can also use the central App Store Connect environment used by the upload lane. It expects `APP_STORE_CONNECT_API_KEY_KEY_ID` and `APP_STORE_CONNECT_API_KEY_ISSUER_ID`, plus either `IDEATILES_NOTARY_KEY_FILE` or the conventional private-key location at `~/.appstoreconnect/private_keys/AuthKey_<KEY_ID>.p8`:
+
+```bash
+source ~/.appstoreconnect/env.sh
+pnpm mac:release:direct
+```
+
+The script never accepts Apple ID passwords. It refuses a release unless one of these explicit credential paths is complete and the API key file, when selected, is readable.
+
+The full command refuses to start without a complete credential source. It archives, exports with Developer ID, submits the ZIP, waits for acceptance, staples and validates the ticket, runs Gatekeeper assessment, recreates the ZIP, and writes a SHA-256 checksum. No credential values belong in this repository.
 
 After automated verification, perform first-launch testing only in a disposable macOS user account or clean virtual machine. Copying the app to a temporary directory does not isolate Application Support, defaults, or Keychain data for its bundle identity.
 

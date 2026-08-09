@@ -49,10 +49,29 @@ if ! grep -Fq "com.apple.security.network.client" macos/IdeaTiles/IdeaTiles.enti
 fi
 
 echo "Developer ID identity: $identity"
+
+notary_args=()
 if [[ -n "${IDEATILES_NOTARY_KEYCHAIN_PROFILE:-}" ]]; then
-  echo "Notary Keychain profile: configured explicitly"
+  notary_args=(--keychain-profile "$IDEATILES_NOTARY_KEYCHAIN_PROFILE")
+  echo "Notary authentication: explicit Keychain profile"
+elif [[ -n "${APP_STORE_CONNECT_API_KEY_KEY_ID:-}" \
+  || -n "${APP_STORE_CONNECT_API_KEY_ISSUER_ID:-}" \
+  || -n "${IDEATILES_NOTARY_KEY_FILE:-}" ]]; then
+  [[ -n "${APP_STORE_CONNECT_API_KEY_KEY_ID:-}" ]] \
+    || release_error "APP_STORE_CONNECT_API_KEY_KEY_ID is required for API-key notarization"
+  [[ -n "${APP_STORE_CONNECT_API_KEY_ISSUER_ID:-}" ]] \
+    || release_error "APP_STORE_CONNECT_API_KEY_ISSUER_ID is required for API-key notarization"
+  notary_key_file="${IDEATILES_NOTARY_KEY_FILE:-$HOME/.appstoreconnect/private_keys/AuthKey_${APP_STORE_CONNECT_API_KEY_KEY_ID}.p8}"
+  [[ -r "$notary_key_file" ]] \
+    || release_error "the configured notarization API key file is not readable"
+  notary_args=(
+    --key "$notary_key_file"
+    --key-id "$APP_STORE_CONNECT_API_KEY_KEY_ID"
+    --issuer "$APP_STORE_CONNECT_API_KEY_ISSUER_ID"
+  )
+  echo "Notary authentication: App Store Connect API key"
 else
-  echo "Notary Keychain profile: not configured; set IDEATILES_NOTARY_KEYCHAIN_PROFILE for a release"
+  echo "Notary authentication: not configured"
 fi
 
 xcodebuild -list -workspace IdeaTiles.xcworkspace | grep -Eq '^[[:space:]]+Idea Tiles \(macOS\)$' \
@@ -65,8 +84,8 @@ if [[ "$mode" == "preflight" ]]; then
 fi
 
 if [[ "$mode" == "release" ]]; then
-  [[ -n "${IDEATILES_NOTARY_KEYCHAIN_PROFILE:-}" ]] \
-    || release_error "refusing to build a direct release without explicit IDEATILES_NOTARY_KEYCHAIN_PROFILE"
+  [[ ${#notary_args[@]} -gt 0 ]] \
+    || release_error "refusing to build a direct release without explicit notarization credentials"
 fi
 
 stamp="$(release_stamp)"
@@ -132,9 +151,7 @@ if [[ "$mode" == "archive-only" ]]; then
   exit 0
 fi
 
-xcrun notarytool submit "$zip_path" \
-  --keychain-profile "$IDEATILES_NOTARY_KEYCHAIN_PROFILE" \
-  --wait
+xcrun notarytool submit "$zip_path" "${notary_args[@]}" --wait
 xcrun stapler staple "$app_path"
 xcrun stapler validate "$app_path"
 

@@ -29,17 +29,17 @@ test("repository integration validation passes", () => {
   );
 });
 
-test("notarization is gated by an explicit Keychain profile", () => {
+test("notarization is gated by explicit supported credentials", () => {
   const source = fs.readFileSync(
     path.join(root, "scripts/release-mac-direct.sh"),
     "utf8"
   );
   const guard = source.indexOf(
-    "refusing to build a direct release without explicit IDEATILES_NOTARY_KEYCHAIN_PROFILE"
+    "refusing to build a direct release without explicit notarization credentials"
   );
   const submit = source.indexOf("notarytool submit");
   const archiveOnly = source.indexOf('if [[ "$mode" == "archive-only" ]]');
-  assert.ok(guard >= 0, "missing explicit notary profile guard");
+  assert.ok(guard >= 0, "missing explicit notarization credential guard");
   assert.ok(
     archiveOnly > guard,
     "missing archive-only signing verification path"
@@ -50,8 +50,14 @@ test("notarization is gated by an explicit Keychain profile", () => {
   );
   assert.ok(
     submit > guard,
-    "notary submission must occur after the profile guard"
+    "notary submission must occur after the credential guard"
   );
+  assert.ok(
+    source.includes('--keychain-profile "$IDEATILES_NOTARY_KEYCHAIN_PROFILE"')
+  );
+  assert.ok(source.includes('--key-id "$APP_STORE_CONNECT_API_KEY_KEY_ID"'));
+  assert.ok(source.includes('--issuer "$APP_STORE_CONNECT_API_KEY_ISSUER_ID"'));
+  assert.ok(source.includes('"${notary_args[@]}"'));
   assert.equal(source.includes("--apple-id"), false);
   assert.equal(source.includes("--password"), false);
 });
