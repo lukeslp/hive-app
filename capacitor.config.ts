@@ -14,6 +14,15 @@ const config: CapacitorConfig = {
   // JS↔native message bodies) that we used during the FoundationModels
   // dispatch bisect. Switch back to 'debug' for diagnostic sessions.
   loggingBehavior: "production",
+  // SwiftPM's named `.v26` platform constant requires PackageDescription 6.2.
+  // Capacitor derives that constant from the Xcode deployment target during sync.
+  experimental: {
+    ios: {
+      spm: {
+        swiftToolsVersion: "6.2",
+      },
+    },
+  },
   plugins: {
     // Patch fetch + XMLHttpRequest in the WebView to route through
     // native HTTP. Bypasses WKWebView's CORS entirely — the live

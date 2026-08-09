@@ -5,6 +5,7 @@ const EXPECTED_SEMANTIC_VERSION = "1.3.1";
 const EXPECTED_APPLE_VERSION = "1.3.1";
 const EXPECTED_APPLE_BUILD = "5";
 const EXPECTED_ANDROID_CODE = "11000";
+const EXPECTED_IOS_DEPLOYMENT_TARGET = "26.0";
 const APP_BUNDLE_ID = "app.hexmind.ios";
 const MAC_TEST_BUNDLE_ID = "app.hexmind.ios.macos.tests";
 
@@ -79,8 +80,28 @@ expectOnly(
   uniqueMatches(iosProject, /PRODUCT_BUNDLE_IDENTIFIER = ([^;]+);/g),
   APP_BUNDLE_ID
 );
+expectOnly(
+  "iOS deployment target",
+  uniqueMatches(iosProject, /IPHONEOS_DEPLOYMENT_TARGET = ([^;]+);/g),
+  EXPECTED_IOS_DEPLOYMENT_TARGET
+);
+expectOnly(
+  "iOS Designed for iPhone/iPad on Mac setting",
+  uniqueMatches(
+    iosProject,
+    /SUPPORTS_MAC_DESIGNED_FOR_IPHONE_IPAD = ([^;]+);/g
+  ),
+  "NO"
+);
 if (!iosProject.includes("path = ../../macos/IdeaTiles.xcodeproj;")) {
   fail("the iOS project does not link the native Mac subproject");
+}
+const capAppPackage = read("ios/App/CapApp-SPM/Package.swift");
+if (!capAppPackage.startsWith("// swift-tools-version: 6.2\n")) {
+  fail("CapApp-SPM must use Swift tools 6.2 for the iOS 26 platform constant");
+}
+if (!capAppPackage.includes("platforms: [.iOS(.v26)]")) {
+  fail("CapApp-SPM must declare iOS 26");
 }
 
 const fastlane = read("ios/fastlane/Fastfile");
@@ -282,5 +303,5 @@ console.log(
   `Versions aligned: Apple ${EXPECTED_APPLE_VERSION}; package/Android ${EXPECTED_SEMANTIC_VERSION}; Apple build ${EXPECTED_APPLE_BUILD}; Android code ${EXPECTED_ANDROID_CODE}`
 );
 console.log(
-  `Projects aligned: ${APP_BUNDLE_ID}; IdeaTiles.xcworkspace; Capacitor compatibility symlink valid`
+  `Projects aligned: ${APP_BUNDLE_ID}; iOS ${EXPECTED_IOS_DEPLOYMENT_TARGET}+; native Mac distribution only; IdeaTiles.xcworkspace; Capacitor compatibility symlink valid`
 );
