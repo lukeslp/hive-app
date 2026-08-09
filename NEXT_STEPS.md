@@ -10,6 +10,8 @@ notes belong in Git history, not in this pickup document.
   in TestFlight; it has not been submitted for App Store review.
 - Public direct Mac release: **1.3.1 (5)**, signed, notarized, and linked from
   `https://dr.eamer.dev/downloads/apps/idea-tiles/`.
+- Native Mac source now includes Rind spatial mode after build 5; it is not yet
+  present in TestFlight or the public direct ZIP.
 - Android package: `app.ideatiles.android`; signed version **1.3.0** is available
   as a direct download.
 - Canonical web origin: `https://ideatiles.app`.
@@ -31,35 +33,38 @@ notes belong in Git history, not in this pickup document.
 ## External actions requiring an explicit release pass
 
 - [ ] In App Store Connect, correct Mac App Privacy answers to include linked
-  Name, Email Address, User ID, and Other User Content for App Functionality.
+      Name, Email Address, User ID, and Other User Content for App Functionality.
 - [x] Upload native Mac build 5 and verify it processes as valid with the
-  bundled export-compliance declaration. Review submission remains separate.
+      bundled export-compliance declaration. Review submission remains separate.
 - [x] Publish the signed/notarized universal Mac build 5 ZIP, checksum, catalog
-  record, and downloads-page link.
+      record, and downloads-page link.
 - [ ] Run [`docs/DEVICE_RELEASE_GATES.md`](docs/DEVICE_RELEASE_GATES.md) on real
-  iPhone/iPad hardware and cold-launch the App Store/TestFlight build.
+      iPhone/iPad hardware and cold-launch the App Store/TestFlight build.
 - [ ] Deliberately deploy the current web bundle to the `ideatiles` service, then
-  run `pnpm verify:canonical` and smoke the canvas, legal pages, AASA, sharing,
-  and collaboration.
+      run `pnpm verify:canonical` and smoke the canvas, legal pages, AASA, sharing,
+      and collaboration.
 - [ ] Produce, sign, and publish Android only after the release owner approves
-  the artifact and Play metadata.
+      the artifact and Play metadata.
+- [ ] Assign a new Apple build number, then archive and publish the Rind-enabled
+      native Mac build only after the release owner starts a new release pass.
 
 ## Current 1.3.1 source contract to preserve
 
 Public channels are intentionally staggered: iPhone/iPad App Store is 1.3.1,
 Mac App Store is 1.3, Mac TestFlight/direct is 1.3.1 (5), and Android direct is
-1.3.0. The matrix below describes current source and build 5, not every older
-download already in circulation.
+1.3.0. The matrix below describes current source; Rind is newer than build 5
+and is not in a public artifact yet.
 
-| Capability | Web | iOS | Android | Native Mac |
-|---|---:|---:|---:|---:|
-| Core canvas and file exports | Yes | Yes | Yes | Yes |
-| Open received snapshot link | Yes | Yes | Yes | Yes |
-| Create hosted snapshot link | Yes | No | No | Yes |
-| Start live collaboration | Yes | No | No | Yes |
-| Artifact Studio text recipes | Yes | No | Yes | Yes |
-| Artifact Studio Image Playground recipe | No | No | No | Yes |
-| Tile generation fallback | Hosted | On-device only | Local, then hosted | Local/direct provider |
+| Capability                              |    Web |            iOS |            Android |            Native Mac |
+| --------------------------------------- | -----: | -------------: | -----------------: | --------------------: |
+| Core canvas and file exports            |    Yes |            Yes |                Yes |                   Yes |
+| Open received snapshot link             |    Yes |            Yes |                Yes |                   Yes |
+| Create hosted snapshot link             |    Yes |             No |                 No |                   Yes |
+| Start live collaboration                |    Yes |             No |                 No |                   Yes |
+| Artifact Studio text recipes            |    Yes |             No |                Yes |                   Yes |
+| Artifact Studio Image Playground recipe |     No |             No |                 No |                   Yes |
+| Rind spatial workspace                  |     No |             No |                 No |                   Yes |
+| Tile generation fallback                | Hosted | On-device only | Local, then hosted | Local/direct provider |
 
 Do not re-enable iOS hosted generation, native share-link creation, or native
 collaboration by changing a JSX conditional alone. Update the centralized

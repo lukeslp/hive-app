@@ -11,13 +11,14 @@
   - Web app (`pnpm dev` / `pnpm start`)
   - iOS app (Capacitor + Apple Foundation Models path)
   - Android app (AICore Gemini Nano, then checksum-verified Gemma, then cloud)
-  - macOS app (native SwiftUI/WebKit shell with Artifact Studio)
+  - macOS app (native SwiftUI/WebKit shell with Artifact Studio and Rind spatial mode)
 
 ## Current Product State (August 2026)
 
 - **Apple distribution:** version 1.3.1 is public for iPhone and iPad; the Mac App Store remains on 1.3. Native Mac build 5 is valid in TestFlight, and the signed/notarized universal 1.3.1 (5) ZIP is available from the [Idea Tiles downloads page](https://dr.eamer.dev/downloads/apps/idea-tiles/). It has not been submitted for App Store review. Listing metadata is managed as code in `ios/fastlane/` and `macos/fastlane/`.
 - **Android:** signed version 1.3.0 is available as a direct download; the current 1.3.1 source still needs a separate signed device/store release pass.
 - Brand display name is **Idea Tiles** while legacy storage keys intentionally remain `hexpand_*` for data continuity.
+- **Rind mode:** the native Mac app can switch the same board between Tiles and a labeled, orbitable geodesic sphere. Placements and camera state persist in the canonical workspace; web, iOS, and Android remain Tiles-only.
 - **Sharing MVP:** iOS and Android use **local exports only** — PNG / JPG / SVG / JSON through native sharing. **Share-link creation and live collaboration are web/native-Mac capabilities**; both mobile shells still open received `?s=` links. See [`docs/SHARING_MVP_POLICY.md`](docs/SHARING_MVP_POLICY.md).
 - Share modal includes a dedicated **Bring to iOS** action that prefers the canonical universal-link origin (`APP_PUBLIC_WEB_ORIGIN`) so boards can be handed off to the iOS app flow more reliably.
 - Settings modal now uses a compact, screen-space-first control row: theme toggle, accessibility font cycling (Atkinson/Lexend/OpenDyslexic/Aptos/System), font size +/- controls, animation toggle, high-contrast toggle, prominent Auto-Save, and a destructive "Delete Current Board" action.

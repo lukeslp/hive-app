@@ -30,11 +30,13 @@ import {
   mergeTilesSessionIntoWorkspace,
   migrateTilesSession,
   parseWorkspaceTransport,
+  switchWorkspaceMode,
   workspaceEnvelopeForBoard,
   workspaceImportFileSizeAllowed,
   workspaceToLegacyTilesSession,
   workspaceTransportForCloud,
   type WorkspaceDocument,
+  type WorkspaceMode,
 } from "@shared/workspaceDocument";
 import {
   APP_DISPLAY_NAME,
@@ -63,10 +65,27 @@ export interface UseSessionManagementProps {
   setShowWelcome: (value: boolean) => void;
   enableAutoSave: boolean;
   isAuthenticated: boolean;
+  workspaceMode: WorkspaceMode;
+  setWorkspaceMode: (mode: WorkspaceMode) => void;
+  rindModeAvailable: boolean;
 }
 
 /** Debounce interval for cloud auto-save (ms) */
 const CLOUD_AUTOSAVE_INTERVAL = 30_000;
+
+function createEmptySphereProjection(): WorkspaceDocument["projections"]["sphere"] {
+  return {
+    nodes: {},
+    alignments: [],
+    camera: {
+      position: [0, 0, 15],
+      target: [0, 0, 0],
+      fov: 60,
+      zoom: 1,
+    },
+    subdivisions: 6,
+  };
+}
 
 export function useSessionManagement({
   nodes,
@@ -78,6 +97,9 @@ export function useSessionManagement({
   setShowWelcome,
   enableAutoSave,
   isAuthenticated,
+  workspaceMode,
+  setWorkspaceMode,
+  rindModeAvailable,
 }: UseSessionManagementProps) {
   const [savedSessions, setSavedSessions] = useState<SavedSession[]>([]);
   const [showSessionsModal, setShowSessionsModal] = useState(false);
@@ -107,6 +129,10 @@ export function useSessionManagement({
   const nativeWorkspaceSaveInFlight = useRef<Promise<void>>(Promise.resolve());
   const lastCloudSaveRef = useRef<number>(0);
   const workspaceRef = useRef<WorkspaceDocument | null>(null);
+  const sphereProjectionRef = useRef(createEmptySphereProjection());
+  const [sphereProjection, setSphereProjection] = useState<
+    WorkspaceDocument["projections"]["sphere"]
+  >(sphereProjectionRef.current);
   const localAutosaveFailureShown = useRef(false);
   const cloudAutosaveFailureShown = useRef(false);
 
@@ -118,22 +144,50 @@ export function useSessionManagement({
       creativity,
       keyThemes: Object.keys(nodes).filter(key => nodes[key].isKeyTheme),
     };
-    const workspace = workspaceRef.current
+    const merged = workspaceRef.current
       ? mergeTilesSessionIntoWorkspace(workspaceRef.current, legacy)
       : migrateTilesSession(legacy);
+    const workspace = switchWorkspaceMode(
+      {
+        ...merged,
+        projections: {
+          ...merged.projections,
+          sphere: sphereProjectionRef.current,
+        },
+      },
+      workspaceMode
+    );
     workspaceRef.current = workspace;
     return workspaceTransportForCloud(workspace);
-  }, [creativity, localBoardId, nodes, viewState]);
+  }, [creativity, localBoardId, nodes, viewState, workspaceMode]);
 
-  const decodeSessionData = useCallback((raw: unknown) => {
-    const candidate =
-      typeof raw === "object" && raw !== null && "workspaceEnvelope" in raw
-        ? (raw as { workspaceEnvelope: unknown }).workspaceEnvelope
-        : raw;
-    const envelope = parseWorkspaceTransport(candidate);
-    workspaceRef.current = envelope.workspace;
-    return workspaceToLegacyTilesSession(envelope.workspace);
-  }, []);
+  const decodeSessionData = useCallback(
+    (raw: unknown) => {
+      const candidate =
+        typeof raw === "object" && raw !== null && "workspaceEnvelope" in raw
+          ? (raw as { workspaceEnvelope: unknown }).workspaceEnvelope
+          : raw;
+      const envelope = parseWorkspaceTransport(candidate);
+      workspaceRef.current = envelope.workspace;
+      sphereProjectionRef.current = envelope.workspace.projections.sphere;
+      setSphereProjection(envelope.workspace.projections.sphere);
+      setWorkspaceMode(
+        rindModeAvailable && envelope.workspace.activeMode === "sphere"
+          ? "sphere"
+          : "tiles"
+      );
+      return workspaceToLegacyTilesSession(envelope.workspace);
+    },
+    [rindModeAvailable, setWorkspaceMode]
+  );
+
+  const updateSphereProjection = useCallback(
+    (projection: WorkspaceDocument["projections"]["sphere"]) => {
+      sphereProjectionRef.current = projection;
+      setSphereProjection(projection);
+    },
+    []
+  );
 
   useEffect(
     () =>
@@ -731,7 +785,11 @@ export function useSessionManagement({
     setActiveCloudSessionName("");
     setLocalBoardId(createLocalBoardId());
     workspaceRef.current = null;
-  }, []);
+    const emptySphere = createEmptySphereProjection();
+    sphereProjectionRef.current = emptySphere;
+    setSphereProjection(emptySphere);
+    setWorkspaceMode("tiles");
+  }, [setWorkspaceMode]);
 
   const artifactBoardId = activeCloudSessionId
     ? `board:cloud:${activeCloudSessionId}`
@@ -766,5 +824,7 @@ export function useSessionManagement({
     artifactBoardId,
     flushNativeWorkspace,
     beginNewBoard,
+    sphereProjection,
+    updateSphereProjection,
   };
 }

@@ -6,6 +6,9 @@ import { defineConfig } from "vite";
 const plugins = [react(), tailwindcss()];
 
 export default defineConfig({
+  define: {
+    __IDEATILES_MAC_BUILD__: false,
+  },
   plugins,
   resolve: {
     alias: {

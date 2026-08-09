@@ -4,7 +4,15 @@
  * I/O: Handles user gestures/native services and renders the complete application.
  */
 
-import { useState, useRef, useEffect, useCallback, useMemo } from "react";
+import {
+  Suspense,
+  lazy,
+  useState,
+  useRef,
+  useEffect,
+  useCallback,
+  useMemo,
+} from "react";
 import { flushSync } from "react-dom";
 import { Loader2 } from "@/lib/icons";
 import { toast } from "sonner";
@@ -64,6 +72,7 @@ import {
   supportsArtifactStudio,
   supportsHostedShareCreation,
   supportsLiveCollaboration,
+  supportsRindMode,
 } from "@/lib/platform";
 import {
   tryOnDeviceFirst,
@@ -107,6 +116,13 @@ import {
   APP_STORE_SHOWCASE_NODES,
   getAppStoreShowcase,
 } from "@/lib/appStoreShowcase";
+import type { WorkspaceMode } from "@shared/workspaceDocument";
+
+declare const __IDEATILES_MAC_BUILD__: boolean;
+
+const RindCanvas = __IDEATILES_MAC_BUILD__
+  ? lazy(() => import("@/components/RindCanvas"))
+  : null;
 
 // --- Pure helpers (no React state) ---
 
@@ -167,13 +183,8 @@ export default function HexmindApp() {
         : true));
   const hostedShareCreationAvailable = supportsHostedShareCreation();
   const liveCollaborationAvailable = supportsLiveCollaboration();
-  const spherePreviewEnabled =
-    import.meta.env.VITE_ENABLE_SPHERE_MODE_PREVIEW === "true";
-  const requestSpherePreview = () => {
-    toast.info(
-      "Sphere workspace data is ready. The 3D renderer is planned for a later preview."
-    );
-  };
+  const rindModeAvailable = supportsRindMode();
+  const [workspaceMode, setWorkspaceMode] = useState<WorkspaceMode>("tiles");
   // ── Core state ──────────────────────────────────────────────────────────
   const [loadingNodes, setLoadingNodes] = useState<Set<string>>(new Set());
   const [generatingNeighbors, setGeneratingNeighbors] = useState<Set<string>>(
@@ -565,7 +576,22 @@ export default function HexmindApp() {
     setShowWelcome: () => {},
     enableAutoSave,
     isAuthenticated,
+    workspaceMode,
+    setWorkspaceMode,
+    rindModeAvailable,
   });
+  const handleWorkspaceModeChange = useCallback(
+    (mode: WorkspaceMode) => {
+      if (mode === "sphere" && !rindModeAvailable) {
+        toast.info("Rind is available in Idea Tiles for macOS.");
+        return;
+      }
+      setWorkspaceMode(mode);
+      setHoveredNodeId(null);
+      toast.success(mode === "sphere" ? "Rind workspace" : "Tiles workspace");
+    },
+    [rindModeAvailable]
+  );
   const cloudArtifactMutation = trpc.artifacts.upsert.useMutation();
   const syncArtifactToCloud = useCallback(
     async (artifact: ArtifactManifest, imageFileIds: string[]) => {
@@ -1907,8 +1933,9 @@ Generate 6 diverse related ideas. Connect to key themes when relevant.`;
             ? () => setShowArtifactStudio(true)
             : undefined
         }
-        spherePreviewEnabled={spherePreviewEnabled}
-        onRequestSpherePreview={requestSpherePreview}
+        workspaceMode={workspaceMode}
+        rindModeAvailable={rindModeAvailable}
+        onWorkspaceModeChange={handleWorkspaceModeChange}
         onExportSession={sessions.exportSession}
         onImportSession={sessions.importSession}
         // Cloud Share Link is web-only: it POSTs board JSON to /api/share.
@@ -1924,7 +1951,9 @@ Generate 6 diverse related ideas. Connect to key themes when relevant.`;
         // MVP: Live collab is web-only. Native WebSocket URL + UX are not
         // production-complete for Capacitor — see docs/RELEASE_SPEC.md §1.
         onShowCollab={
-          liveCollaborationAvailable ? () => setShowCollabModal(true) : undefined
+          liveCollaborationAvailable
+            ? () => setShowCollabModal(true)
+            : undefined
         }
         isCollabConnected={liveCollaborationAvailable && collab.isConnected}
         collabParticipantCount={
@@ -1936,10 +1965,12 @@ Generate 6 diverse related ideas. Connect to key themes when relevant.`;
       <main
         ref={containerRef}
         onMouseDown={
-          !isTouchDevice ? canvasHandlers.handleMouseDown : undefined
+          workspaceMode === "tiles" && !isTouchDevice
+            ? canvasHandlers.handleMouseDown
+            : undefined
         }
         onMouseMove={
-          !isTouchDevice
+          workspaceMode === "tiles" && !isTouchDevice
             ? (e: React.MouseEvent) => {
                 canvasHandlers.handleMouseMove(e);
                 // Broadcast cursor position for collaboration
@@ -1955,28 +1986,65 @@ Generate 6 diverse related ideas. Connect to key themes when relevant.`;
             : undefined
         }
         onMouseUp={
-          !isTouchDevice ? () => canvasHandlers.handleMouseUp() : undefined
+          workspaceMode === "tiles" && !isTouchDevice
+            ? () => canvasHandlers.handleMouseUp()
+            : undefined
         }
         onMouseLeave={
-          !isTouchDevice
+          workspaceMode === "tiles" && !isTouchDevice
             ? () => {
                 canvasHandlers.handleMouseLeave();
                 setHoveredNodeId(null);
               }
             : undefined
         }
-        onClick={!isTouchDevice ? canvasHandlers.handleCanvasClick : undefined}
-        onTouchStart={
-          isTouchDevice ? canvasHandlers.handleTouchStart : undefined
+        onClick={
+          workspaceMode === "tiles" && !isTouchDevice
+            ? canvasHandlers.handleCanvasClick
+            : undefined
         }
-        onTouchMove={isTouchDevice ? canvasHandlers.handleTouchMove : undefined}
-        onTouchEnd={isTouchDevice ? canvasHandlers.handleTouchEnd : undefined}
+        onTouchStart={
+          workspaceMode === "tiles" && isTouchDevice
+            ? canvasHandlers.handleTouchStart
+            : undefined
+        }
+        onTouchMove={
+          workspaceMode === "tiles" && isTouchDevice
+            ? canvasHandlers.handleTouchMove
+            : undefined
+        }
+        onTouchEnd={
+          workspaceMode === "tiles" && isTouchDevice
+            ? canvasHandlers.handleTouchEnd
+            : undefined
+        }
         className="relative flex-1 cursor-grab active:cursor-grabbing overflow-hidden bg-gradient-to-br from-background via-background to-muted/30 dark:from-[#12141a] dark:via-[#181b24] dark:to-[#1e222d]"
         style={{ touchAction: "none" }}
       >
+        {workspaceMode === "sphere" && RindCanvas && (
+          <Suspense
+            fallback={
+              <div className="absolute inset-0 grid place-items-center">
+                <Loader2 className="h-7 w-7 animate-spin text-yellow-400" />
+              </div>
+            }
+          >
+            <RindCanvas
+              nodes={nodes}
+              projection={sessions.sphereProjection}
+              selectedNodeId={selectedNodeId}
+              loadingNodes={loadingNodes}
+              theme={theme}
+              onNodeClick={handleNodeClick}
+              onNodeInspect={setInspectedNodeId}
+              onProjectionChange={sessions.updateSphereProjection}
+            />
+          </Suspense>
+        )}
+
         {/* Vignette overlay */}
         <div
-          className="absolute inset-0 pointer-events-none dark:bg-[radial-gradient(ellipse_at_center,transparent_40%,rgba(0,0,0,0.2)_80%,rgba(0,0,0,0.4)_100%)]"
+          className={`${workspaceMode === "sphere" ? "hidden " : ""}absolute inset-0 pointer-events-none dark:bg-[radial-gradient(ellipse_at_center,transparent_40%,rgba(0,0,0,0.2)_80%,rgba(0,0,0,0.4)_100%)]`}
           style={{
             background:
               "radial-gradient(ellipse at center, transparent 30%, rgba(0,0,0,0.08) 80%, rgba(0,0,0,0.15) 100%)",
@@ -1984,7 +2052,7 @@ Generate 6 diverse related ideas. Connect to key themes when relevant.`;
           aria-hidden="true"
         />
         <div
-          className="absolute inset-0 transition-transform duration-75 ease-out"
+          className={`${workspaceMode === "sphere" ? "hidden " : ""}absolute inset-0 transition-transform duration-75 ease-out`}
           style={{
             transform: `translate(${viewState.x}px, ${viewState.y}px) scale(${viewState.zoom})`,
             transformOrigin: "center",
@@ -2142,44 +2210,49 @@ Generate 6 diverse related ideas. Connect to key themes when relevant.`;
         </div>
 
         {/* Floating Action Bar */}
-        {hoveredNode && hoveredNodeId && !editingNodeId && (
-          <FloatingActionBar
-            node={hoveredNode}
-            position={getNodeScreenPosition(hoveredNode)}
-            onRefresh={() => refreshSingleNode(hoveredNode)}
-            onToggleKeyTheme={() => {
-              const key = getNodeKey(hoveredNode.q, hoveredNode.r);
-              const isNowKeyTheme = !hoveredNode.isKeyTheme;
-              haptics.medium();
-              flushSync(() => {
-                commitNodes(prev => {
-                  const cur = prev[key];
-                  if (!cur) return prev;
-                  const next = {
-                    ...prev,
-                    [key]: {
-                      ...cur,
-                      isKeyTheme: isNowKeyTheme,
-                      hierarchyLevel: isNowKeyTheme ? 1 : undefined,
-                    },
-                  };
-                  const keyThemes = Object.keys(next).filter(
-                    k => next[k].isKeyTheme
-                  );
-                  localStorage.setItem(
-                    KEY_THEMES_KEY,
-                    JSON.stringify(keyThemes)
-                  );
-                  return next;
+        {workspaceMode === "tiles" &&
+          hoveredNode &&
+          hoveredNodeId &&
+          !editingNodeId && (
+            <FloatingActionBar
+              node={hoveredNode}
+              position={getNodeScreenPosition(hoveredNode)}
+              onRefresh={() => refreshSingleNode(hoveredNode)}
+              onToggleKeyTheme={() => {
+                const key = getNodeKey(hoveredNode.q, hoveredNode.r);
+                const isNowKeyTheme = !hoveredNode.isKeyTheme;
+                haptics.medium();
+                flushSync(() => {
+                  commitNodes(prev => {
+                    const cur = prev[key];
+                    if (!cur) return prev;
+                    const next = {
+                      ...prev,
+                      [key]: {
+                        ...cur,
+                        isKeyTheme: isNowKeyTheme,
+                        hierarchyLevel: isNowKeyTheme ? 1 : undefined,
+                      },
+                    };
+                    const keyThemes = Object.keys(next).filter(
+                      k => next[k].isKeyTheme
+                    );
+                    localStorage.setItem(
+                      KEY_THEMES_KEY,
+                      JSON.stringify(keyThemes)
+                    );
+                    return next;
+                  });
                 });
-              });
-              toast.success(isNowKeyTheme ? "Marked as key theme" : "Unmarked");
-            }}
-            isLoading={loadingNodes.has(hoveredNodeId)}
-            onMouseEnter={() => setHoveredNodeId(hoveredNodeId)}
-            onMouseLeave={() => setHoveredNodeId(null)}
-          />
-        )}
+                toast.success(
+                  isNowKeyTheme ? "Marked as key theme" : "Unmarked"
+                );
+              }}
+              isLoading={loadingNodes.has(hoveredNodeId)}
+              onMouseEnter={() => setHoveredNodeId(hoveredNodeId)}
+              onMouseLeave={() => setHoveredNodeId(null)}
+            />
+          )}
       </main>
 
       {/* Touch Drag Ghost */}
@@ -2476,27 +2549,30 @@ Generate 6 diverse related ideas. Connect to key themes when relevant.`;
         androidGemmaDownload={providerSettings.androidGemmaDownload}
         isDownloadingAndroidModel={providerSettings.isDownloadingAndroidModel}
         downloadAndroidModel={providerSettings.downloadAndroidModel}
-        spherePreviewEnabled={spherePreviewEnabled}
-        onRequestSpherePreview={requestSpherePreview}
+        workspaceMode={workspaceMode}
+        rindModeAvailable={rindModeAvailable}
+        onWorkspaceModeChange={handleWorkspaceModeChange}
         onDeleteBoard={requestDeleteBoard}
       />
 
       {/* Minimap — always rendered when nodes exist; user collapses
           inline via the X button on the minimap itself. */}
-      {Object.keys(nodes).length > 0 && containerRef.current && (
-        <div className="absolute bottom-4 right-4 z-30 pointer-events-auto interactive-ui">
-          <Minimap
-            nodes={nodes}
-            viewState={viewState}
-            containerSize={{
-              width: containerRef.current.clientWidth,
-              height: containerRef.current.clientHeight,
-            }}
-            onNavigate={(x, y) => setViewState({ ...viewState, x, y })}
-            selectedNodeId={selectedNodeId}
-          />
-        </div>
-      )}
+      {workspaceMode === "tiles" &&
+        Object.keys(nodes).length > 0 &&
+        containerRef.current && (
+          <div className="absolute bottom-4 right-4 z-30 pointer-events-auto interactive-ui">
+            <Minimap
+              nodes={nodes}
+              viewState={viewState}
+              containerSize={{
+                width: containerRef.current.clientWidth,
+                height: containerRef.current.clientHeight,
+              }}
+              onNavigate={(x, y) => setViewState({ ...viewState, x, y })}
+              selectedNodeId={selectedNodeId}
+            />
+          </div>
+        )}
 
       {/* Screen reader announcements */}
       <div
@@ -2592,9 +2668,11 @@ Generate 6 diverse related ideas. Connect to key themes when relevant.`;
       )}
 
       {/* Remote Cursors */}
-      {collab.isConnected && collab.remoteCursors.length > 0 && (
-        <RemoteCursors cursors={collab.remoteCursors} viewState={viewState} />
-      )}
+      {workspaceMode === "tiles" &&
+        collab.isConnected &&
+        collab.remoteCursors.length > 0 && (
+          <RemoteCursors cursors={collab.remoteCursors} viewState={viewState} />
+        )}
     </div>
   );
 }

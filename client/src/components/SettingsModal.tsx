@@ -39,6 +39,7 @@ import type { GemmaDownloadResult, GemmaModelStatus } from "@/lib/gemmaPlugin";
 import type { AICoreStatus } from "@/lib/aicorePlugin";
 import { getPlatform, isCapacitor, isIos, isNativeMac } from "@/lib/platform";
 import { APP_DISPLAY_NAME } from "@shared/appBrand";
+import type { WorkspaceMode } from "@shared/workspaceDocument";
 
 export interface SettingsModalProps {
   isOpen: boolean;
@@ -76,8 +77,9 @@ export interface SettingsModalProps {
   androidGemmaDownload?: GemmaDownloadResult | null;
   isDownloadingAndroidModel?: boolean;
   downloadAndroidModel?: () => Promise<void>;
-  spherePreviewEnabled?: boolean;
-  onRequestSpherePreview?: () => void;
+  workspaceMode: WorkspaceMode;
+  rindModeAvailable: boolean;
+  onWorkspaceModeChange: (mode: WorkspaceMode) => void;
   onDeleteBoard: () => void;
 }
 
@@ -123,8 +125,9 @@ export const SettingsModal = ({
   androidGemmaDownload = null,
   isDownloadingAndroidModel = false,
   downloadAndroidModel,
-  spherePreviewEnabled = false,
-  onRequestSpherePreview,
+  workspaceMode,
+  rindModeAvailable,
+  onWorkspaceModeChange,
   onDeleteBoard,
 }: SettingsModalProps) => {
   const iosOnly = isIos();
@@ -286,22 +289,27 @@ export const SettingsModal = ({
               </p>
             </div>
             <div className="grid grid-cols-2 gap-2">
-              <Button variant="default" className="h-11" disabled>
+              <Button
+                variant={workspaceMode === "tiles" ? "default" : "outline"}
+                className="h-11"
+                onClick={() => onWorkspaceModeChange("tiles")}
+                disabled={workspaceMode === "tiles"}
+              >
                 Tiles
               </Button>
               <Button
-                variant="outline"
+                variant={workspaceMode === "sphere" ? "default" : "outline"}
                 className="h-11 gap-2"
-                disabled={!spherePreviewEnabled || !onRequestSpherePreview}
-                onClick={onRequestSpherePreview}
+                disabled={!rindModeAvailable || workspaceMode === "sphere"}
+                onClick={() => onWorkspaceModeChange("sphere")}
                 title={
-                  spherePreviewEnabled
-                    ? "Open the Sphere renderer preview"
-                    : "Sphere mode is preserved in files but its renderer is not enabled"
+                  rindModeAvailable
+                    ? "Open the Rind spatial workspace"
+                    : "Rind is available in Idea Tiles for macOS"
                 }
               >
                 <Map className="w-4 h-4" />
-                Sphere preview
+                Rind
               </Button>
             </div>
           </section>

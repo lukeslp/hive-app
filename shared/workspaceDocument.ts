@@ -32,9 +32,9 @@ export const workspaceModeRegistry = [
   },
   {
     id: "sphere",
-    label: "Sphere",
-    status: "preview",
-    rendererAvailable: false,
+    label: "Rind",
+    status: "available",
+    rendererAvailable: true,
   },
 ] as const satisfies ReadonlyArray<{
   id: WorkspaceMode;

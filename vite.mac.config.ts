@@ -4,6 +4,9 @@ import path from "node:path";
 import baseConfig from "./vite.config";
 
 export default mergeConfig(baseConfig, {
+  define: {
+    __IDEATILES_MAC_BUILD__: true,
+  },
   base: "ideatiles://app/",
   build: {
     outDir: path.resolve(import.meta.dirname, "macos/Resources/WebApp"),

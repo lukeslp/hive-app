@@ -9,6 +9,7 @@ import {
   supportsArtifactStudio,
   supportsHostedShareCreation,
   supportsLiveCollaboration,
+  supportsRindMode,
 } from "./platform";
 import { getLoginUrl } from "@/const";
 
@@ -91,6 +92,7 @@ describe("platform capability policy", () => {
       artifactStudio: true,
       hostedShare: true,
       liveCollaboration: true,
+      rindMode: false,
     },
     {
       name: "native Mac",
@@ -101,6 +103,7 @@ describe("platform capability policy", () => {
       artifactStudio: true,
       hostedShare: true,
       liveCollaboration: true,
+      rindMode: true,
     },
     {
       name: "iOS",
@@ -114,6 +117,7 @@ describe("platform capability policy", () => {
       artifactStudio: false,
       hostedShare: false,
       liveCollaboration: false,
+      rindMode: false,
     },
     {
       name: "Android",
@@ -127,15 +131,23 @@ describe("platform capability policy", () => {
       artifactStudio: true,
       hostedShare: false,
       liveCollaboration: false,
+      rindMode: false,
     },
   ])(
     "applies the $name capability contract",
-    ({ windowValue, artifactStudio, hostedShare, liveCollaboration }) => {
+    ({
+      windowValue,
+      artifactStudio,
+      hostedShare,
+      liveCollaboration,
+      rindMode,
+    }) => {
       vi.stubGlobal("window", windowValue);
 
       expect(supportsArtifactStudio()).toBe(artifactStudio);
       expect(supportsHostedShareCreation()).toBe(hostedShare);
       expect(supportsLiveCollaboration()).toBe(liveCollaboration);
+      expect(supportsRindMode()).toBe(rindMode);
     }
   );
 });

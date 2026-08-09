@@ -65,6 +65,11 @@ export function supportsLiveCollaboration(): boolean {
   return !isCapacitor();
 }
 
+/** The Rind spatial renderer is a dedicated native macOS workspace mode. */
+export function supportsRindMode(): boolean {
+  return isNativeMac();
+}
+
 /** True when the device has no network connectivity. */
 export function isOffline(): boolean {
   return typeof navigator !== "undefined" && !navigator.onLine;

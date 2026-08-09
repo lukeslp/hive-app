@@ -1,5 +1,22 @@
 # Changelog
 
+## 2026-08-08
+
+### Added
+
+- Added Rind as a native-macOS-only spatial workspace mode with an orbitable
+  geodesic sphere, readable idea labels, selection, inspection, and keyboard or
+  screen-reader access to the same ideas.
+- Added deterministic sphere placement that preserves imported BrainSphere/Rind
+  positions and keeps newly projected branches adjacent where possible.
+
+### Changed
+
+- Persist workspace mode, Rind camera, subdivisions, and placements through the
+  existing canonical board envelope without duplicating generation, history,
+  artifacts, provider settings, or credentials.
+- Excluded the Three.js renderer from web, iOS, and Android production bundles.
+
 ## 2026-07-14
 
 ### Added
