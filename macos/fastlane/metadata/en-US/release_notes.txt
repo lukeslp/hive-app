@@ -1,4 +1,4 @@
-Idea Tiles 1.3.1 introduces the native Mac workspace and Artifact Studio.
+Idea Tiles 1.3.2 introduces the native Mac workspace and Artifact Studio, plus reliability fixes.
 
 NEW
 • Explore the same Idea Tiles board in Rind, a native Mac spatial workspace that maps ideas onto an interactive sphere.
@@ -7,5 +7,10 @@ NEW
 • Review, save, export, and trace artifacts back to their source tiles.
 • Choose Apple Foundation Models, loopback Ollama, supported direct providers, or an authorized Dreamer profile.
 • Optional cloud sync keeps images local unless you explicitly select them.
+
+FIXED
+• Canceling a generation now actually stops the wait instead of quietly spinning.
+• Creating a share link either completes or reports failure within thirty seconds.
+• The Copy button only confirms when the link really reached your clipboard.
 
 The Mac app supports both Apple Silicon and Intel architectures and requires macOS 26 or later.
