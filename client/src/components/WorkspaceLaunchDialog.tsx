@@ -36,8 +36,8 @@ export function WorkspaceLaunchDialog({
             Choose how ideas take shape
           </DialogTitle>
           <DialogDescription className="max-w-xl text-sm leading-relaxed">
-            Tiles and Rind are two views of the same board. Start with one now,
-            then switch anytime from the workspace control in the toolbar.
+            Tiles and Sphere are two views of the same board. Start with one
+            now, then switch anytime from the workspace control in the toolbar.
           </DialogDescription>
         </DialogHeader>
 
@@ -72,7 +72,7 @@ export function WorkspaceLaunchDialog({
               <Map className="h-5 w-5" aria-hidden="true" />
             </span>
             <span className="block text-lg font-semibold text-foreground">
-              Rind
+              Sphere
             </span>
             <span className="mt-1.5 block text-sm leading-relaxed text-muted-foreground">
               Explore ideas across a spatial sphere. Drag to orbit and scroll to

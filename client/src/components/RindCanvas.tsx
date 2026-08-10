@@ -13,6 +13,7 @@ import {
   rindSubdivisionsForNodeCount,
   type RindNodePlacement,
 } from "@/lib/rindProjection";
+import { selectRindLabelIds } from "@/lib/rindLabelLayout";
 
 type SphereProjection = WorkspaceDocument["projections"]["sphere"];
 
@@ -36,6 +37,14 @@ const NODE_COLORS: Record<string, number> = {
   risk: 0xef4444,
   default: 0x94a3b8,
 };
+
+const EMPTY_TILE_COLORS = {
+  dark: { color: 0x1e293b, emissive: 0x1e293b },
+  light: { color: 0xe2e8f0, emissive: 0xcbd5e1 },
+};
+const LABEL_MIN_FACING = 0.18;
+const LABEL_COLLISION_PADDING = 10;
+const MAX_VISIBLE_LABELS = 8;
 
 function tileGeometry(tile: SphereTile): THREE.BufferGeometry {
   const positions: number[] = [];
@@ -115,8 +124,37 @@ function nodeLabel(
       .normalize()
       .multiplyScalar(tile.centerPoint.length() + 0.17)
   );
-  sprite.scale.set(selected ? 2.55 : 2.3, selected ? 0.64 : 0.58, 1);
+  sprite.scale.set(selected ? 1.82 : 1.62, selected ? 0.48 : 0.43, 1);
   return sprite;
+}
+
+function spriteScreenBounds(
+  sprite: THREE.Sprite,
+  camera: THREE.PerspectiveCamera,
+  width: number,
+  height: number
+) {
+  const center = sprite.getWorldPosition(new THREE.Vector3());
+  const cameraRight = new THREE.Vector3()
+    .setFromMatrixColumn(camera.matrixWorld, 0)
+    .multiplyScalar(sprite.scale.x / 2);
+  const cameraUp = new THREE.Vector3()
+    .setFromMatrixColumn(camera.matrixWorld, 1)
+    .multiplyScalar(sprite.scale.y / 2);
+  const corners = [
+    center.clone().sub(cameraRight).sub(cameraUp),
+    center.clone().add(cameraRight).sub(cameraUp),
+    center.clone().add(cameraRight).add(cameraUp),
+    center.clone().sub(cameraRight).add(cameraUp),
+  ].map(point => point.project(camera));
+  const xs = corners.map(point => (point.x * 0.5 + 0.5) * width);
+  const ys = corners.map(point => (-point.y * 0.5 + 0.5) * height);
+  return {
+    left: Math.min(...xs),
+    top: Math.min(...ys),
+    right: Math.max(...xs),
+    bottom: Math.max(...ys),
+  };
 }
 
 function sameProjection(
@@ -138,6 +176,8 @@ export function RindCanvas({
 }: RindCanvasProps) {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const [hoveredNodeId, setHoveredNodeId] = useState<string | null>(null);
+  const hoveredNodeIdRef = useRef<string | null>(null);
+  hoveredNodeIdRef.current = hoveredNodeId;
   const [renderError, setRenderError] = useState<string | null>(null);
   const subdivisions = rindSubdivisionsForNodeCount(
     Object.keys(nodes).length,
@@ -241,7 +281,15 @@ export function RindCanvas({
     scene.add(fillLight);
 
     const meshes: THREE.Mesh[] = [];
-    const labels: THREE.Sprite[] = [];
+    const labels: {
+      sprite: THREE.Sprite;
+      tile: SphereTile;
+      nodeKey: string;
+      priority: number;
+    }[] = [];
+    const emptyTileColors = dark
+      ? EMPTY_TILE_COLORS.dark
+      : EMPTY_TILE_COLORS.light;
     hexasphere.tiles.forEach(tile => {
       const nodeKey = nodeByTileIndex.get(tile.index);
       const node = nodeKey ? nodes[nodeKey] : null;
@@ -249,12 +297,10 @@ export function RindCanvas({
       const loading = !!nodeKey && loadingNodes.has(nodeKey);
       const color = node
         ? (NODE_COLORS[node.type] ?? NODE_COLORS.default)
-        : dark
-          ? 0x171d2b
-          : 0xcbd5e1;
+        : emptyTileColors.color;
       const material = new THREE.MeshStandardMaterial({
         color,
-        emissive: node ? color : dark ? 0x05070c : 0x64748b,
+        emissive: node ? color : emptyTileColors.emissive,
         emissiveIntensity: loading
           ? 0.62
           : selected
@@ -264,8 +310,10 @@ export function RindCanvas({
               : 0.03,
         metalness: 0.04,
         roughness: 0.8,
-        transparent: !node,
-        opacity: node ? 1 : dark ? 0.48 : 0.62,
+        // The rind must be opaque: a translucent near hemisphere exposes
+        // far-side occupied faces as concave pits and triangular slivers.
+        transparent: false,
+        opacity: 1,
         side: THREE.FrontSide,
         polygonOffset: true,
         polygonOffsetFactor: 1,
@@ -274,7 +322,6 @@ export function RindCanvas({
       const mesh = new THREE.Mesh(tileGeometry(tile), material);
       mesh.userData = { nodeKey, tileIndex: tile.index };
       if (selected) {
-        mesh.scale.setScalar(1.025);
         mesh.position.copy(
           tile.centerPoint.clone().normalize().multiplyScalar(0.05)
         );
@@ -283,8 +330,18 @@ export function RindCanvas({
       meshes.push(mesh);
       if (node) {
         const label = nodeLabel(node, tile, dark, selected);
+        label.visible = false;
         scene.add(label);
-        labels.push(label);
+        labels.push({
+          sprite: label,
+          tile,
+          nodeKey: nodeKey!,
+          priority: selected
+            ? 4
+            : node.type === "root" || node.isKeyTheme
+              ? 2
+              : 0,
+        });
       }
     });
 
@@ -366,6 +423,49 @@ export function RindCanvas({
     let frame = 0;
     const animate = () => {
       controls.update();
+      camera.updateMatrixWorld();
+      const width = Math.max(1, canvas.clientWidth);
+      const height = Math.max(1, canvas.clientHeight);
+      const visibleLabelIds = new Set(
+        selectRindLabelIds(
+          labels.map(label => {
+            const bounds = spriteScreenBounds(
+              label.sprite,
+              camera,
+              width,
+              height
+            );
+            const normal = label.tile.centerPoint.clone().normalize();
+            const towardCamera = camera.position
+              .clone()
+              .sub(label.tile.centerPoint)
+              .normalize();
+            const centerX = (bounds.left + bounds.right) / 2;
+            const centerY = (bounds.top + bounds.bottom) / 2;
+            return {
+              id: label.nodeKey,
+              ...bounds,
+              facing: normal.dot(towardCamera),
+              priority:
+                hoveredNodeIdRef.current === label.nodeKey
+                  ? Math.max(3, label.priority)
+                  : label.priority,
+              centerDistance: Math.hypot(
+                centerX - width / 2,
+                centerY - height / 2
+              ),
+            };
+          }),
+          {
+            minFacing: LABEL_MIN_FACING,
+            collisionPadding: LABEL_COLLISION_PADDING,
+            maxVisible: MAX_VISIBLE_LABELS,
+          }
+        )
+      );
+      labels.forEach(label => {
+        label.sprite.visible = visibleLabelIds.has(label.nodeKey);
+      });
       renderer.render(scene, camera);
       frame = requestAnimationFrame(animate);
     };
@@ -385,7 +485,7 @@ export function RindCanvas({
         (mesh.material as THREE.Material).dispose();
       });
       labels.forEach(label => {
-        const material = label.material as THREE.SpriteMaterial;
+        const material = label.sprite.material as THREE.SpriteMaterial;
         material.map?.dispose();
         material.dispose();
       });

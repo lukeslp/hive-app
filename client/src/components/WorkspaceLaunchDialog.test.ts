@@ -8,7 +8,7 @@ import { WorkspaceLaunchDialog } from "@/components/WorkspaceLaunchDialog";
 afterEach(cleanup);
 
 describe("WorkspaceLaunchDialog", () => {
-  it("explains that both choices share one board and opens Rind", () => {
+  it("explains that both choices share one board and opens Sphere", () => {
     const onChoose = vi.fn();
     render(
       React.createElement(WorkspaceLaunchDialog, {
@@ -19,7 +19,7 @@ describe("WorkspaceLaunchDialog", () => {
     );
 
     expect(screen.getByText(/two views of the same board/i)).toBeTruthy();
-    fireEvent.click(screen.getByRole("button", { name: /Rind.*Explore/i }));
+    fireEvent.click(screen.getByRole("button", { name: /Sphere.*Explore/i }));
     expect(onChoose).toHaveBeenCalledWith("sphere");
   });
 
