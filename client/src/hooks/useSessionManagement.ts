@@ -13,7 +13,7 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 import { toast } from "sonner";
 import { trpc } from "@/lib/trpc";
-import { buildApiUrl } from "@/lib/api";
+import { buildApiUrl, fetchApi } from "@/lib/api";
 import { subscribeToNativeWorkspaceImports } from "@/lib/macGeneration";
 import { getPublicWebAppUrl, isCapacitor } from "@/lib/platform";
 import { STORAGE_KEY, AUTOSAVE_KEY } from "@/lib/hexConstants";
@@ -684,10 +684,13 @@ export function useSessionManagement({
   const generateShareUrl = useCallback(async () => {
     const data = buildShareSnapshot({ nodes, viewState, creativity }, []);
     try {
-      const res = await fetch(buildApiUrl("share"), {
+      // fetchApi, not fetch: CapacitorHttp drops `signal` on cross-origin
+      // POSTs and iOS then waits 600s; the deadline keeps this bounded.
+      const res = await fetchApi(buildApiUrl("share"), {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(data),
+        timeoutMs: 30_000,
       });
       if (!res.ok) throw new Error(`Failed to save (HTTP ${res.status})`);
       const contentType = res.headers.get("content-type") ?? "";
@@ -708,10 +711,14 @@ export function useSessionManagement({
     }
   }, [nodes, viewState, creativity]);
 
-  const copyShareUrl = useCallback(() => {
-    navigator.clipboard.writeText(shareUrl);
-    setCopied(true);
-    setTimeout(() => setCopied(false), 2000);
+  const copyShareUrl = useCallback(async () => {
+    try {
+      await navigator.clipboard.writeText(shareUrl);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    } catch {
+      toast.error("Couldn't copy the link — copy it from the field instead");
+    }
   }, [shareUrl]);
 
   const bringToIos = useCallback(async () => {

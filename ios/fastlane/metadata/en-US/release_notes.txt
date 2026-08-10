@@ -1,6 +1,7 @@
-Idea Tiles 1.3.1 is a small follow-up to the 1.3 workspace.
+Idea Tiles 1.3.2 is a reliability release.
 
-- After you export a board a few times across separate sessions, the app may occasionally invite an App Store rating. Never on first open, never mid-export.
-- JPG/PNG/SVG/JSON export, Foundation Models template tools, and readiness messaging from 1.3 are unchanged.
+- Canceling a generation now actually stops the wait. Previously a canceled request could quietly keep the spinner going for up to ten minutes.
+- Creating a share link can no longer hang — it either completes or tells you it couldn't within thirty seconds.
+- The Copy button only says "Copied!" when the link really reached your clipboard.
 
-Your board context stays on device when using Apple Foundation Models. Feedback: luke@lukesteuber.com.
+Feedback: luke@lukesteuber.com.

@@ -31,4 +31,4 @@ REQUIREMENTS
 • Canvas editing, merge, star, filter, local sessions, and export remain available without generation.
 • When the system model is unavailable or still preparing, Idea Tiles explains why and checks again automatically.
 
-Idea Tiles is free, has no subscription or in-app purchase, and is open source under the MIT license.
+Idea Tiles is free, with no subscription and no in-app purchases.

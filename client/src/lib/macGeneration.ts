@@ -1,4 +1,4 @@
-import { buildApiUrl, fetchApi } from "@/lib/api";
+import { buildApiUrl, DEFAULT_API_TIMEOUT_MS, fetchApi } from "@/lib/api";
 import { isIos, isNativeMac } from "@/lib/platform";
 import type {
   ArtifactStudioServices,
@@ -52,13 +52,41 @@ export async function generateTextForCurrentPlatform(
   if (isNativeMac()) {
     const generation = window.ideaTilesMac?.generation;
     if (!generation) throw new Error("Native Mac generation is unavailable.");
-    return {
-      ...(await generation.generate({
-        prompt: input.prompt,
-        ...(input.systemPrompt ? { systemPrompt: input.systemPrompt } : {}),
-      })),
-      viaNativeMac: true,
-    };
+    // The native bridge has no cancellation channel, so honor the caller's
+    // signal and deadline here the same way fetchApi does: the native call may
+    // keep running, but the caller stops waiting and sees the identical
+    // AbortError / timeout Error shapes.
+    if (input.signal?.aborted) throw new DOMException("Aborted", "AbortError");
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    let onAbort: (() => void) | undefined;
+    try {
+      const result = await Promise.race([
+        generation.generate({
+          prompt: input.prompt,
+          ...(input.systemPrompt ? { systemPrompt: input.systemPrompt } : {}),
+        }),
+        new Promise<never>((_resolve, reject) => {
+          timer = setTimeout(
+            () =>
+              reject(
+                new Error(
+                  `Request timed out after ${Math.round(DEFAULT_API_TIMEOUT_MS / 1000)}s`
+                )
+              ),
+            DEFAULT_API_TIMEOUT_MS
+          );
+          if (input.signal) {
+            onAbort = () => reject(new DOMException("Aborted", "AbortError"));
+            input.signal.addEventListener("abort", onAbort, { once: true });
+          }
+        }),
+      ]);
+      return { ...result, viaNativeMac: true };
+    } finally {
+      if (timer !== undefined) clearTimeout(timer);
+      if (input.signal && onAbort)
+        input.signal.removeEventListener("abort", onAbort);
+    }
   }
 
   if (isIos()) {
