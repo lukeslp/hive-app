@@ -15,6 +15,11 @@ import {
   type RindNodePlacement,
 } from "@/lib/rindProjection";
 import { selectRindLabelIds } from "@/lib/rindLabelLayout";
+import {
+  RIND_LABEL_LAYOUT_OPTIONS,
+  RIND_NODE_INDICATOR_SEGMENTS,
+  RIND_SURFACE_STYLES,
+} from "@/lib/rindVisualStyle";
 
 type SphereProjection = WorkspaceDocument["projections"]["sphere"];
 
@@ -40,13 +45,7 @@ const NODE_COLORS: Record<string, number> = {
   default: 0x94a3b8,
 };
 
-const EMPTY_TILE_COLORS = {
-  dark: { color: 0x1e293b, emissive: 0x1e293b },
-  light: { color: 0xe2e8f0, emissive: 0xcbd5e1 },
-};
-const LABEL_MIN_FACING = 0.18;
-const LABEL_COLLISION_PADDING = 10;
-const MAX_VISIBLE_LABELS = 8;
+const SPHERE_UP = new THREE.Vector3(0, 0, 1);
 
 function tileGeometry(tile: SphereTile): THREE.BufferGeometry {
   const positions: number[] = [];
@@ -79,9 +78,41 @@ function tileGeometry(tile: SphereTile): THREE.BufferGeometry {
       ];
     }
     geometry.setIndex(indices);
-    geometry.computeVertexNormals();
   }
+  const radialNormals = positions.flatMap((_, index) => {
+    if (index % 3 !== 0) return [];
+    return new THREE.Vector3(
+      positions[index],
+      positions[index + 1],
+      positions[index + 2]
+    )
+      .normalize()
+      .toArray();
+  });
+  geometry.setAttribute(
+    "normal",
+    new THREE.Float32BufferAttribute(radialNormals, 3)
+  );
   return geometry;
+}
+
+function tileSeamGeometry(tile: SphereTile): THREE.BufferGeometry {
+  return new THREE.BufferGeometry().setFromPoints(
+    tile.boundary.map(point =>
+      point
+        .clone()
+        .normalize()
+        .multiplyScalar(point.length() + 0.012)
+    )
+  );
+}
+
+function nodeIndicatorGeometry(tile: SphereTile): THREE.CircleGeometry {
+  const radius =
+    Math.min(
+      ...tile.boundary.map(point => point.distanceTo(tile.centerPoint))
+    ) * 0.4;
+  return new THREE.CircleGeometry(radius, RIND_NODE_INDICATOR_SEGMENTS);
 }
 
 function nodeLabel(
@@ -116,7 +147,9 @@ function nodeLabel(
     new THREE.SpriteMaterial({
       map: texture,
       transparent: true,
-      depthTest: true,
+      // Visibility is front-hemisphere controlled below. Keeping the label in
+      // the depth buffer made the curved shell punch holes through its card.
+      depthTest: false,
       depthWrite: false,
     })
   );
@@ -127,6 +160,7 @@ function nodeLabel(
       .multiplyScalar(tile.centerPoint.length() + 0.17)
   );
   sprite.scale.set(selected ? 1.82 : 1.62, selected ? 0.48 : 0.43, 1);
+  sprite.renderOrder = 4;
   return sprite;
 }
 
@@ -269,8 +303,9 @@ export function RindCanvas({
     }
 
     const dark = theme === "dark";
+    const surface = RIND_SURFACE_STYLES[dark ? "dark" : "light"];
     const scene = new THREE.Scene();
-    scene.background = new THREE.Color(dark ? 0x080b12 : 0xeef2f7);
+    scene.background = new THREE.Color(surface.background);
     const camera = new THREE.PerspectiveCamera(
       projection.camera.fov,
       1,
@@ -292,8 +327,8 @@ export function RindCanvas({
     controls.maxDistance = 25;
     controls.update();
 
-    scene.add(new THREE.AmbientLight(0xffffff, dark ? 0.65 : 1.1));
-    const keyLight = new THREE.DirectionalLight(0xffffff, dark ? 1.15 : 1.35);
+    scene.add(new THREE.AmbientLight(0xffffff, surface.ambientIntensity));
+    const keyLight = new THREE.DirectionalLight(0xffffff, surface.keyIntensity);
     keyLight.position.set(10, 10, 8);
     scene.add(keyLight);
     const fillLight = new THREE.DirectionalLight(0x7dd3fc, 0.45);
@@ -301,6 +336,12 @@ export function RindCanvas({
     scene.add(fillLight);
 
     const meshes: THREE.Mesh[] = [];
+    const seams: THREE.LineLoop[] = [];
+    const indicators: {
+      mesh: THREE.Mesh<THREE.CircleGeometry, THREE.MeshBasicMaterial>;
+      generating: boolean;
+      selected: boolean;
+    }[] = [];
     const labels: {
       sprite: THREE.Sprite;
       tile: SphereTile;
@@ -308,30 +349,17 @@ export function RindCanvas({
       priority: number;
       generating: boolean;
     }[] = [];
-    const emptyTileColors = dark
-      ? EMPTY_TILE_COLORS.dark
-      : EMPTY_TILE_COLORS.light;
     hexasphere.tiles.forEach(tile => {
       const nodeKey = nodeByTileIndex.get(tile.index);
       const node = nodeKey ? displayNodes[nodeKey] : null;
       const selected = !!nodeKey && nodeKey === selectedNodeId;
       const generating = !!nodeKey && generatingNeighbors.has(nodeKey);
-      const loading = !!nodeKey && (loadingNodes.has(nodeKey) || generating);
-      const color = node
-        ? (NODE_COLORS[node.type] ?? NODE_COLORS.default)
-        : emptyTileColors.color;
       const material = new THREE.MeshStandardMaterial({
-        color,
-        emissive: node ? color : emptyTileColors.emissive,
-        emissiveIntensity: loading
-          ? 0.62
-          : selected
-            ? 0.42
-            : node
-              ? 0.14
-              : 0.03,
-        metalness: 0.04,
-        roughness: 0.8,
+        color: surface.shell,
+        emissive: surface.shellEmissive,
+        emissiveIntensity: 0.12,
+        metalness: 0.02,
+        roughness: 0.92,
         // The rind must be opaque: a translucent near hemisphere exposes
         // far-side occupied faces as concave pits and triangular slivers.
         transparent: false,
@@ -343,14 +371,49 @@ export function RindCanvas({
       });
       const mesh = new THREE.Mesh(tileGeometry(tile), material);
       mesh.userData = { nodeKey, tileIndex: tile.index, generating };
-      if (selected) {
-        mesh.position.copy(
-          tile.centerPoint.clone().normalize().multiplyScalar(0.05)
-        );
-      }
       scene.add(mesh);
       meshes.push(mesh);
+      const seam = new THREE.LineLoop(
+        tileSeamGeometry(tile),
+        new THREE.LineBasicMaterial({
+          color: surface.seam,
+          transparent: true,
+          opacity: surface.seamOpacity,
+          depthTest: true,
+          depthWrite: false,
+        })
+      );
+      seam.renderOrder = 1;
+      scene.add(seam);
+      seams.push(seam);
       if (node) {
+        const normal = tile.centerPoint.clone().normalize();
+        const indicatorMaterial = new THREE.MeshBasicMaterial({
+          color: NODE_COLORS[node.type] ?? NODE_COLORS.default,
+          transparent: generating,
+          opacity: 1,
+          depthTest: true,
+          depthWrite: true,
+          side: THREE.FrontSide,
+          polygonOffset: true,
+          polygonOffsetFactor: -2,
+          polygonOffsetUnits: -2,
+        });
+        const indicator = new THREE.Mesh(
+          nodeIndicatorGeometry(tile),
+          indicatorMaterial
+        );
+        indicator.position.copy(
+          normal.multiplyScalar(tile.centerPoint.length() + 0.035)
+        );
+        indicator.quaternion.setFromUnitVectors(
+          SPHERE_UP,
+          tile.centerPoint.clone().normalize()
+        );
+        indicator.scale.setScalar(selected ? 1.14 : 1);
+        indicator.renderOrder = 2;
+        scene.add(indicator);
+        indicators.push({ mesh: indicator, generating, selected });
         const label = nodeLabel(node, tile, dark, selected);
         label.visible = false;
         scene.add(label);
@@ -452,10 +515,12 @@ export function RindCanvas({
       camera.updateMatrixWorld();
       const generationPulse =
         0.5 + 0.5 * Math.sin(window.performance.now() / 220);
-      meshes.forEach(mesh => {
-        if (!mesh.userData.generating) return;
-        (mesh.material as THREE.MeshStandardMaterial).emissiveIntensity =
-          0.42 + generationPulse * 0.48;
+      indicators.forEach(indicator => {
+        if (!indicator.generating) return;
+        indicator.mesh.material.opacity = 0.64 + generationPulse * 0.36;
+        indicator.mesh.scale.setScalar(
+          (indicator.selected ? 1.14 : 1) * (0.94 + generationPulse * 0.09)
+        );
       });
       const width = Math.max(1, canvas.clientWidth);
       const height = Math.max(1, canvas.clientHeight);
@@ -490,9 +555,7 @@ export function RindCanvas({
             };
           }),
           {
-            minFacing: LABEL_MIN_FACING,
-            collisionPadding: LABEL_COLLISION_PADDING,
-            maxVisible: MAX_VISIBLE_LABELS,
+            ...RIND_LABEL_LAYOUT_OPTIONS,
           }
         )
       );
@@ -520,6 +583,14 @@ export function RindCanvas({
       meshes.forEach(mesh => {
         mesh.geometry.dispose();
         (mesh.material as THREE.Material).dispose();
+      });
+      seams.forEach(seam => {
+        seam.geometry.dispose();
+        (seam.material as THREE.Material).dispose();
+      });
+      indicators.forEach(indicator => {
+        indicator.mesh.geometry.dispose();
+        indicator.mesh.material.dispose();
       });
       labels.forEach(label => {
         const material = label.sprite.material as THREE.SpriteMaterial;
