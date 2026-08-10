@@ -15,8 +15,9 @@
 
 ## Current Product State (August 2026)
 
-- **Apple distribution:** version 1.3.1 is public for iPhone and iPad; the Mac App Store remains on 1.3. Native Mac build 5 is valid in TestFlight, and the signed/notarized universal 1.3.1 (5) ZIP is available from the [Idea Tiles downloads page](https://dr.eamer.dev/downloads/apps/idea-tiles/). It has not been submitted for App Store review. Listing metadata is managed as code in `ios/fastlane/` and `macos/fastlane/`.
-- **Android:** signed version 1.3.0 is available as a direct download; the current 1.3.1 source still needs a separate signed device/store release pass.
+- **Apple distribution:** version 1.3.1 is public for iPhone and iPad; the Mac App Store remains on 1.3. The iOS and macOS 1.3.2 updates both have build 8 attached with complete metadata in App Store Connect and have not been submitted for review. The signed/notarized universal 1.3.1 (5) ZIP remains available from the [Idea Tiles downloads page](https://dr.eamer.dev/downloads/apps/idea-tiles/). Listing metadata is managed as code in `ios/fastlane/` and `macos/fastlane/`.
+- **Android:** signed version 1.3.0 is available as a direct download; source is aligned to 1.3.2 but still needs a separate signed device/store release pass.
+- **1.3.2 reliability work:** native Mac generation now honors cancellation and deadlines, share POSTs use the bounded request path, and copy feedback reports failure truthfully. The inaccurate MIT/open-source claim was removed from the App Store listing.
 - Brand display name is **Idea Tiles** while legacy storage keys intentionally remain `hexpand_*` for data continuity.
 - **Rind mode:** the native Mac app can switch the same board between Tiles and a labeled, orbitable geodesic sphere. Placements and camera state persist in the canonical workspace; web, iOS, and Android remain Tiles-only.
 - **Sharing MVP:** iOS and Android use **local exports only** — PNG / JPG / SVG / JSON through native sharing. **Share-link creation and live collaboration are web/native-Mac capabilities**; both mobile shells still open received `?s=` links. See [`docs/SHARING_MVP_POLICY.md`](docs/SHARING_MVP_POLICY.md).

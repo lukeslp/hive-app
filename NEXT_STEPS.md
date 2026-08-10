@@ -1,19 +1,20 @@
 # Idea Tiles — next steps
 
-Updated 2026-08-08. This is the active operational checklist; historical release
+Updated 2026-08-10. This is the active operational checklist; historical release
 notes belong in Git history, not in this pickup document.
 
 ## Current release state
 
 - Public App Store version: **1.3.1** for iPhone/iPad and **1.3** for native Mac.
-- Current aligned Apple source build: **5**. The Mac build is processed and valid
-  in TestFlight; it has not been submitted for App Store review.
+- Staged Apple update: **1.3.2 build 8** for both iOS and native Mac. Both builds
+  are attached to complete App Store Connect listings and have not been submitted
+  for review.
 - Public direct Mac release: **1.3.1 (5)**, signed, notarized, and linked from
   `https://dr.eamer.dev/downloads/apps/idea-tiles/`.
-- Native Mac source now includes Rind spatial mode after build 5; it is not yet
-  present in TestFlight or the public direct ZIP.
+- Native Mac build 8 includes Rind spatial mode. The public direct ZIP remains
+  the signed/notarized 1.3.1 (5) artifact.
 - Android package: `app.ideatiles.android`; signed version **1.3.0** is available
-  as a direct download.
+  as a direct download. Source reports **1.3.2** and needs a new signed artifact.
 - Canonical web origin: `https://ideatiles.app`.
 - Canonical production service: `ideatiles`, port **5065**, running from
   `~/servers/ideatiles`. The `hexmind` service on 5057 is the separate HiveMind
@@ -34,8 +35,8 @@ notes belong in Git history, not in this pickup document.
 
 - [ ] In App Store Connect, correct Mac App Privacy answers to include linked
       Name, Email Address, User ID, and Other User Content for App Functionality.
-- [x] Upload native Mac build 5 and verify it processes as valid with the
-      bundled export-compliance declaration. Review submission remains separate.
+- [x] Upload and attach iOS and native Mac 1.3.2 build 8. Review submission
+      remains separate.
 - [x] Publish the signed/notarized universal Mac build 5 ZIP, checksum, catalog
       record, and downloads-page link.
 - [ ] Run [`docs/DEVICE_RELEASE_GATES.md`](docs/DEVICE_RELEASE_GATES.md) on real
@@ -45,15 +46,14 @@ notes belong in Git history, not in this pickup document.
       and collaboration.
 - [ ] Produce, sign, and publish Android only after the release owner approves
       the artifact and Play metadata.
-- [ ] Assign a new Apple build number, then archive and publish the Rind-enabled
-      native Mac build only after the release owner starts a new release pass.
+- [x] Archive and upload the Rind-enabled native Mac build as 1.3.2 (8).
 
-## Current 1.3.1 source contract to preserve
+## Current 1.3.2 source contract to preserve
 
 Public channels are intentionally staggered: iPhone/iPad App Store is 1.3.1,
-Mac App Store is 1.3, Mac TestFlight/direct is 1.3.1 (5), and Android direct is
-1.3.0. The matrix below describes current source; Rind is newer than build 5
-and is not in a public artifact yet.
+Mac App Store is 1.3, the staged Apple updates are 1.3.2 (8), the direct Mac ZIP
+is 1.3.1 (5), and Android direct is 1.3.0. The matrix below describes current
+source; Rind is included in staged Mac build 8 but not the public direct ZIP.
 
 | Capability                              |    Web |            iOS |            Android |            Native Mac |
 | --------------------------------------- | -----: | -------------: | -----------------: | --------------------: |

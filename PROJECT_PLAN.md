@@ -1,6 +1,6 @@
 # PROJECT_PLAN
 
-Last updated: 2026-08-08
+Last updated: 2026-08-10
 
 ## Objectives
 
@@ -10,7 +10,7 @@ Last updated: 2026-08-08
 
 ## Current State
 
-- App Store version 1.3.1 is public for iPhone/iPad; native Mac remains on 1.3 in the App Store. The aligned 1.3.1 build 5 is valid in Mac TestFlight and is also published as a signed/notarized universal direct download. It has not been submitted for App Store review.
+- App Store version 1.3.1 is public for iPhone/iPad; native Mac remains on 1.3 in the App Store. iOS and native Mac 1.3.2 build 8 are attached to complete listings and have not been submitted for review. The signed/notarized 1.3.1 (5) universal build remains the public direct download.
 - Core app is functional across web and Capacitor shells.
 - Web and native Mac can create snapshot links and start collaboration. iOS and Android remain local-first: they export files and open received links but do not create hosted links or start collaboration ([`docs/SHARING_MVP_POLICY.md`](docs/SHARING_MVP_POLICY.md)).
 - Display name **Idea Tiles** is wired through UI, legal pages, and native `appName` / `CFBundleDisplayName`; legacy storage keys remain intentionally unchanged.
@@ -71,7 +71,7 @@ Use council runs intentionally:
 
 ## Near-Term Execution Queue
 
-1. Correct Mac App Privacy answers in App Store Connect, complete the build-5 TestFlight hardware smoke, and only then decide whether to attach and submit it using `docs/APP_STORE_PACK.md` + `docs/RELEASE_SPEC.md`.
+1. Complete the build-8 real-hardware smoke and verify Mac App Privacy answers before deliberately submitting the staged iOS and Mac 1.3.2 versions using `docs/APP_STORE_PACK.md` + `docs/RELEASE_SPEC.md`.
 2. Land UIScene migration with verification pass (`MIGRATION_PLAN.md`).
 3. Optional: persist `/api/share` payloads beyond in-memory (if 404s after deploy hurt users).
 4. Phase 2: native live collab only as a deliberate project (WS host, UX, ASC copy).
