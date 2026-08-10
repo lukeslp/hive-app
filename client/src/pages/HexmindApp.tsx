@@ -190,11 +190,15 @@ export default function HexmindApp() {
         : true));
   const hostedShareCreationAvailable = supportsHostedShareCreation();
   const liveCollaborationAvailable = supportsLiveCollaboration();
-  const rindModeAvailable = supportsRindMode();
+  const rindModeAvailable =
+    supportsRindMode() ||
+    (appStoreShowcase === "sphere" && RindCanvas !== null);
   const [defaultWorkspaceMode, setDefaultWorkspaceMode] =
     useState<WorkspaceMode>(() => initialWorkspaceMode(rindModeAvailable));
   const [workspaceMode, setWorkspaceMode] = useState<WorkspaceMode>(() =>
-    initialWorkspaceMode(rindModeAvailable)
+    appStoreShowcase === "sphere" && rindModeAvailable
+      ? "sphere"
+      : initialWorkspaceMode(rindModeAvailable)
   );
   const [showWorkspaceLaunchChoice, setShowWorkspaceLaunchChoice] =
     useState(false);
@@ -393,7 +397,9 @@ export default function HexmindApp() {
   const isTouchDevice =
     typeof window !== "undefined" && "ontouchstart" in window;
   const [selectedNodeId, setSelectedNodeId] = useState<string | null>(
-    appStoreShowcase === "detail" || appStoreShowcase === "artifact"
+    appStoreShowcase === "detail" ||
+      appStoreShowcase === "artifact" ||
+      appStoreShowcase === "sphere"
       ? "0,0"
       : null
   );
@@ -2098,7 +2104,18 @@ Generate 6 diverse related ideas. Connect to key themes when relevant.`;
           >
             <RindCanvas
               nodes={nodes}
-              projection={sessions.sphereProjection}
+              projection={
+                appStoreShowcase === "sphere"
+                  ? {
+                      ...sessions.sphereProjection,
+                      camera: {
+                      ...sessions.sphereProjection.camera,
+                        position: [0, 0.75, 12.5],
+                        target: [0, 0.75, 0],
+                      },
+                    }
+                  : sessions.sphereProjection
+              }
               selectedNodeId={selectedNodeId}
               loadingNodes={loadingNodes}
               generatingNeighbors={generatingNeighbors}

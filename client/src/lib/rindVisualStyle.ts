@@ -36,8 +36,7 @@ export const RIND_SURFACE_STYLES: Record<"dark" | "light", RindSurfaceStyle> = {
 
 export const RIND_NODE_INDICATOR_SEGMENTS = 8;
 
-export const RIND_LABEL_LAYOUT_OPTIONS = {
+export const RIND_TILE_CONTENT_OPTIONS = {
   minFacing: 0.5,
-  collisionPadding: 18,
-  maxVisible: 6,
+  showAllFrontFacing: true,
 } as const;

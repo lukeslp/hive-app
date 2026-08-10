@@ -6,7 +6,8 @@ export type AppStoreShowcase =
   | "themes"
   | "templates"
   | "settings"
-  | "artifact";
+  | "artifact"
+  | "sphere";
 
 const SHOWCASE_MODES = new Set<AppStoreShowcase>([
   "canvas",
@@ -15,6 +16,7 @@ const SHOWCASE_MODES = new Set<AppStoreShowcase>([
   "templates",
   "settings",
   "artifact",
+  "sphere",
 ]);
 
 export function getAppStoreShowcase(): AppStoreShowcase | null {

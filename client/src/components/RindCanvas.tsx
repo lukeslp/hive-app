@@ -14,11 +14,15 @@ import {
   rindSubdivisionsForNodeCount,
   type RindNodePlacement,
 } from "@/lib/rindProjection";
-import { selectRindLabelIds } from "@/lib/rindLabelLayout";
 import {
-  RIND_LABEL_LAYOUT_OPTIONS,
+  rindNodeVisualSpec,
+  type RindNodeIcon,
+  type RindNodeVisualSpec,
+} from "@/lib/rindNodeVisual";
+import {
   RIND_NODE_INDICATOR_SEGMENTS,
   RIND_SURFACE_STYLES,
+  RIND_TILE_CONTENT_OPTIONS,
 } from "@/lib/rindVisualStyle";
 
 type SphereProjection = WorkspaceDocument["projections"]["sphere"];
@@ -34,18 +38,6 @@ interface RindCanvasProps {
   onNodeInspect: (key: string) => void;
   onProjectionChange: (projection: SphereProjection) => void;
 }
-
-const NODE_COLORS: Record<string, number> = {
-  root: 0xfacc15,
-  concept: 0xf59e0b,
-  action: 0xf43f5e,
-  technical: 0x22d3ee,
-  question: 0xa78bfa,
-  risk: 0xef4444,
-  default: 0x94a3b8,
-};
-
-const SPHERE_UP = new THREE.Vector3(0, 0, 1);
 
 function tileGeometry(tile: SphereTile): THREE.BufferGeometry {
   const positions: number[] = [];
@@ -107,39 +99,205 @@ function tileSeamGeometry(tile: SphereTile): THREE.BufferGeometry {
   );
 }
 
-function nodeIndicatorGeometry(tile: SphereTile): THREE.CircleGeometry {
-  const radius =
-    Math.min(
-      ...tile.boundary.map(point => point.distanceTo(tile.centerPoint))
-    ) * 0.4;
-  return new THREE.CircleGeometry(radius, RIND_NODE_INDICATOR_SEGMENTS);
+function insetTilePoints(
+  tile: SphereTile,
+  inset: number,
+  lift: number
+): THREE.Vector3[] {
+  const radius = tile.centerPoint.length() + lift;
+  return tile.boundary.map(point =>
+    point
+      .clone()
+      .lerp(tile.centerPoint, inset)
+      .normalize()
+      .multiplyScalar(radius)
+  );
 }
 
-function nodeLabel(
-  node: HexNode,
+function insetTileGeometry(
   tile: SphereTile,
-  dark: boolean,
-  selected: boolean
+  inset: number,
+  lift: number
+): THREE.BufferGeometry {
+  const boundary = insetTilePoints(tile, inset, lift);
+  const center = tile.centerPoint
+    .clone()
+    .normalize()
+    .multiplyScalar(tile.centerPoint.length() + lift);
+  const positions = boundary.flatMap(point => point.toArray());
+  positions.push(...center.toArray());
+  const centerIndex = boundary.length;
+  const indices = boundary.flatMap((_, index) => [
+    centerIndex,
+    index,
+    (index + 1) % boundary.length,
+  ]);
+  const geometry = new THREE.BufferGeometry();
+  geometry.setAttribute(
+    "position",
+    new THREE.Float32BufferAttribute(positions, 3)
+  );
+  geometry.setIndex(indices);
+  geometry.setAttribute(
+    "normal",
+    new THREE.Float32BufferAttribute(
+      positions.flatMap((_, index) => {
+        if (index % 3 !== 0) return [];
+        return new THREE.Vector3(
+          positions[index],
+          positions[index + 1],
+          positions[index + 2]
+        )
+          .normalize()
+          .toArray();
+      }),
+      3
+    )
+  );
+  return geometry;
+}
+
+function insetTileOutlineGeometry(
+  tile: SphereTile,
+  inset: number,
+  lift: number
+): THREE.BufferGeometry {
+  return new THREE.BufferGeometry().setFromPoints(
+    insetTilePoints(tile, inset, lift)
+  );
+}
+
+function drawOctagon(
+  context: CanvasRenderingContext2D,
+  x: number,
+  y: number,
+  radius: number
+) {
+  context.beginPath();
+  for (let index = 0; index < RIND_NODE_INDICATOR_SEGMENTS; index += 1) {
+    const angle =
+      -Math.PI / 2 + (index * Math.PI * 2) / RIND_NODE_INDICATOR_SEGMENTS;
+    const px = x + Math.cos(angle) * radius;
+    const py = y + Math.sin(angle) * radius;
+    if (index === 0) context.moveTo(px, py);
+    else context.lineTo(px, py);
+  }
+  context.closePath();
+}
+
+function drawNodeIcon(
+  context: CanvasRenderingContext2D,
+  icon: RindNodeIcon,
+  x: number,
+  y: number,
+  size: number
+) {
+  const half = size / 2;
+  context.lineCap = "round";
+  context.lineJoin = "round";
+  context.lineWidth = 5;
+  context.beginPath();
+  switch (icon) {
+    case "hexagon":
+      for (let index = 0; index < 6; index += 1) {
+        const angle = -Math.PI / 2 + (index * Math.PI) / 3;
+        const px = x + Math.cos(angle) * half;
+        const py = y + Math.sin(angle) * half;
+        if (index === 0) context.moveTo(px, py);
+        else context.lineTo(px, py);
+      }
+      context.closePath();
+      context.stroke();
+      break;
+    case "lightbulb":
+      context.arc(x, y - 7, half * 0.58, 0, Math.PI * 2);
+      context.stroke();
+      context.beginPath();
+      context.moveTo(x - 9, y + 12);
+      context.lineTo(x + 9, y + 12);
+      context.moveTo(x - 6, y + 21);
+      context.lineTo(x + 6, y + 21);
+      context.stroke();
+      break;
+    case "activity":
+      context.moveTo(x - half, y);
+      context.lineTo(x - 13, y);
+      context.lineTo(x - 4, y - 20);
+      context.lineTo(x + 7, y + 20);
+      context.lineTo(x + 15, y);
+      context.lineTo(x + half, y);
+      context.stroke();
+      break;
+    case "terminal":
+      context.moveTo(x - 20, y - 13);
+      context.lineTo(x - 7, y);
+      context.lineTo(x - 20, y + 13);
+      context.moveTo(x + 1, y + 13);
+      context.lineTo(x + 20, y + 13);
+      context.stroke();
+      break;
+    case "question":
+      context.arc(x, y, half, 0, Math.PI * 2);
+      context.stroke();
+      context.font = "700 36px system-ui, sans-serif";
+      context.textAlign = "center";
+      context.textBaseline = "middle";
+      context.fillText("?", x, y + 1);
+      break;
+    case "target":
+      context.arc(x, y, half, 0, Math.PI * 2);
+      context.moveTo(x + half * 0.45, y);
+      context.arc(x, y, half * 0.45, 0, Math.PI * 2);
+      context.stroke();
+      break;
+    case "spinner":
+      context.arc(x, y, half, -Math.PI * 0.2, Math.PI * 1.35);
+      context.stroke();
+      break;
+    case "ellipsis":
+      [-17, 0, 17].forEach(offset => {
+        context.moveTo(x + offset + 5, y);
+        context.arc(x + offset, y, 5, 0, Math.PI * 2);
+      });
+      context.fill();
+      break;
+    case "box":
+      context.rect(x - half, y - half, size, size);
+      context.stroke();
+      break;
+  }
+}
+
+function nodeTileContent(
+  tile: SphereTile,
+  visual: RindNodeVisualSpec
 ): THREE.Sprite {
   const canvas = document.createElement("canvas");
-  canvas.width = 512;
-  canvas.height = 128;
+  canvas.width = 256;
+  canvas.height = 256;
   const context = canvas.getContext("2d")!;
-  const color = NODE_COLORS[node.type] ?? NODE_COLORS.default;
-  context.fillStyle = dark ? "rgba(2,6,23,0.92)" : "rgba(255,255,255,0.94)";
-  context.strokeStyle = `#${color.toString(16).padStart(6, "0")}`;
-  context.lineWidth = selected ? 8 : 5;
-  context.beginPath();
-  context.roundRect(8, 8, 496, 112, 28);
+  const iconColor = `#${visual.iconColor.toString(16).padStart(6, "0")}`;
+  const textColor = `#${visual.textColor.toString(16).padStart(6, "0")}`;
+  context.strokeStyle = iconColor;
+  context.fillStyle = iconColor;
+  drawOctagon(context, 128, 74, 42);
+  context.globalAlpha = 0.3;
   context.fill();
+  context.globalAlpha = 1;
   context.stroke();
-  context.fillStyle = dark ? "#f8fafc" : "#0f172a";
-  context.font = `${selected || node.isKeyTheme ? 700 : 600} 38px system-ui, sans-serif`;
+  drawNodeIcon(context, visual.icon, 128, 74, 48);
+  context.fillStyle = textColor;
+  context.font = `${visual.emphasis === "ordinary" ? 600 : 700} 24px system-ui, sans-serif`;
   context.textAlign = "center";
   context.textBaseline = "middle";
-  const label =
-    node.text.length > 25 ? `${node.text.slice(0, 24).trimEnd()}…` : node.text;
-  context.fillText(label, 256, 66, 455);
+  visual.lines.forEach((line, index) =>
+    context.fillText(line, 128, 153 + index * 29, 232)
+  );
+  if (visual.badge === "sparkles") {
+    context.fillStyle = "#facc15";
+    context.font = "700 30px system-ui, sans-serif";
+    context.fillText("✦", 207, 45);
+  }
   const texture = new THREE.CanvasTexture(canvas);
   texture.colorSpace = THREE.SRGBColorSpace;
   texture.minFilter = THREE.LinearFilter;
@@ -147,8 +305,6 @@ function nodeLabel(
     new THREE.SpriteMaterial({
       map: texture,
       transparent: true,
-      // Visibility is front-hemisphere controlled below. Keeping the label in
-      // the depth buffer made the curved shell punch holes through its card.
       depthTest: false,
       depthWrite: false,
     })
@@ -157,40 +313,35 @@ function nodeLabel(
     tile.centerPoint
       .clone()
       .normalize()
-      .multiplyScalar(tile.centerPoint.length() + 0.17)
+      .multiplyScalar(tile.centerPoint.length() + 0.09)
   );
-  sprite.scale.set(selected ? 1.82 : 1.62, selected ? 0.48 : 0.43, 1);
+  sprite.scale.setScalar(1.05 * visual.scale);
   sprite.renderOrder = 4;
   return sprite;
 }
 
-function spriteScreenBounds(
-  sprite: THREE.Sprite,
-  camera: THREE.PerspectiveCamera,
-  width: number,
-  height: number
-) {
-  const center = sprite.getWorldPosition(new THREE.Vector3());
-  const cameraRight = new THREE.Vector3()
-    .setFromMatrixColumn(camera.matrixWorld, 0)
-    .multiplyScalar(sprite.scale.x / 2);
-  const cameraUp = new THREE.Vector3()
-    .setFromMatrixColumn(camera.matrixWorld, 1)
-    .multiplyScalar(sprite.scale.y / 2);
-  const corners = [
-    center.clone().sub(cameraRight).sub(cameraUp),
-    center.clone().add(cameraRight).sub(cameraUp),
-    center.clone().add(cameraRight).add(cameraUp),
-    center.clone().sub(cameraRight).add(cameraUp),
-  ].map(point => point.project(camera));
-  const xs = corners.map(point => (point.x * 0.5 + 0.5) * width);
-  const ys = corners.map(point => (-point.y * 0.5 + 0.5) * height);
-  return {
-    left: Math.min(...xs),
-    top: Math.min(...ys),
-    right: Math.max(...xs),
-    bottom: Math.max(...ys),
-  };
+function sphericalConnectionGeometry(
+  start: SphereTile,
+  end: SphereTile,
+  lift: number
+): THREE.BufferGeometry {
+  const from = start.centerPoint.clone().normalize();
+  const to = end.centerPoint.clone().normalize();
+  const dot = THREE.MathUtils.clamp(from.dot(to), -1, 1);
+  const angle = Math.acos(dot);
+  const radius = start.centerPoint.length() + lift;
+  const points = Array.from({ length: 25 }, (_, index) => {
+    const t = index / 24;
+    if (angle < 0.0001) return from.clone().multiplyScalar(radius);
+    const sinAngle = Math.sin(angle);
+    return from
+      .clone()
+      .multiplyScalar(Math.sin((1 - t) * angle) / sinAngle)
+      .add(to.clone().multiplyScalar(Math.sin(t * angle) / sinAngle))
+      .normalize()
+      .multiplyScalar(radius);
+  });
+  return new THREE.BufferGeometry().setFromPoints(points);
 }
 
 function sameProjection(
@@ -213,8 +364,6 @@ export function RindCanvas({
 }: RindCanvasProps) {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const [hoveredNodeId, setHoveredNodeId] = useState<string | null>(null);
-  const hoveredNodeIdRef = useRef<string | null>(null);
-  hoveredNodeIdRef.current = hoveredNodeId;
   const [renderError, setRenderError] = useState<string | null>(null);
   const pendingNodeCount = Array.from(generatingNeighbors).filter(
     key => !nodes[key]
@@ -337,16 +486,16 @@ export function RindCanvas({
 
     const meshes: THREE.Mesh[] = [];
     const seams: THREE.LineLoop[] = [];
-    const indicators: {
-      mesh: THREE.Mesh<THREE.CircleGeometry, THREE.MeshBasicMaterial>;
+    const nodeFaces: {
+      mesh: THREE.Mesh<THREE.BufferGeometry, THREE.MeshBasicMaterial>;
       generating: boolean;
-      selected: boolean;
+      loading: boolean;
     }[] = [];
+    const nodeOutlines: THREE.LineLoop[] = [];
+    const connectionLines: THREE.Line[] = [];
     const labels: {
       sprite: THREE.Sprite;
       tile: SphereTile;
-      nodeKey: string;
-      priority: number;
       generating: boolean;
     }[] = [];
     hexasphere.tiles.forEach(tile => {
@@ -354,9 +503,20 @@ export function RindCanvas({
       const node = nodeKey ? displayNodes[nodeKey] : null;
       const selected = !!nodeKey && nodeKey === selectedNodeId;
       const generating = !!nodeKey && generatingNeighbors.has(nodeKey);
+      const loading = !!nodeKey && loadingNodes.has(nodeKey);
+      const visual = node
+        ? rindNodeVisualSpec(node, {
+            dark,
+            selected,
+            hovered: false,
+            loading,
+            generating,
+          })
+        : null;
       const material = new THREE.MeshStandardMaterial({
-        color: surface.shell,
-        emissive: surface.shellEmissive,
+        color: visual && !generating ? visual.borderColor : surface.shell,
+        emissive:
+          visual && !generating ? visual.borderColor : surface.shellEmissive,
         emissiveIntensity: 0.12,
         metalness: 0.02,
         roughness: 0.92,
@@ -386,51 +546,124 @@ export function RindCanvas({
       seam.renderOrder = 1;
       scene.add(seam);
       seams.push(seam);
-      if (node) {
-        const normal = tile.centerPoint.clone().normalize();
-        const indicatorMaterial = new THREE.MeshBasicMaterial({
-          color: NODE_COLORS[node.type] ?? NODE_COLORS.default,
-          transparent: generating,
+      if (node && visual) {
+        const inset = selected
+          ? 0.13
+          : node.isKeyTheme
+            ? 0.11
+            : generating
+              ? 0.1
+              : 0.075;
+        const faceMaterial = new THREE.MeshBasicMaterial({
+          color: visual.faceFill,
+          transparent: generating || loading,
           opacity: 1,
           depthTest: true,
           depthWrite: true,
           side: THREE.FrontSide,
           polygonOffset: true,
-          polygonOffsetFactor: -2,
-          polygonOffsetUnits: -2,
+          polygonOffsetFactor: -3,
+          polygonOffsetUnits: -3,
         });
-        const indicator = new THREE.Mesh(
-          nodeIndicatorGeometry(tile),
-          indicatorMaterial
+        const face = new THREE.Mesh(
+          insetTileGeometry(tile, inset, 0.025),
+          faceMaterial
         );
-        indicator.position.copy(
-          normal.multiplyScalar(tile.centerPoint.length() + 0.035)
+        face.renderOrder = 2;
+        scene.add(face);
+        nodeFaces.push({ mesh: face, generating, loading });
+
+        const outlineMaterial = visual.dashed
+          ? new THREE.LineDashedMaterial({
+              color: visual.borderColor,
+              transparent: true,
+              opacity: 0.95,
+              dashSize: 0.1,
+              gapSize: 0.07,
+              depthTest: true,
+              depthWrite: false,
+            })
+          : new THREE.LineBasicMaterial({
+              color: visual.borderColor,
+              transparent: true,
+              opacity: selected || node.isKeyTheme ? 1 : 0.78,
+              depthTest: true,
+              depthWrite: false,
+            });
+        const outline = new THREE.LineLoop(
+          insetTileOutlineGeometry(tile, inset, 0.04),
+          outlineMaterial
         );
-        indicator.quaternion.setFromUnitVectors(
-          SPHERE_UP,
-          tile.centerPoint.clone().normalize()
-        );
-        indicator.scale.setScalar(selected ? 1.14 : 1);
-        indicator.renderOrder = 2;
-        scene.add(indicator);
-        indicators.push({ mesh: indicator, generating, selected });
-        const label = nodeLabel(node, tile, dark, selected);
+        if (outlineMaterial instanceof THREE.LineDashedMaterial) {
+          outline.computeLineDistances();
+        }
+        outline.renderOrder = 3;
+        scene.add(outline);
+        nodeOutlines.push(outline);
+
+        const label = nodeTileContent(tile, visual);
         label.visible = false;
         scene.add(label);
         labels.push({
           sprite: label,
           tile,
-          nodeKey: nodeKey!,
-          priority: generating
-            ? 5
-            : selected
-              ? 4
-              : node.type === "root" || node.isKeyTheme
-                ? 2
-                : 0,
           generating,
         });
       }
+    });
+
+    const tileIndexByNodeKey = new Map<string, number>();
+    nodeByTileIndex.forEach((key, tileIndex) =>
+      tileIndexByNodeKey.set(key, tileIndex)
+    );
+    const tilesByIndex = new Map(
+      hexasphere.tiles.map(tile => [tile.index, tile])
+    );
+    const connectionKeys = new Set<string>();
+    const addConnection = (
+      leftKey: string,
+      rightKey: string,
+      related: boolean
+    ) => {
+      const id = [leftKey, rightKey].sort().join("|");
+      if (connectionKeys.has(id)) return;
+      const left = tilesByIndex.get(tileIndexByNodeKey.get(leftKey) ?? -1);
+      const right = tilesByIndex.get(tileIndexByNodeKey.get(rightKey) ?? -1);
+      if (!left || !right) return;
+      connectionKeys.add(id);
+      const lineMaterial = related
+        ? new THREE.LineDashedMaterial({
+            color: 0x60a5fa,
+            transparent: true,
+            opacity: 0.5,
+            dashSize: 0.12,
+            gapSize: 0.08,
+            depthTest: true,
+            depthWrite: false,
+          })
+        : new THREE.LineBasicMaterial({
+            color: dark ? 0xcbd5e1 : 0x64748b,
+            transparent: true,
+            opacity: 0.38,
+            depthTest: true,
+            depthWrite: false,
+          });
+      const line = new THREE.Line(
+        sphericalConnectionGeometry(left, right, 0.045),
+        lineMaterial
+      );
+      if (lineMaterial instanceof THREE.LineDashedMaterial) {
+        line.computeLineDistances();
+      }
+      line.renderOrder = 2;
+      scene.add(line);
+      connectionLines.push(line);
+    };
+    Object.entries(displayNodes).forEach(([key, node]) => {
+      if (node.parentId) addConnection(node.parentId, key, false);
+      node.relatedNodeKeys?.forEach(relatedKey =>
+        addConnection(key, relatedKey, true)
+      );
     });
 
     const raycaster = new THREE.Raycaster();
@@ -515,52 +748,22 @@ export function RindCanvas({
       camera.updateMatrixWorld();
       const generationPulse =
         0.5 + 0.5 * Math.sin(window.performance.now() / 220);
-      indicators.forEach(indicator => {
-        if (!indicator.generating) return;
-        indicator.mesh.material.opacity = 0.64 + generationPulse * 0.36;
-        indicator.mesh.scale.setScalar(
-          (indicator.selected ? 1.14 : 1) * (0.94 + generationPulse * 0.09)
-        );
+      nodeFaces.forEach(face => {
+        if (face.generating) {
+          face.mesh.material.opacity = 0.46 + generationPulse * 0.34;
+        } else if (face.loading) {
+          face.mesh.material.opacity = 0.82 + generationPulse * 0.18;
+        }
       });
-      const width = Math.max(1, canvas.clientWidth);
-      const height = Math.max(1, canvas.clientHeight);
-      const visibleLabelIds = new Set(
-        selectRindLabelIds(
-          labels.map(label => {
-            const bounds = spriteScreenBounds(
-              label.sprite,
-              camera,
-              width,
-              height
-            );
-            const normal = label.tile.centerPoint.clone().normalize();
-            const towardCamera = camera.position
-              .clone()
-              .sub(label.tile.centerPoint)
-              .normalize();
-            const centerX = (bounds.left + bounds.right) / 2;
-            const centerY = (bounds.top + bounds.bottom) / 2;
-            return {
-              id: label.nodeKey,
-              ...bounds,
-              facing: normal.dot(towardCamera),
-              priority:
-                hoveredNodeIdRef.current === label.nodeKey
-                  ? Math.max(3, label.priority)
-                  : label.priority,
-              centerDistance: Math.hypot(
-                centerX - width / 2,
-                centerY - height / 2
-              ),
-            };
-          }),
-          {
-            ...RIND_LABEL_LAYOUT_OPTIONS,
-          }
-        )
-      );
       labels.forEach(label => {
-        label.sprite.visible = visibleLabelIds.has(label.nodeKey);
+        const normal = label.tile.centerPoint.clone().normalize();
+        const towardCamera = camera.position
+          .clone()
+          .sub(label.tile.centerPoint)
+          .normalize();
+        label.sprite.visible =
+          RIND_TILE_CONTENT_OPTIONS.showAllFrontFacing &&
+          normal.dot(towardCamera) >= RIND_TILE_CONTENT_OPTIONS.minFacing;
         if (label.generating) {
           (label.sprite.material as THREE.SpriteMaterial).opacity =
             0.72 + generationPulse * 0.28;
@@ -588,9 +791,17 @@ export function RindCanvas({
         seam.geometry.dispose();
         (seam.material as THREE.Material).dispose();
       });
-      indicators.forEach(indicator => {
-        indicator.mesh.geometry.dispose();
-        indicator.mesh.material.dispose();
+      nodeFaces.forEach(face => {
+        face.mesh.geometry.dispose();
+        face.mesh.material.dispose();
+      });
+      nodeOutlines.forEach(outline => {
+        outline.geometry.dispose();
+        (outline.material as THREE.Material).dispose();
+      });
+      connectionLines.forEach(line => {
+        line.geometry.dispose();
+        (line.material as THREE.Material).dispose();
       });
       labels.forEach(label => {
         const material = label.sprite.material as THREE.SpriteMaterial;
@@ -653,7 +864,9 @@ export function RindCanvas({
             onDoubleClick={() => onNodeInspect(key)}
             aria-current={selectedNodeId === key ? "true" : undefined}
           >
-            {node.text}
+            {node.text}, {node.type} tile
+            {node.isKeyTheme ? ", key theme" : ""}
+            {loadingNodes.has(key) ? ", generating neighbors" : ""}
           </button>
         ))}
       </nav>

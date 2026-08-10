@@ -1,8 +1,8 @@
 import { describe, expect, it } from "vitest";
 import {
-  RIND_LABEL_LAYOUT_OPTIONS,
   RIND_NODE_INDICATOR_SEGMENTS,
   RIND_SURFACE_STYLES,
+  RIND_TILE_CONTENT_OPTIONS,
 } from "@/lib/rindVisualStyle";
 
 describe("Rind visual style", () => {
@@ -10,9 +10,9 @@ describe("Rind visual style", () => {
     expect(RIND_NODE_INDICATOR_SEGMENTS).toBe(8);
   });
 
-  it("keeps labels away from the sphere limb", () => {
-    expect(RIND_LABEL_LAYOUT_OPTIONS.minFacing).toBeGreaterThanOrEqual(0.45);
-    expect(RIND_LABEL_LAYOUT_OPTIONS.maxVisible).toBeLessThanOrEqual(6);
+  it("keeps tile content away from the sphere limb without hiding the neighborhood", () => {
+    expect(RIND_TILE_CONTENT_OPTIONS.minFacing).toBeGreaterThanOrEqual(0.45);
+    expect(RIND_TILE_CONTENT_OPTIONS.showAllFrontFacing).toBe(true);
   });
 
   it.each(["light", "dark"] as const)(

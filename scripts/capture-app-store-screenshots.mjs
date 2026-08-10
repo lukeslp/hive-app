@@ -30,7 +30,7 @@ const macShots = [
   ["detail", "Turn detail into direction", "Turn_Detail_Into_Direction"],
   ["themes", "Focus the signal", "Focus_The_Signal"],
   ["artifact", "Build a finished artifact", "Build_A_Finished_Artifact"],
-  ["settings", "Choose your working style", "Choose_Your_Style"],
+  ["sphere", "See ideas from every angle", "Choose_Your_Style"],
 ];
 
 const sleep = milliseconds =>

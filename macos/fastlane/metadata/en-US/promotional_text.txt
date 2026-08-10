@@ -1,1 +1,1 @@
-Explore ideas on a spatial canvas, then turn a board, branch, or selection into a report, brief, plan, diagram, prototype, or exportable file.
+Map ideas in Tiles or across an interactive Sphere, then turn a board, branch, or selection into a report, plan, diagram, prototype, or exportable file.
