@@ -8,6 +8,19 @@ import { WorkspaceModeControl } from "@/components/WorkspaceModeControl";
 afterEach(cleanup);
 
 describe("WorkspaceModeControl", () => {
+  it("identifies Rind as experimental in the mode control", () => {
+    render(
+      React.createElement(WorkspaceModeControl, {
+        value: "tiles",
+        onChange: vi.fn(),
+      })
+    );
+
+    expect(
+      screen.getByRole("radio", { name: /Rind.*Experimental/i })
+    ).toBeTruthy();
+  });
+
   it("uses one keyboard tab stop and exposes the selected mode", () => {
     render(
       React.createElement(WorkspaceModeControl, {
@@ -20,7 +33,9 @@ describe("WorkspaceModeControl", () => {
       screen.getByRole("radio", { name: "Tiles" }).getAttribute("tabindex")
     ).toBe("0");
     expect(
-      screen.getByRole("radio", { name: "Rind" }).getAttribute("tabindex")
+      screen
+        .getByRole("radio", { name: "Rind Experimental" })
+        .getAttribute("tabindex")
     ).toBe("-1");
   });
 
@@ -38,7 +53,7 @@ describe("WorkspaceModeControl", () => {
 
     expect(onChange).toHaveBeenCalledWith("sphere");
     expect(document.activeElement).toBe(
-      screen.getByRole("radio", { name: "Rind" })
+      screen.getByRole("radio", { name: "Rind Experimental" })
     );
   });
 });

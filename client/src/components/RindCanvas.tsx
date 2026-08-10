@@ -9,6 +9,7 @@ import {
   type SphereTile,
 } from "@/lib/hexasphere";
 import {
+  buildRindDisplayNodes,
   deriveRindProjection,
   rindSubdivisionsForNodeCount,
   type RindNodePlacement,
@@ -22,6 +23,7 @@ interface RindCanvasProps {
   projection: SphereProjection;
   selectedNodeId: string | null;
   loadingNodes: Set<string>;
+  generatingNeighbors: Set<string>;
   theme: string;
   onNodeClick: (key: string, node: HexNode) => void;
   onNodeInspect: (key: string) => void;
@@ -169,6 +171,7 @@ export function RindCanvas({
   projection,
   selectedNodeId,
   loadingNodes,
+  generatingNeighbors,
   theme,
   onNodeClick,
   onNodeInspect,
@@ -179,8 +182,11 @@ export function RindCanvas({
   const hoveredNodeIdRef = useRef<string | null>(null);
   hoveredNodeIdRef.current = hoveredNodeId;
   const [renderError, setRenderError] = useState<string | null>(null);
+  const pendingNodeCount = Array.from(generatingNeighbors).filter(
+    key => !nodes[key]
+  ).length;
   const subdivisions = rindSubdivisionsForNodeCount(
-    Object.keys(nodes).length,
+    Object.keys(nodes).length + pendingNodeCount,
     projection.subdivisions
   );
   const hexasphere = useMemo(
@@ -206,20 +212,34 @@ export function RindCanvas({
       ),
     [hexasphere, nodes, projection.nodes, topology]
   );
+  const displayNodes = useMemo(
+    () => buildRindDisplayNodes(nodes, generatingNeighbors, loadingNodes),
+    [generatingNeighbors, loadingNodes, nodes]
+  );
+  const displayPlacements = useMemo(
+    () =>
+      deriveRindProjection(
+        displayNodes,
+        topology,
+        placements,
+        findFrontFacingTile(hexasphere.tiles, hexasphere.radius)
+      ),
+    [displayNodes, hexasphere, placements, topology]
+  );
   const nodeByTileIndex = useMemo(() => {
     const keyBySemanticId = new Map(
-      Object.entries(nodes).map(([key, node]) => [
+      Object.entries(displayNodes).map(([key, node]) => [
         node.semanticId ?? `tile:${node.q}:${node.r}`,
         key,
       ])
     );
     const result = new Map<number, string>();
-    Object.entries(placements).forEach(([semanticId, placement]) => {
+    Object.entries(displayPlacements).forEach(([semanticId, placement]) => {
       const key = keyBySemanticId.get(semanticId);
       if (key) result.set(placement.tileIndex, key);
     });
     return result;
-  }, [nodes, placements]);
+  }, [displayNodes, displayPlacements]);
   const selectedNode = selectedNodeId ? nodes[selectedNodeId] : null;
   const hoveredNode = hoveredNodeId ? nodes[hoveredNodeId] : null;
 
@@ -286,15 +306,17 @@ export function RindCanvas({
       tile: SphereTile;
       nodeKey: string;
       priority: number;
+      generating: boolean;
     }[] = [];
     const emptyTileColors = dark
       ? EMPTY_TILE_COLORS.dark
       : EMPTY_TILE_COLORS.light;
     hexasphere.tiles.forEach(tile => {
       const nodeKey = nodeByTileIndex.get(tile.index);
-      const node = nodeKey ? nodes[nodeKey] : null;
+      const node = nodeKey ? displayNodes[nodeKey] : null;
       const selected = !!nodeKey && nodeKey === selectedNodeId;
-      const loading = !!nodeKey && loadingNodes.has(nodeKey);
+      const generating = !!nodeKey && generatingNeighbors.has(nodeKey);
+      const loading = !!nodeKey && (loadingNodes.has(nodeKey) || generating);
       const color = node
         ? (NODE_COLORS[node.type] ?? NODE_COLORS.default)
         : emptyTileColors.color;
@@ -320,7 +342,7 @@ export function RindCanvas({
         polygonOffsetUnits: 1,
       });
       const mesh = new THREE.Mesh(tileGeometry(tile), material);
-      mesh.userData = { nodeKey, tileIndex: tile.index };
+      mesh.userData = { nodeKey, tileIndex: tile.index, generating };
       if (selected) {
         mesh.position.copy(
           tile.centerPoint.clone().normalize().multiplyScalar(0.05)
@@ -336,11 +358,14 @@ export function RindCanvas({
           sprite: label,
           tile,
           nodeKey: nodeKey!,
-          priority: selected
-            ? 4
-            : node.type === "root" || node.isKeyTheme
-              ? 2
-              : 0,
+          priority: generating
+            ? 5
+            : selected
+              ? 4
+              : node.type === "root" || node.isKeyTheme
+                ? 2
+                : 0,
+          generating,
         });
       }
     });
@@ -364,10 +389,11 @@ export function RindCanvas({
     };
     const handlePointerMove = (event: PointerEvent) => {
       const mesh = intersect(event);
-      const key =
+      const candidateKey =
         typeof mesh?.userData.nodeKey === "string"
           ? mesh.userData.nodeKey
           : null;
+      const key = candidateKey && nodes[candidateKey] ? candidateKey : null;
       setHoveredNodeId(key);
       canvas.style.cursor = key ? "pointer" : "grab";
     };
@@ -386,7 +412,7 @@ export function RindCanvas({
     const handleDoubleClick = (event: MouseEvent) => {
       const mesh = intersect(event as unknown as PointerEvent);
       const key = mesh?.userData.nodeKey;
-      if (typeof key === "string") onNodeInspect(key);
+      if (typeof key === "string" && nodes[key]) onNodeInspect(key);
     };
     canvas.addEventListener("pointerdown", handlePointerDown);
     canvas.addEventListener("pointermove", handlePointerMove);
@@ -424,6 +450,13 @@ export function RindCanvas({
     const animate = () => {
       controls.update();
       camera.updateMatrixWorld();
+      const generationPulse =
+        0.5 + 0.5 * Math.sin(window.performance.now() / 220);
+      meshes.forEach(mesh => {
+        if (!mesh.userData.generating) return;
+        (mesh.material as THREE.MeshStandardMaterial).emissiveIntensity =
+          0.42 + generationPulse * 0.48;
+      });
       const width = Math.max(1, canvas.clientWidth);
       const height = Math.max(1, canvas.clientHeight);
       const visibleLabelIds = new Set(
@@ -465,6 +498,10 @@ export function RindCanvas({
       );
       labels.forEach(label => {
         label.sprite.visible = visibleLabelIds.has(label.nodeKey);
+        if (label.generating) {
+          (label.sprite.material as THREE.SpriteMaterial).opacity =
+            0.72 + generationPulse * 0.28;
+        }
       });
       renderer.render(scene, camera);
       frame = requestAnimationFrame(animate);
@@ -493,6 +530,8 @@ export function RindCanvas({
     };
   }, [
     hexasphere,
+    displayNodes,
+    generatingNeighbors,
     loadingNodes,
     nodeByTileIndex,
     nodes,
@@ -524,6 +563,11 @@ export function RindCanvas({
         className="h-full w-full outline-none"
         aria-label="Rind spatial idea workspace. Drag to rotate and scroll to zoom."
       />
+      {generatingNeighbors.size > 0 && (
+        <div className="sr-only" role="status" aria-live="polite">
+          Generating {generatingNeighbors.size} idea tiles on the sphere
+        </div>
+      )}
       <div className="pointer-events-none absolute bottom-4 left-1/2 -translate-x-1/2 rounded-full border border-border/70 bg-card/85 px-4 py-2 text-xs text-muted-foreground shadow-lg backdrop-blur-xl">
         {hoveredNode?.text ??
           selectedNode?.text ??

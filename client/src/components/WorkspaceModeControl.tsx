@@ -72,6 +72,7 @@ export function WorkspaceModeControl({
             }}
             type="button"
             role="radio"
+            aria-label={mode === "sphere" ? "Rind Experimental" : label}
             aria-checked={selected}
             tabIndex={selected ? 0 : -1}
             onClick={() => select(mode)}
@@ -84,6 +85,11 @@ export function WorkspaceModeControl({
           >
             <Icon className="h-4 w-4" aria-hidden="true" />
             <span>{label}</span>
+            {mode === "sphere" && (
+              <span className="rounded-full bg-cyan-500/15 px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-wide text-cyan-600 dark:text-cyan-300">
+                Experimental
+              </span>
+            )}
           </button>
         );
       })}

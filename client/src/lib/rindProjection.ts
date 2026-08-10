@@ -15,6 +15,62 @@ export function semanticIdForRindNode(node: HexNode): string {
   return node.semanticId ?? `tile:${node.q}:${node.r}`;
 }
 
+function parseNodeKey(key: string): { q: number; r: number } | null {
+  const match = /^(-?\d+),(-?\d+)$/.exec(key);
+  if (!match) return null;
+  return { q: Number(match[1]), r: Number(match[2]) };
+}
+
+function axialDistance(
+  left: { q: number; r: number },
+  right: { q: number; r: number }
+): number {
+  const dq = left.q - right.q;
+  const dr = left.r - right.r;
+  return Math.max(Math.abs(dq), Math.abs(dr), Math.abs(dq + dr));
+}
+
+/**
+ * Add transient nodes for unfinished neighbor requests. Their coordinate-based
+ * semantic identity is the same one the completed tile will use, so Rind can
+ * reserve and animate the final face without persisting placeholder content.
+ */
+export function buildRindDisplayNodes(
+  nodes: Record<string, HexNode>,
+  generatingNeighborKeys: ReadonlySet<string>,
+  loadingNodeKeys: ReadonlySet<string>
+): Record<string, HexNode> {
+  const displayNodes = { ...nodes };
+  const loadingParents = Array.from(loadingNodeKeys)
+    .filter(key => !!nodes[key])
+    .sort(compareCodeUnits);
+
+  Array.from(generatingNeighborKeys)
+    .sort(compareCodeUnits)
+    .forEach(key => {
+      if (displayNodes[key]) return;
+      const position = parseNodeKey(key);
+      if (!position) return;
+      const parentKey = loadingParents.find(
+        candidate => axialDistance(position, nodes[candidate]) === 1
+      );
+      if (!parentKey) return;
+      const parent = nodes[parentKey];
+      displayNodes[key] = {
+        ...position,
+        text: "Generating…",
+        description: "A new idea is being generated",
+        type: "technical",
+        depth: (parent.depth ?? 0) + 1,
+        parentId: parentKey,
+        pinned: false,
+        clusterId: parent.clusterId,
+      };
+    });
+
+  return displayNodes;
+}
+
 export function rindSubdivisionsForNodeCount(
   count: number,
   saved: number

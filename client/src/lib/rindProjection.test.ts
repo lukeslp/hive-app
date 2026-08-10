@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import type { HexNode } from "@/types/hivemind";
 import {
+  buildRindDisplayNodes,
   deriveRindProjection,
   rindSubdivisionsForNodeCount,
   semanticIdForRindNode,
@@ -35,6 +36,30 @@ const child: HexNode = {
 };
 
 describe("Rind sphere projection", () => {
+  it("projects pending neighbor tiles beside their generating parent", () => {
+    const displayNodes = buildRindDisplayNodes(
+      { "0,0": root },
+      new Set(["1,0", "not-a-coordinate", "0,0"]),
+      new Set(["0,0"])
+    );
+
+    expect(displayNodes["1,0"]).toMatchObject({
+      q: 1,
+      r: 0,
+      text: "Generating…",
+      parentId: "0,0",
+      depth: 1,
+    });
+    expect(displayNodes["1,0"].semanticId).toBeUndefined();
+    expect(displayNodes["not-a-coordinate"]).toBeUndefined();
+    expect(displayNodes["0,0"]).toBe(root);
+
+    const projection = deriveRindProjection(displayNodes, tiles, {}, 0);
+    expect(tiles[0].neighborIndices).toContain(
+      projection["tile:1:0"].tileIndex
+    );
+  });
+
   it("keeps imported subdivisions until the board needs more tiles", () => {
     expect(rindSubdivisionsForNodeCount(2, 4)).toBe(4);
     expect(rindSubdivisionsForNodeCount(163, 4)).toBe(5);

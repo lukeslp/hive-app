@@ -71,8 +71,11 @@ export function WorkspaceLaunchDialog({
             <span className="mb-5 flex h-11 w-11 items-center justify-center rounded-xl bg-cyan-500/10 text-cyan-500">
               <Map className="h-5 w-5" aria-hidden="true" />
             </span>
-            <span className="block text-lg font-semibold text-foreground">
-              Sphere
+            <span className="flex items-center gap-2 text-lg font-semibold text-foreground">
+              <span>Sphere</span>
+              <span className="rounded-full bg-cyan-500/15 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-cyan-600 dark:text-cyan-300">
+                Experimental
+              </span>
             </span>
             <span className="mt-1.5 block text-sm leading-relaxed text-muted-foreground">
               Explore ideas across a spatial sphere. Drag to orbit and scroll to

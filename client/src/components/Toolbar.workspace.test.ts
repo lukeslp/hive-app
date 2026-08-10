@@ -51,7 +51,7 @@ function renderToolbar(
 describe("Toolbar workspace switch", () => {
   it("opens Rind on supported native Mac builds", () => {
     const props = renderToolbar();
-    fireEvent.click(screen.getByRole("radio", { name: "Rind" }));
+    fireEvent.click(screen.getByRole("radio", { name: "Rind Experimental" }));
     expect(props.onWorkspaceModeChange).toHaveBeenCalledWith("sphere");
   });
 
@@ -71,7 +71,9 @@ describe("Toolbar workspace switch", () => {
   it("exposes the current workspace without opening Files and sharing", () => {
     renderToolbar({ workspaceMode: "sphere" });
     expect(
-      screen.getByRole("radio", { name: "Rind" }).getAttribute("aria-checked")
+      screen
+        .getByRole("radio", { name: "Rind Experimental" })
+        .getAttribute("aria-checked")
     ).toBe("true");
   });
 });

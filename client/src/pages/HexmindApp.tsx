@@ -2101,6 +2101,7 @@ Generate 6 diverse related ideas. Connect to key themes when relevant.`;
               projection={sessions.sphereProjection}
               selectedNodeId={selectedNodeId}
               loadingNodes={loadingNodes}
+              generatingNeighbors={generatingNeighbors}
               theme={theme}
               onNodeClick={handleNodeClick}
               onNodeInspect={setInspectedNodeId}

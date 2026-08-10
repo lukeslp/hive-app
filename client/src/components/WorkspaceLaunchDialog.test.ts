@@ -8,6 +8,21 @@ import { WorkspaceLaunchDialog } from "@/components/WorkspaceLaunchDialog";
 afterEach(cleanup);
 
 describe("WorkspaceLaunchDialog", () => {
+  it("labels Sphere as experimental before it is chosen", () => {
+    render(
+      React.createElement(WorkspaceLaunchDialog, {
+        isOpen: true,
+        onChoose: vi.fn(),
+        onDismiss: vi.fn(),
+      })
+    );
+
+    expect(screen.getByText("Experimental")).toBeTruthy();
+    expect(
+      screen.getByRole("button", { name: /Sphere.*Experimental/i })
+    ).toBeTruthy();
+  });
+
   it("explains that both choices share one board and opens Sphere", () => {
     const onChoose = vi.fn();
     render(
