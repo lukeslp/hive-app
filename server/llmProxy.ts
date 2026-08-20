@@ -85,6 +85,14 @@ function wrapResponse(text: string): object {
   return { candidates: [{ content: { parts: [{ text }] } }] };
 }
 
+
+function ensureJsonWord(messages: { role: string; content: string }[]): void {
+  if (messages.some((m) => /\bjson\b/i.test(m.content))) return;
+  const last = messages[messages.length - 1];
+  if (last) last.content += "\nRespond with JSON.";
+}
+
+
 async function callGemini(
   req: NormalizedRequest,
   apiKey: string
@@ -212,7 +220,10 @@ async function callOpenAI(
     // normalized 0.7 value makes the API reject otherwise valid requests.
     max_completion_tokens: req.maxTokens,
   };
-  if (req.jsonMode) body.response_format = { type: "json_object" };
+  if (req.jsonMode) {
+    ensureJsonWord(messages);
+    body.response_format = { type: "json_object" };
+  }
 
   const res = await fetch("https://api.openai.com/v1/chat/completions", {
     method: "POST",
@@ -250,7 +261,10 @@ async function callGrok(
     temperature: req.temperature,
     max_tokens: req.maxTokens,
   };
-  if (req.jsonMode) body.response_format = { type: "json_object" };
+  if (req.jsonMode) {
+    ensureJsonWord(messages);
+    body.response_format = { type: "json_object" };
+  }
 
   const res = await fetch("https://api.x.ai/v1/chat/completions", {
     method: "POST",

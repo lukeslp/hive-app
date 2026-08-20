@@ -151,6 +151,45 @@ describe("LLM Proxy Router", () => {
       expect(String(calledUrl)).toContain("generativelanguage.googleapis.com");
     });
 
+    it("puts the word json in OpenAI messages when json_object mode is on", async () => {
+      process.env.OPENAI_API_KEY = "test-openai-key";
+      mockFetch.mockResolvedValueOnce({
+        ok: true,
+        status: 200,
+        json: async () => ({
+          choices: [{ message: { content: '{"ideas":["oak"]}' } }],
+        }),
+        text: async () => "",
+      });
+
+      const req = mockReq({
+        headers: { "x-provider": "openai" },
+        body: {
+          contents: [{ parts: [{ text: "Give related ideas for: oak tree" }] }],
+          generationConfig: {
+            responseMimeType: "application/json",
+            maxOutputTokens: 64,
+          },
+        },
+      });
+      const res = mockRes();
+      const layer = router.stack.find(
+        (l: any) => l.route?.path === "/generate" && l.route?.methods?.post
+      );
+      const handler = layer!.route!.stack.at(-1);
+      await handler!.handle(req, res, () => {});
+
+      expect(res._status).toBe(200);
+      const init = mockFetch.mock.calls[0]?.[1] as { body?: string };
+      const body = JSON.parse(String(init?.body));
+      expect(body.model).toBe("gpt-5.6-luna");
+      expect(body.response_format).toEqual({ type: "json_object" });
+      const joined = (body.messages as { content: string }[])
+        .map((m) => m.content)
+        .join(" ");
+      expect(joined.toLowerCase()).toContain("json");
+    });
+
     it("returns 413 when body exceeds the 64KB safety cap", async () => {
       process.env.GEMINI_API_KEY = "test-gemini-key";
 
