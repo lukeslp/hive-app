@@ -35,7 +35,7 @@ android {
         applicationId "app.ideatiles.android"
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
-        versionCode 11000
+        versionCode 11002
         versionName "1.3.2"
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
         buildConfigField "String", "GEMMA_MODEL_URL", groovy.json.JsonOutput.toJson(modelUrl)
