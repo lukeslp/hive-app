@@ -15,7 +15,7 @@
 
 ## Current Product State (August 2026)
 
-- **Apple distribution:** version 1.3.2 is live on the App Store for iPhone, iPad, and Mac. Version 1.3.3 is in Prepare for Submission for both platforms; source is aligned at build 11, with no 1.3.3 build attached yet. The signed/notarized universal 1.3.1 (5) ZIP remains available from the [Idea Tiles downloads page](https://dr.eamer.dev/downloads/apps/idea-tiles/). Listing metadata is managed as code in `ios/fastlane/` and `macos/fastlane/`.
+- **Apple distribution:** version 1.3.2 is live on the App Store for iPhone, iPad, and Mac. Version 1.3.3 is in Prepare for Submission for both platforms and source is aligned at build 11. Xcode Cloud iOS build 115 is valid in App Store Connect but not yet attached to the store version; the 1.3.3 Mac build remains pending. The signed/notarized universal 1.3.1 (5) ZIP remains available from the [Idea Tiles downloads page](https://dr.eamer.dev/downloads/apps/idea-tiles/). Listing metadata is managed as code in `ios/fastlane/` and `macos/fastlane/`.
 - **Android:** signed version 1.3.0 is available as a direct download; source is aligned to 1.3.3 (code 11003) but still needs a separate signed device/store release pass.
 - **1.3.2 reliability work:** native Mac generation now honors cancellation and deadlines, share POSTs use the bounded request path, and copy feedback reports failure truthfully. The inaccurate MIT/open-source claim was removed from the App Store listing.
 - Brand display name is **Idea Tiles** while legacy storage keys intentionally remain `hexpand_*` for data continuity.

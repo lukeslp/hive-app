@@ -6,8 +6,9 @@ notes belong in Git history, not in this pickup document.
 ## Current release state
 
 - Public App Store version: **1.3.2** for iPhone/iPad and native Mac.
-- Staged Apple update: **1.3.3 build 11** for both iOS and native Mac. Both version
-  records are in Prepare for Submission; no 1.3.3 build is attached yet.
+- Staged Apple update: **1.3.3** for both iOS and native Mac, with source build
+  **11**. Xcode Cloud iOS build **115** is valid in App Store Connect; the Mac
+  build is pending. Neither store version has a build attached yet.
 - Public direct Mac release: **1.3.1 (5)**, signed, notarized, and linked from
   `https://dr.eamer.dev/downloads/apps/idea-tiles/`.
 - Native Mac build 8 includes Rind spatial mode. The public direct ZIP remains
@@ -36,8 +37,8 @@ notes belong in Git history, not in this pickup document.
       Name, Email Address, User ID, and Other User Content for App Functionality.
 - [x] Upload and attach iOS and native Mac 1.3.2 build 8. Review submission
       remains separate.
-- [ ] Upload and attach iOS and native Mac 1.3.3 build 11 after their separate
-      archive, validation, and device checks.
+- [ ] Attach valid Xcode Cloud iOS build 115 to 1.3.3 after device checks.
+- [ ] Archive, validate, upload, and attach native Mac 1.3.3 build 11.
 - [x] Publish the signed/notarized universal Mac build 5 ZIP, checksum, catalog
       record, and downloads-page link.
 - [ ] Run [`docs/DEVICE_RELEASE_GATES.md`](docs/DEVICE_RELEASE_GATES.md) on real
