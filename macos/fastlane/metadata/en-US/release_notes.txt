@@ -1,20 +1,6 @@
-Idea Tiles 1.3.2 introduces the native Mac workspace, Sphere, and Artifact Studio, plus reliability fixes.
+Idea Tiles 1.3.3 is a maintenance release.
 
-NEW
-• Explore the same Idea Tiles board in Sphere, an interactive 3D workspace that wraps related ideas around a navigable surface.
-• Choose Tiles or Sphere when you first launch, switch directly from the toolbar, and set the default workspace for new boards.
-• Turn a board, branch, or selected tiles into reports, briefs, plans, diagrams, code scaffolds, SVG assets, static prototypes, or Image Playground artwork.
-• Review, save, export, and trace artifacts back to their source tiles.
-• Choose Apple Foundation Models, loopback Ollama, supported direct providers, or an authorized Dreamer profile.
-• Optional cloud sync keeps images local unless you explicitly select them.
-
-IMPROVED
-• Sphere now carries tile types, icons, labels, key themes, selection, relationships, and generation feedback directly on its surface.
-• Clearer seams and balanced lighting make the sphere easier to read in both light and dark appearances.
-
-FIXED
-• Canceling a generation now actually stops the wait instead of quietly spinning.
-• Creating a share link either completes or reports failure within thirty seconds.
-• The Copy button only confirms when the link really reached your clipboard.
+• Improves build reliability and compatibility.
+• Keeps the same native Tiles, Sphere, and Artifact Studio experience.
 
 The Mac app supports both Apple Silicon and Intel architectures and requires macOS 26 or later.

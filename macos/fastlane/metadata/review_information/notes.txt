@@ -1,4 +1,4 @@
-Idea Tiles 1.3.2 is a native macOS 26 app. No account or demo credentials are required for review.
+Idea Tiles 1.3.3 is a native macOS 26 app. No account or demo credentials are required for review.
 
 On first launch, choose Tiles or Sphere. Both workspaces show the same local board: Tiles presents a flat hex canvas, while Sphere maps the board onto a rotatable 3D surface. Select a tile to expand it, mark key themes, and use the toolbar to switch workspaces. Artifact Studio can turn the board or a selection into a reviewable document, diagram, prototype, or file.
 

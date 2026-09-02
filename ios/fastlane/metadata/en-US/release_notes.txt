@@ -1,7 +1,6 @@
-Idea Tiles 1.3.2 is a reliability release.
+Idea Tiles 1.3.3 is a maintenance release.
 
-- Canceling a generation now actually stops the wait. Previously a canceled request could quietly keep the spinner going for up to ten minutes.
-- Creating a share link can no longer hang — it either completes or tells you it couldn't within thirty seconds.
-- The Copy button only says "Copied!" when the link really reached your clipboard.
+- Improves build reliability and compatibility.
+- Keeps the same private, on-device iPhone and iPad experience.
 
 Feedback: luke@lukesteuber.com.

@@ -15,8 +15,8 @@
 
 ## Current Product State (August 2026)
 
-- **Apple distribution:** version 1.3.2 is live on the App Store for iPhone and iPad (build 8) and on the Mac App Store (build 10), both approved 2026-08-10. The local project is at 1.3.2 build 10 on both targets; the next iOS archive can use build 10, the next macOS archive must be 11 or higher. The signed/notarized universal 1.3.1 (5) ZIP remains available from the [Idea Tiles downloads page](https://dr.eamer.dev/downloads/apps/idea-tiles/). Listing metadata is managed as code in `ios/fastlane/` and `macos/fastlane/`.
-- **Android:** signed version 1.3.0 is available as a direct download; source is aligned to 1.3.2 but still needs a separate signed device/store release pass.
+- **Apple distribution:** version 1.3.2 is live on the App Store for iPhone, iPad, and Mac. Version 1.3.3 is in Prepare for Submission for both platforms; source is aligned at build 11, with no 1.3.3 build attached yet. The signed/notarized universal 1.3.1 (5) ZIP remains available from the [Idea Tiles downloads page](https://dr.eamer.dev/downloads/apps/idea-tiles/). Listing metadata is managed as code in `ios/fastlane/` and `macos/fastlane/`.
+- **Android:** signed version 1.3.0 is available as a direct download; source is aligned to 1.3.3 (code 11003) but still needs a separate signed device/store release pass.
 - **1.3.2 reliability work:** native Mac generation now honors cancellation and deadlines, share POSTs use the bounded request path, and copy feedback reports failure truthfully. The inaccurate MIT/open-source claim was removed from the App Store listing.
 - Brand display name is **Idea Tiles** while legacy storage keys intentionally remain `hexpand_*` for data continuity.
 - **Rind mode (experimental):** the native Mac app can switch the same board between Tiles and a labeled, orbitable geodesic sphere. Placements and camera state persist in the canonical workspace; web, iOS, and Android remain Tiles-only. Pending neighbor generation appears directly on reserved sphere faces instead of arriving without feedback.
