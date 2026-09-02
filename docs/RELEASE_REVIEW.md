@@ -1,15 +1,15 @@
 # Release review — Idea Tiles
 
-**Review date:** 2026-08-10
+**Review date:** 2026-09-02
 
-**Source version:** 1.3.2, Apple build 8
+**Source version:** 1.3.3, Apple build 11
 
-**Public App Store version:** iPhone/iPad 1.3.1; native Mac 1.3
+**Public App Store version:** iPhone/iPad and native Mac 1.3.2
 
 ## Verdict
 
-iOS and native Mac build 8 are valid and attached to the 1.3.2 App Store
-versions with complete metadata. Nothing has been submitted for review. The
+iOS Cloud build 115 and native Mac build 11 are valid and attached to the 1.3.3
+App Store versions with complete metadata. Nothing has been submitted for review. The
 public direct Mac download remains signed/notarized 1.3.1 (5). App Store privacy
 answers, current production deployment, and real-device behavior remain
 external evidence gates before review submission.
@@ -22,7 +22,7 @@ external evidence gates before review submission.
 | Medium | Source may be ahead of `ideatiles.app`. | Deploy deliberately, then run canonical endpoint and product smoke tests. |
 | Medium | UIScene migration remains partial. | Finish the migration and verify cold-start Universal Links on hardware. |
 | Medium | Snapshot links are stored in process memory. | Keep the limitation explicit or add durable TTL storage before promising persistence. |
-| Medium | The public direct Android build is 1.3.0 while source is 1.3.2; no store release is recorded. | Complete signing, device tests, metadata review, and publish the current Android source as a separate release action. |
+| Medium | The public direct Android build is 1.3.0 while signed 1.3.3 artifacts are staged; no store release is recorded. | Complete device tests and metadata review, then publish the staged Android release as a separate action. |
 
 ## Enforced product boundaries
 
@@ -43,8 +43,8 @@ external evidence gates before review submission.
   behavior instead of synthetic placeholder content.
 - Release scripts align Apple versions and validate privacy/export-compliance
   metadata in produced artifacts.
-- iOS and native Mac build 8 passed App Store validation, processing, and
-  attachment to their 1.3.2 versions. The direct 1.3.1 (5) universal build
+- iOS Cloud build 115 and native Mac build 11 passed App Store validation,
+  processing, and attachment to their 1.3.3 versions. The direct 1.3.1 (5) universal build
   previously passed Developer ID signing, notarization, stapling, Gatekeeper,
   hosted-byte, and checksum verification.
 - Canonical server routes reject unknown API requests with JSON instead of

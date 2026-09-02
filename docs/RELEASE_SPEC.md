@@ -1,6 +1,6 @@
 # Release Specification: Idea Tiles
 
-**Version**: 1.3.2, current Apple build 8
+**Version**: 1.3.3, current source build 11
 
 **Last updated**: 2026-08-10
 
@@ -31,8 +31,8 @@
 
 ### After upload
 
-- [x] Processing completes for iOS and native Mac build 8
-- [x] Build 8 is attached to both 1.3.2 App Store versions
+- [x] Processing completes for iOS Cloud build 115 and native Mac build 11
+- [x] The builds are attached to both 1.3.3 App Store versions with release notes
 - [ ] Internal TestFlight install smoke test on real hardware
 - [ ] External testing text matches “What to Test”
 
@@ -144,3 +144,4 @@ Document chosen values in internal release notes (not committed secrets).
 | 1.0     | 2026-05-12 | Initial MVP release spec + sharing policy |
 | 1.3.1   | 2026-08-09 | Build 7 integrates Rind at launch, in the toolbar, and in new-board preferences |
 | 1.3.2   | 2026-08-10 | Build 8 reliability fixes; iOS and Mac versions staged, not submitted |
+| 1.3.3   | 2026-09-02 | iOS Cloud build 115 and native Mac build 11 staged, not submitted |
