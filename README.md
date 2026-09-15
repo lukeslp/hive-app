@@ -66,7 +66,7 @@ The product name is Idea Tiles. The repository name `hive-app`, package name
 `hexmind-app`, Apple bundle identifier, and `hexpand_*` storage keys retain
 older names for compatibility. Rind in this repository is the Mac workspace;
 the older standalone BrainSphere/Rind and HiveMind repositories have separate
-histories.
+histories. See [source lineage](docs/SOURCE_LINEAGE.md).
 
 ## Development and release notes
 
@@ -82,7 +82,7 @@ build, a signed installer, and a store release are separate results.
 ## License
 
 Code and documentation are under the [MIT license](LICENSE), copyright Luke
-Steuber / Bridge City Lab LLC. Dependencies retain their own licenses.
+Steuber / Bridge City Lab LLC. Dependencies retain their own licenses; [third-party notices](THIRD_PARTY_NOTICES.md) preserve the hexasphere credit.
 Android Gemma weights are not included; their separate terms and distribution
 requirements apply to any model an operator supplies. The source does not
 include access to hosted services, provider accounts, or release-signing keys.

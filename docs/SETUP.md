@@ -14,6 +14,11 @@ The board runs at `http://localhost:3000/`. Local board storage and exports do
 not require an account or database. Without a configured provider, requests
 for new generated ideas fail with an availability message.
 
+Autosave is enabled by default. To restore the previous board after reopening
+the web app, dismiss the new-idea prompt, open board controls, then choose
+**Files and sharing → Sessions → Recover**. Use **Save (JSON)** for a portable
+backup.
+
 The current web interface selects OpenAI. Set `OPENAI_API_KEY` on the server
 to enable it. Other adapters exist in `server/llmProxy.ts`, but setting a key
 for one of those adapters does not switch the current web interface to it.
