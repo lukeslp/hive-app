@@ -20,6 +20,7 @@ import {
   Upload,
 } from "@/lib/icons";
 import { AUTOSAVE_KEY } from "@/lib/hexConstants";
+import { parseWorkspaceTransport } from "@shared/workspaceDocument";
 
 interface SavedSession {
   id: string | number;
@@ -71,10 +72,13 @@ export const SessionsModal = ({
       const autosave = localStorage.getItem(AUTOSAVE_KEY);
       if (autosave) {
         const data = JSON.parse(autosave);
-        if (data.nodes && Object.keys(data.nodes).length > 0) {
+        const envelope = parseWorkspaceTransport(data.workspaceEnvelope ?? data);
+        if (envelope.workspace.graph.nodes.length > 0) {
           return {
-            nodeCount: Object.keys(data.nodes).length,
-            timestamp: data.timestamp,
+            nodeCount: envelope.workspace.graph.nodes.length,
+            timestamp: typeof data.timestamp === "number" && Number.isFinite(data.timestamp)
+              ? data.timestamp
+              : null,
           };
         }
       }
@@ -146,8 +150,9 @@ export const SessionsModal = ({
                   Auto-saved Session
                 </p>
                 <p className="text-xs text-muted-foreground">
-                  {autosaveInfo.nodeCount} nodes • Last saved:{" "}
-                  {new Date(autosaveInfo.timestamp).toLocaleString()}
+                  {autosaveInfo.nodeCount} nodes • {autosaveInfo.timestamp !== null
+                    ? `Last saved: ${new Date(autosaveInfo.timestamp).toLocaleString()}`
+                    : "Stored on this device"}
                 </p>
               </div>
               <Button
