@@ -115,9 +115,9 @@ async function tryCloudFallback(
       maxOutputTokens: 256,
     },
   };
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), TIMEOUT_MS);
   try {
-    const controller = new AbortController();
-    const timer = setTimeout(() => controller.abort(), TIMEOUT_MS);
     const generation = await generateTextForCurrentPlatform({
       prompt: buildUserPrompt(source, target),
       systemPrompt: MERGE_SYSTEM_PROMPT,
@@ -125,7 +125,6 @@ async function tryCloudFallback(
       headers: { "Content-Type": "application/json", ...extraHeaders },
       signal: controller.signal,
     });
-    clearTimeout(timer);
     const synth = parseSynthJson(generation.text);
     return synth
       ? {
@@ -136,6 +135,8 @@ async function tryCloudFallback(
       : null;
   } catch {
     return null;
+  } finally {
+    clearTimeout(timer);
   }
 }
 
