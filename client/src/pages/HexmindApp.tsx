@@ -76,6 +76,7 @@ import {
   supportsRindMode,
 } from "@/lib/platform";
 import {
+  describeIosOnDeviceFailure,
   tryOnDeviceFirst,
   tryOnDeviceBranchesFirst,
 } from "@/lib/foundationModelsPlugin";
@@ -1090,10 +1091,7 @@ Generate 6 diverse related ideas. Connect to key themes when relevant.`;
     // produce usable JSON, surface a clear error and let the loading state
     // clean up below — never call /api/generate.
     if (isIos() && !preFetchedBranches) {
-      const errorMsg = fm
-        ? "On-device returned unparseable output"
-        : "Apple Intelligence isn't available on this device";
-      toast.error(errorMsg);
+      toast.error(await describeIosOnDeviceFailure(Boolean(fm)));
       setLoadingNodes(prev => {
         const next = new Set(prev);
         next.delete(key);
@@ -1403,8 +1401,7 @@ Generate 6 diverse related ideas. Connect to key themes when relevant.`;
 
       // iOS: Apple-Intelligence-only — no cloud fallback for refresh.
       if (isIos()) {
-        if (fm) toast.error("On-device returned unparseable output");
-        else toast.error("Apple Intelligence isn't available on this device");
+        toast.error(await describeIosOnDeviceFailure(Boolean(fm)));
         return;
       }
 

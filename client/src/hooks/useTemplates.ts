@@ -10,7 +10,7 @@ import { GEMINI_TEXT_MODEL } from "@/lib/hexConstants";
 import { isIos } from "@/lib/platform";
 import {
   tryOnDeviceFirst,
-  isFoundationModelsAvailable,
+  describeIosOnDeviceFailure,
 } from "@/lib/foundationModelsPlugin";
 import { getNodeKey } from "@/types/hexmind";
 import type { HexNode, ViewState } from "@/types/hivemind";
@@ -209,19 +209,10 @@ Example format:
         }
       }
 
-      // iOS is Apple-Intelligence-only: no cloud fallback. Distinguish
-      // "device can't run it" from "it didn't respond this time" — after
-      // a timeout the availability cache was just invalidated, so this
-      // re-probe is accurate, and telling an eligible-device user that
-      // Apple Intelligence "isn't available" would be wrong.
+      // iOS is Apple-Intelligence-only: no cloud fallback. The shared helper
+      // distinguishes "device can't run it" from "it didn't respond this time".
       if (isIos()) {
-        if (fm) {
-          toast.error("On-device returned unparseable output");
-        } else if (await isFoundationModelsAvailable()) {
-          toast.error("On-device generation didn't respond — please try again");
-        } else {
-          toast.error("Apple Intelligence isn't available on this device");
-        }
+        toast.error(await describeIosOnDeviceFailure(Boolean(fm)));
         return;
       }
 

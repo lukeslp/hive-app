@@ -109,6 +109,26 @@ export function invalidateFoundationModelsCache(): void {
   availabilityCache = null;
 }
 
+/**
+ * The error shown on iOS when the on-device path produced nothing usable.
+ * iOS has no hosted fallback, so this message is all the user learns.
+ *
+ * `tryOnDeviceFirst` and `tryOnDeviceBranchesFirst` return null both when the
+ * device cannot run the model and when an eligible device timed out or
+ * rejected a single request. A timeout or "unavailable" rejection has just
+ * dropped the availability cache, so this re-probe is current. Telling an
+ * eligible-device user that Apple Intelligence "isn't available" after one
+ * slow request is wrong.
+ */
+export async function describeIosOnDeviceFailure(
+  producedText: boolean
+): Promise<string> {
+  if (producedText) return "On-device returned unparseable output";
+  return (await isFoundationModelsAvailable())
+    ? "On-device generation didn't respond — please try again"
+    : "Apple Intelligence isn't available on this device";
+}
+
 export interface OnDeviceFirstOptions extends FMGenerateOptions {
   /**
    * Per-call timeout in milliseconds. Defaults to 20 seconds — the Swift

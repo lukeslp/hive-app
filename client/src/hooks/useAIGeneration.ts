@@ -18,7 +18,10 @@ import type { HexNode } from "@/types/hivemind";
 import { haptics } from "@/lib/haptics";
 import { getNodeKey } from "@/types/hexmind";
 import type { NodeTypeStyle } from "@/types/hexmind";
-import { tryOnDeviceBranchesFirst } from "@/lib/foundationModelsPlugin";
+import {
+  describeIosOnDeviceFailure,
+  tryOnDeviceBranchesFirst,
+} from "@/lib/foundationModelsPlugin";
 import { isIos } from "@/lib/platform";
 import { validateBranches } from "@/lib/clarificationValidator";
 import { BRANCH_SET_SCHEMA } from "@/lib/branchSchema";
@@ -529,9 +532,7 @@ Generate 6 neighbor nodes.`;
       // fabricating fake "Idea 1…Idea 6" placeholder neighbors that the
       // user would reasonably mistake for real model output.
       if (isIos()) {
-        const errorMsg = fm
-          ? "On-device returned unparseable output"
-          : "Apple Intelligence isn't available on this device";
+        const errorMsg = await describeIosOnDeviceFailure(Boolean(fm));
         setError(errorMsg);
         toast.error(errorMsg);
         setIsGenerating(false);
