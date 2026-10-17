@@ -90,7 +90,7 @@
   <body>
     <main>
       <h1>Idea Tiles Privacy Policy</h1>
-      <p class="meta">Last updated 8 August 2026</p>
+      <p class="meta">Last updated 16 October 2026</p>
 
       <p>
         Idea Tiles is a hexagonal mind-mapping tool from Bridge City Lab LLC. It
@@ -103,8 +103,9 @@
       <ul>
         <li>
           <strong>No tracking or advertising.</strong> No account is required
-          for local use. Idea Tiles has no advertising IDs, analytics SDKs, or
-          third-party crash reporting.
+          for local use. The native apps have no advertising IDs, analytics
+          SDKs, or third-party crash reporting. The ideatiles.app website counts
+          page views with a first-party counter at stats.dr.eamer.dev.
         </li>
         <li>
           <strong>Your boards stay on your device.</strong> They are saved to
@@ -177,10 +178,12 @@
       <p>
         The web and Android versions can send prompts and relevant board context
         to the Idea Tiles hosted generation endpoint. The service relays those
-        requests to its configured language-model provider. Android tries its
-        supported local runtimes first and uses the hosted path only when neither
-        local runtime is usable. The interface identifies this fallback before
-        the content leaves the device.
+        requests to its configured language-model provider. For tiles, merges,
+        and templates, Android tries its supported local runtimes first and uses
+        the hosted path only when neither local runtime is usable. Artifact
+        Studio on Android always uses the hosted path. Settings shows whether a
+        local runtime is ready; the app does not ask again before an individual
+        request uses the hosted path.
       </p>
 
       <h2>Artifact storage and optional sync</h2>
