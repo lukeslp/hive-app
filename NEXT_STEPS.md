@@ -1,25 +1,32 @@
 # Idea Tiles — next steps
 
-Updated 2026-09-02. This is the active operational checklist; historical release
+Updated 2026-10-16. This is the active operational checklist; historical release
 notes belong in Git history, not in this pickup document.
 
 ## Current release state
 
-- Public App Store version: **1.3.2** for iPhone/iPad and native Mac.
-- Staged Apple update: **1.3.3** for both iOS and native Mac. Xcode Cloud iOS
-  build **115** and native Mac build **11** are valid, attached, and paired
-  with release notes and screenshots. Neither version has been submitted.
-- Public direct Mac release: **1.3.1 (5)**, signed, notarized, and linked from
-  `https://dr.eamer.dev/downloads/apps/idea-tiles/`.
-- Native Mac build 8 includes Rind spatial mode. The public direct ZIP remains
-  the signed/notarized 1.3.1 (5) artifact.
-- Android package: `app.ideatiles.android`; signed version **1.3.0** is available
-  as a direct download. Signed, verified **1.3.3** (11003) APK and AAB artifacts
-  are staged under `artifacts/google-play/app.ideatiles.android/1.3.3-11003/`.
+- Public App Store version: **1.3.3** for iPhone/iPad (Xcode Cloud build
+  **115**) and native Mac (build **11**), live since 2026-09-02. iOS build 116
+  was uploaded the same day as a documentation-only rebuild; 115 is the live
+  binary.
+- Direct Mac ZIPs: the signed/notarized 1.3.1 builds 5 and 7 are still served
+  under `https://dr.eamer.dev/downloads/idea-tiles/`, but the downloads page now
+  sends Mac users to the Mac App Store and no longer links them.
+- Native Mac builds from 1.3.2 (8) onward include Rind spatial mode; the direct
+  1.3.1 ZIPs do not.
+- Android package: `app.ideatiles.android`; signed **1.3.3** (11003) has been the
+  direct download since 2026-09-04. Its APK and AAB were staged under
+  `artifacts/google-play/app.ideatiles.android/1.3.3-11003/`. Idea Tiles has no
+  row in the shared `updates-v1.json` feed and no in-app update check.
 - Canonical web origin: `https://ideatiles.app`.
-- Canonical production service: `ideatiles`, port **5065**, running from
-  `~/servers/ideatiles`. The `hexmind` service on 5057 is the separate HiveMind
-  community canvas and must not receive this app's bundle.
+- Canonical production service: `ideatiles`, loopback port **5065**, running
+  from `~/apps/ideatiles` on the production host. The `hexmind` service on 5057 is the
+  separate HiveMind community canvas and must not receive this app's bundle.
+- Production lags this source. As checked on 2026-10-16, the deployed server
+  bundle (2026-08-20) has no `/api/oauth/native-start` route, so the sign-in
+  window in the shipped Mac app opens a 404; the hosted web client's main
+  script dates from 2026-07-11; and the live `privacy.html` is the 10 May 2026
+  text rather than the current file in `client/public/`.
 
 ## Repository release gate
 
@@ -46,17 +53,17 @@ notes belong in Git history, not in this pickup document.
       iPhone/iPad hardware and cold-launch the App Store/TestFlight build.
 - [ ] Deliberately deploy the current web bundle to the `ideatiles` service, then
       run `pnpm verify:canonical` and smoke the canvas, legal pages, AASA, sharing,
-      and collaboration.
+      and collaboration. Native Mac sign-in and cloud sync depend on this deploy.
 - [x] Produce, sign, verify, and checksum Android 1.3.3 (11003).
-- [ ] Device-test and publish Android only after the release owner approves the
-      artifact and Play metadata.
+- [x] Publish Android 1.3.3 (11003) as the direct download (2026-09-04).
+- [ ] Device-test Android and prepare Play metadata before any Play release.
 - [x] Archive and upload the Rind-enabled native Mac build as 1.3.2 (8).
 
 ## Current 1.3.3 source contract to preserve
 
-Public channels are intentionally staggered: both Apple storefronts are 1.3.2,
-the staged Apple versions are 1.3.3 (iOS Cloud 115, native Mac 11), the direct
-Mac ZIP is 1.3.1 (5), and Android direct is 1.3.0 with 1.3.3 (11003) staged.
+Public channels as of 2026-10-16: both Apple storefronts are 1.3.3 (iOS Cloud
+115, native Mac 11), Android direct is 1.3.3 (11003), the unlinked direct Mac
+ZIPs are 1.3.1, and the hosted web app runs an older bundle than this source.
 The matrix below describes current source; Rind is included in the Mac app but
 not the public direct ZIP.
 
