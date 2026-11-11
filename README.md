@@ -1,6 +1,8 @@
 # Idea Tiles
 
+[![Web](https://img.shields.io/badge/web-ideatiles.app-4ad7d1?style=flat-square)](https://ideatiles.app/)
 [![App Store](https://img.shields.io/badge/App_Store-iPhone_and_iPad-blue?style=flat-square)](https://apps.apple.com/us/app/idea-tiles/id6767775306)
+[![Mac App Store](https://img.shields.io/badge/App_Store-Mac-blue?style=flat-square)](https://apps.apple.com/us/app/idea-tiles/id6767775306?platform=mac)
 [![Android download](https://img.shields.io/badge/Android-direct_download-34A853?style=flat-square)](https://dr.eamer.dev/downloads/apps/idea-tiles/)
 [![F-Droid repository](https://img.shields.io/badge/F--Droid-LocalType_releases_repo-1976D2?style=flat-square)](https://dr.eamer.dev/downloads/fdroid/)
 [![License: MIT](https://img.shields.io/badge/license-MIT-green?style=flat-square)](LICENSE)
