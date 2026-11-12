@@ -19,8 +19,7 @@ import {
   X,
   Upload,
 } from "@/lib/icons";
-import { AUTOSAVE_KEY } from "@/lib/hexConstants";
-import { parseWorkspaceTransport } from "@shared/workspaceDocument";
+import { readAutosaveInfo } from "@/lib/autosaveInfo";
 
 interface SavedSession {
   id: string | number;
@@ -67,28 +66,7 @@ export const SessionsModal = ({
   const [renamingId, setRenamingId] = useState<number | null>(null);
   const [renameValue, setRenameValue] = useState("");
 
-  const getAutosaveInfo = () => {
-    try {
-      const autosave = localStorage.getItem(AUTOSAVE_KEY);
-      if (autosave) {
-        const data = JSON.parse(autosave);
-        const envelope = parseWorkspaceTransport(data.workspaceEnvelope ?? data);
-        if (envelope.workspace.graph.nodes.length > 0) {
-          return {
-            nodeCount: envelope.workspace.graph.nodes.length,
-            timestamp: typeof data.timestamp === "number" && Number.isFinite(data.timestamp)
-              ? data.timestamp
-              : null,
-          };
-        }
-      }
-    } catch {
-      return null;
-    }
-    return null;
-  };
-
-  const autosaveInfo = getAutosaveInfo();
+  const autosaveInfo = readAutosaveInfo();
 
   const startRename = (id: number, currentName: string) => {
     setRenamingId(id);
@@ -150,7 +128,8 @@ export const SessionsModal = ({
                   Auto-saved Session
                 </p>
                 <p className="text-xs text-muted-foreground">
-                  {autosaveInfo.nodeCount} nodes • {autosaveInfo.timestamp !== null
+                  {autosaveInfo.nodeCount} nodes •{" "}
+                  {autosaveInfo.timestamp !== null
                     ? `Last saved: ${new Date(autosaveInfo.timestamp).toLocaleString()}`
                     : "Stored on this device"}
                 </p>

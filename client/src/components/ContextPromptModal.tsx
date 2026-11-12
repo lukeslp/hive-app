@@ -41,6 +41,11 @@ interface ContextPromptModalProps {
    * goes when it will leave the device. Omit when nothing needs saying.
    */
   notice?: string;
+  /**
+   * An extra choice beside Dismiss, used on the first prompt to reopen the
+   * autosaved board.
+   */
+  secondaryAction?: { label: string; onClick: () => void };
   /** Hide the "Enter to submit · Esc to close" hint on touch devices. */
   hideKeyboardHint?: boolean;
 }
@@ -56,6 +61,7 @@ export const ContextPromptModal = ({
   variant = "context",
   suggestedAnswers,
   notice,
+  secondaryAction,
   hideKeyboardHint = false,
 }: ContextPromptModalProps) => {
   const inputRef = useRef<HTMLInputElement>(null);
@@ -229,7 +235,7 @@ export const ContextPromptModal = ({
             onChange={e => setResponse(e.target.value)}
             onKeyDown={handleKeyDown}
             placeholder={hasChips ? "Or type your own answer..." : placeholder}
-            className="w-full px-5 py-4 bg-zinc-900/90 border border-white/20 rounded-2xl
+            className="w-full pl-5 pr-14 py-4 bg-zinc-900/90 border border-white/20 rounded-2xl
                        text-white/90 text-base sm:text-lg placeholder:text-white/45
                        focus:outline-none focus:border-white/40 focus:bg-zinc-900
                        transition-all duration-200 backdrop-blur-md"
@@ -284,6 +290,18 @@ export const ContextPromptModal = ({
             <X className="w-3 h-3" />
             {isOnboarding ? "Dismiss" : "Cancel"}
           </button>
+          {secondaryAction && (
+            <button
+              onClick={() => {
+                haptics.tap();
+                secondaryAction.onClick();
+              }}
+              className="flex items-center gap-1.5 min-h-11 px-2 text-white/90 text-sm underline underline-offset-4
+                         hover:text-white transition-colors"
+            >
+              {secondaryAction.label}
+            </button>
+          )}
           {!hideKeyboardHint && (
             <span className="text-white/40 text-xs font-light">
               Enter to submit · Esc to close

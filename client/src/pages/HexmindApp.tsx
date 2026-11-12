@@ -70,6 +70,7 @@ import {
   isCapacitor,
   getPlatform,
   isIos,
+  isOffline,
   supportsArtifactStudio,
   supportsHostedShareCreation,
   supportsLiveCollaboration,
@@ -82,6 +83,7 @@ import {
 import { sanitizeJson } from "@/lib/sanitize";
 import { saveBlob } from "@/lib/saveBlob";
 import { buildBoardSvg } from "@/lib/boardExport";
+import { readAutosaveInfo } from "@/lib/autosaveInfo";
 import { BACK_PRIORITY, useBackHandler } from "@/lib/backNavigation";
 import {
   ARTIFACT_SERVER_NOTICE,
@@ -550,6 +552,14 @@ export default function HexmindApp() {
       return () => clearTimeout(timer);
     }
   }, [nodes, showOnboardingPrompt, showWorkspaceLaunchChoice]);
+
+  // A cold start opens on the first prompt, not the last board. The board
+  // is still in the autosave, so offer it right there; before this the only
+  // way back was Files, Sessions, Recover.
+  const lastBoardInfo = useMemo(
+    () => (showOnboardingPrompt ? readAutosaveInfo() : null),
+    [showOnboardingPrompt]
+  );
 
   // Theme & accessibility
   const { theme, toggleTheme } = useTheme();
@@ -1303,9 +1313,11 @@ Generate 6 diverse related ideas. Connect to key themes when relevant.`;
         });
         return;
       }
-      console.error("AI Error:", error);
+      console.error("Generation error:", error);
       toast.error(
-        "Could not generate neighbors. Empty slots were left untouched."
+        isOffline()
+          ? "You are offline. New tiles need a connection. Nothing was changed."
+          : "Could not generate neighbors. Empty slots were left untouched."
       );
     } finally {
       setLoadingNodes(prev => {
@@ -2333,10 +2345,12 @@ Generate 6 diverse related ideas. Connect to key themes when relevant.`;
           </div>
         </div>
 
-        {/* Floating Action Bar */}
+        {/* Floating Action Bar. Hidden while a question prompt is open:
+            it sat above the prompt's dim and read as part of the prompt. */}
         {workspaceMode === "tiles" &&
           hoveredNode &&
           hoveredNodeId &&
+          !showContextPrompt &&
           !editingNodeId && (
             <FloatingActionBar
               node={hoveredNode}
@@ -2401,7 +2415,7 @@ Generate 6 diverse related ideas. Connect to key themes when relevant.`;
         )}
 
       {/* Inspect Panel */}
-      {inspectedNodeId && nodes[inspectedNodeId] && (
+      {inspectedNodeId && nodes[inspectedNodeId] && !showContextPrompt && (
         <InspectPanel
           node={nodes[inspectedNodeId]}
           nodeId={inspectedNodeId}
@@ -2509,6 +2523,18 @@ Generate 6 diverse related ideas. Connect to key themes when relevant.`;
         isOpen={showOnboardingPrompt}
         question="What are you thinking about?"
         variant="onboarding"
+        secondaryAction={
+          lastBoardInfo
+            ? {
+                label: `Open last board (${lastBoardInfo.nodeCount} tile${lastBoardInfo.nodeCount === 1 ? "" : "s"})`,
+                onClick: () => {
+                  setShowOnboardingPrompt(false);
+                  setOnboardingResponse("");
+                  sessions.loadAutosave();
+                },
+              }
+            : undefined
+        }
         notice={serverNotice}
         hideKeyboardHint={isTouchDevice}
         response={onboardingResponse}

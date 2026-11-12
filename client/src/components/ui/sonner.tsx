@@ -22,6 +22,12 @@ const Toaster = ({ ...props }: ToasterProps) => {
       // Slightly inset from the top toolbar (upper-left hex pill) —
       // measured at 56px (toolbar height ~44 + 12 breathing room).
       offset={{ top: 56 }}
+      // Sonner ignores `offset` below 600px and uses `mobileOffset`, whose
+      // default of 16px put every toast on top of the toolbar button on a
+      // phone. A tap meant for the button landed on the toast, which also
+      // stopped the toast from timing out. 72px clears the bar (8px inset
+      // plus its 54px height) with room to spare.
+      mobileOffset={{ top: 72 }}
       className="toaster group"
       style={
         {

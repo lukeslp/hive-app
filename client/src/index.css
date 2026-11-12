@@ -253,8 +253,8 @@
   .text-hex-node {
     font-size: calc(
       clamp(0.625rem, 0.5625rem + 0.625vw, 0.8125rem) *
-        var(--font-size-multiplier)
-    ); /* 10px -> 13px */
+        var(--font-size-multiplier) * var(--hex-text-comp, 1)
+    ); /* 10px -> 13px; --hex-text-comp is set by lib/textZoom.ts */
     line-height: 1.15;
     letter-spacing: 0.02em;
   }
