@@ -2044,7 +2044,15 @@ Generate 6 diverse related ideas. Connect to key themes when relevant.`;
         onUndo={handleUndo}
         onRedo={handleRedo}
         onToggleSearch={() => {
-          search.setIsSearchOpen(!search.isSearchOpen);
+          if (search.isSearchOpen) {
+            // Closing from the toolbar button clears the query, the same as
+            // the X in the search bar. It used to hide the bar and leave
+            // the board dimmed by a search nobody could see.
+            search.setIsSearchOpen(false);
+            search.setSearchQuery("");
+            return;
+          }
+          search.setIsSearchOpen(true);
           setTimeout(() => search.searchInputRef.current?.focus(), 50);
         }}
         onSearchChange={search.setSearchQuery}
