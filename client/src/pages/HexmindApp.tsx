@@ -82,6 +82,11 @@ import {
 import { sanitizeJson } from "@/lib/sanitize";
 import { saveBlob } from "@/lib/saveBlob";
 import { buildBoardSvg } from "@/lib/boardExport";
+import {
+  ARTIFACT_SERVER_NOTICE,
+  androidServerNotice,
+} from "@/lib/androidGenerationNote";
+import { getLoginUrl } from "@/const";
 import { validateBranches } from "@/lib/clarificationValidator";
 import { BRANCH_SET_SCHEMA } from "@/lib/branchSchema";
 import {
@@ -189,6 +194,7 @@ export default function HexmindApp() {
       (macArtifactHost
         ? hasMacArtifactStudioCapability(macArtifactHost.capabilities)
         : true));
+  const signInAvailable = !isCapacitor() && getLoginUrl() !== "";
   const hostedShareCreationAvailable = supportsHostedShareCreation();
   const liveCollaborationAvailable = supportsLiveCollaboration();
   const rindModeAvailable =
@@ -284,6 +290,15 @@ export default function HexmindApp() {
   // provider change — which is what provenance should follow anyway.
   const { getRequestHeaders: getProviderHeaders, provider: activeProvider } =
     providerSettings;
+  // On Android, say where the text goes before it is sent: shown under the
+  // prompt whenever no on-device model can answer.
+  const serverNotice =
+    isCapacitor() && getPlatform() === "android"
+      ? androidServerNotice(
+          providerSettings.androidAICoreStatus,
+          providerSettings.androidGemmaStatus
+        )
+      : undefined;
   const webArtifactServices = useMemo(
     () =>
       createWebArtifactStudioServices({
@@ -2483,6 +2498,8 @@ Generate 6 diverse related ideas. Connect to key themes when relevant.`;
         isOpen={showOnboardingPrompt}
         question="What are you thinking about?"
         variant="onboarding"
+        notice={serverNotice}
+        hideKeyboardHint={isTouchDevice}
         response={onboardingResponse}
         setResponse={setOnboardingResponse}
         onGenerate={() => {
@@ -2530,7 +2547,17 @@ Generate 6 diverse related ideas. Connect to key themes when relevant.`;
           beforeExport={sessions.flushNativeWorkspace}
           onAttachImage={attachArtifactImage}
           cloudSync={isAuthenticated ? syncArtifactToCloud : undefined}
-          onCloudSignIn={!isAuthenticated ? login : undefined}
+          // Offer sign-in only where it can work. Capacitor builds have no
+          // sign-in route, and there the button could only answer "Hosted
+          // sign-in is not configured."
+          onCloudSignIn={
+            !isAuthenticated && signInAvailable ? login : undefined
+          }
+          // Image recipes run through Apple Image Playground in the Mac app.
+          imageRecipesAvailable={!!macArtifactHost}
+          generationNotice={
+            macArtifactHost ? undefined : ARTIFACT_SERVER_NOTICE
+          }
         />
       )}
 
@@ -2576,6 +2603,8 @@ Generate 6 diverse related ideas. Connect to key themes when relevant.`;
         isOpen={showContextPrompt}
         question={clarifyingPromptText}
         suggestedAnswers={clarifyingNode?.suggestedAnswers}
+        notice={serverNotice}
+        hideKeyboardHint={isTouchDevice}
         response={contextResponse}
         setResponse={setContextResponse}
         onGenerate={() => {
@@ -2700,6 +2729,8 @@ Generate 6 diverse related ideas. Connect to key themes when relevant.`;
       <ContextPromptModal
         isOpen={!!pendingClusterCoords}
         question="What's your new idea?"
+        notice={serverNotice}
+        hideKeyboardHint={isTouchDevice}
         response={newClusterResponse}
         setResponse={setNewClusterResponse}
         onGenerate={() => {
@@ -2719,6 +2750,7 @@ Generate 6 diverse related ideas. Connect to key themes when relevant.`;
       <ContextPromptModal
         isOpen={!!contextInfoNodeId}
         question="Add context or notes for this node"
+        hideKeyboardHint={isTouchDevice}
         response={contextInfoResponse}
         setResponse={setContextInfoResponse}
         onGenerate={() => {

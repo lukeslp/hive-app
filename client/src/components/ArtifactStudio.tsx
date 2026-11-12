@@ -10,6 +10,7 @@ import {
   getArtifactRecipe,
   suggestArtifactRecipes,
 } from "@/lib/artifactRecipes";
+import type { ArtifactRecipe } from "@/lib/artifactRecipes";
 import type {
   ArtifactGenerationProgress,
   ArtifactImageAttachment,
@@ -48,6 +49,17 @@ export interface ArtifactStudioProps {
     imageFileIds: string[]
   ) => Promise<{ remoteId: string }>;
   onCloudSignIn?: () => Promise<void>;
+  /**
+   * Image recipes need the native Mac host (Image Playground). Everywhere
+   * else they can only fail, so the caller turns them off. Default true so
+   * the Mac path and existing callers are unchanged.
+   */
+  imageRecipesAvailable?: boolean;
+  /**
+   * Shown on the confirmation step when generating sends the board text to
+   * a server, so the person knows before anything leaves the device.
+   */
+  generationNotice?: string;
 }
 
 export class ArtifactCloudSyncError extends Error {
@@ -150,6 +162,8 @@ export function ArtifactStudio({
   onAttachImage,
   cloudSync,
   onCloudSignIn,
+  imageRecipesAvailable = true,
+  generationNotice,
 }: ArtifactStudioProps) {
   const [scopeKind, setScopeKind] = useState<ArtifactScope["kind"]>("board");
   const [recipeId, setRecipeId] = useState("brief");
@@ -206,8 +220,31 @@ export function ArtifactStudio({
     }
     return { semanticIdByRendererKey, rendererKeyBySemanticId };
   }, [nodes]);
-  const suggestions = useMemo(() => suggestArtifactRecipes(context), [context]);
-  const recipe = getArtifactRecipe(recipeId) ?? ARTIFACT_RECIPES[0];
+  const recipeAllowed = (kind: ArtifactRecipe["kind"]) =>
+    imageRecipesAvailable || kind !== "image";
+  const suggestions = useMemo(
+    () =>
+      suggestArtifactRecipes(context).filter(
+        suggestion =>
+          imageRecipesAvailable || suggestion.recipe.kind !== "image"
+      ),
+    [context, imageRecipesAvailable]
+  );
+  const recipeGroups = useMemo(
+    () =>
+      ARTIFACT_RECIPE_GROUPS.map(group => ({
+        ...group,
+        recipes: group.recipes.filter(
+          item => imageRecipesAvailable || item.kind !== "image"
+        ),
+      })).filter(group => group.recipes.length > 0),
+    [imageRecipesAvailable]
+  );
+  const selectedRecipe = getArtifactRecipe(recipeId);
+  const recipe =
+    selectedRecipe && recipeAllowed(selectedRecipe.kind)
+      ? selectedRecipe
+      : ARTIFACT_RECIPES[0];
 
   const closeStudio = () => {
     actionOperation.current = null;
@@ -512,7 +549,7 @@ export function ArtifactStudio({
             )}
 
             <section className="space-y-3">
-              {ARTIFACT_RECIPE_GROUPS.map(group => (
+              {recipeGroups.map(group => (
                 <div key={group.id}>
                   <h3 className="mb-1 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
                     {group.label}
@@ -585,6 +622,11 @@ export function ArtifactStudio({
                 {context.includedNodeCount === 1 ? "" : "s"} in the {scope.kind}{" "}
                 scope? Review the result before saving or exporting it.
               </p>
+              {generationNotice && (
+                <p className="mt-2 text-sm text-muted-foreground">
+                  {generationNotice}
+                </p>
+              )}
             </div>
             <div className="flex justify-end gap-2">
               <Button variant="outline" onClick={() => setStage("configure")}>

@@ -108,3 +108,56 @@ describe("Artifact Studio without a Mac shell", () => {
     expect(await screen.findByText(/Provider unavailable/i)).toBeTruthy();
   });
 });
+
+/**
+ * What a phone must not be offered: an Apple-only recipe that can only fail,
+ * and a sign-in button with no sign-in behind it. Both were visible in the
+ * Android 1.3.3 build.
+ */
+describe("Artifact Studio options that depend on the host", () => {
+  const renderWith = (props: Record<string, unknown>) =>
+    render(
+      React.createElement(ArtifactStudio, {
+        isOpen: true,
+        onClose: () => {},
+        boardId: "board.test",
+        nodes,
+        services: webServices(),
+        ...props,
+      })
+    );
+
+  it("lists Image Playground artwork by default, as the Mac app expects", () => {
+    renderWith({});
+    expect(screen.getByText("Image Playground artwork")).toBeTruthy();
+  });
+
+  it("leaves image recipes out when the host cannot make images", () => {
+    renderWith({ imageRecipesAvailable: false });
+    expect(screen.queryByText("Image Playground artwork")).toBeNull();
+    expect(screen.queryByText(/Apple Image Playground/)).toBeNull();
+    // The rest of the Design group is still offered.
+    expect(screen.getByText("SVG asset")).toBeTruthy();
+  });
+
+  it("says where the board text goes before generation is confirmed", () => {
+    renderWith({ generationNotice: "Sends the tiles to the server." });
+    expect(screen.queryByText("Sends the tiles to the server.")).toBeNull();
+    fireEvent.click(screen.getByRole("button", { name: "Review generation" }));
+    expect(screen.getByText("Sends the tiles to the server.")).toBeTruthy();
+  });
+
+  it("shows no sign-in button unless a sign-in handler is supplied", async () => {
+    generateTextForCurrentPlatform.mockResolvedValue({
+      text: "# Brief",
+      provider: "gemini",
+      viaNativeMac: false,
+    });
+    renderWith({});
+    startGeneration();
+    expect(await screen.findByRole("button", { name: "Save" })).toBeTruthy();
+    expect(
+      screen.queryByRole("button", { name: "Sign in for cloud sync" })
+    ).toBeNull();
+  });
+});
