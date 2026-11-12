@@ -4,7 +4,7 @@ import path from "node:path";
 const EXPECTED_SEMANTIC_VERSION = "1.3.3";
 const EXPECTED_APPLE_VERSION = "1.3.3";
 const EXPECTED_APPLE_BUILD = "11";
-const EXPECTED_ANDROID_CODE = "11005";
+const EXPECTED_ANDROID_CODE = "11006";
 const EXPECTED_IOS_DEPLOYMENT_TARGET = "26.0";
 const APP_BUNDLE_ID = "app.hexmind.ios";
 const MAC_TEST_BUNDLE_ID = "app.hexmind.ios.macos.tests";
