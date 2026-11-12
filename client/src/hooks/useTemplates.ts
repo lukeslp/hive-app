@@ -218,7 +218,7 @@ Example format:
         if (fm) {
           toast.error("On-device returned unparseable output");
         } else if (await isFoundationModelsAvailable()) {
-          toast.error("On-device generation didn't respond — please try again");
+          toast.error("On-device generation didn't respond. Please try again.");
         } else {
           toast.error("Apple Intelligence isn't available on this device");
         }
@@ -226,7 +226,7 @@ Example format:
       }
 
       if (fm) {
-        toast.warning("On-device returned unparseable output — using cloud", {
+        toast.warning("The on-device model gave an unusable answer. Using the server.", {
           duration: 2500,
         });
       }

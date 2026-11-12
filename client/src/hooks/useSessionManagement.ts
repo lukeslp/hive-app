@@ -723,7 +723,7 @@ export function useSessionManagement({
       setCopied(true);
       setTimeout(() => setCopied(false), 2000);
     } catch {
-      toast.error("Couldn't copy the link — copy it from the field instead");
+      toast.error("Couldn't copy the link. Copy it from the field instead.");
     }
   }, [shareUrl]);
 

@@ -218,7 +218,7 @@ export function createWebArtifactStudioServices(
         // works, and says what to do about it.
         if (!(await save(manifest))) {
           throw new Error(
-            "This artifact could not be stored locally. Export it before closing — private browsing and some in-app browsers block local storage."
+            "This artifact could not be stored locally. Export it before closing. Private browsing and some in-app browsers block local storage."
           );
         }
         return manifest;

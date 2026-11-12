@@ -541,7 +541,7 @@ Generate 6 neighbor nodes.`;
       if (fm) {
         // A non-iOS platform received unusable on-device text; its configured
         // transport gets one clean attempt below.
-        toast.warning("On-device returned unparseable output — using cloud", {
+        toast.warning("The on-device model gave an unusable answer. Using the server.", {
           duration: 2500,
         });
       }
