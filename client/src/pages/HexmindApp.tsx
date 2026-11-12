@@ -1746,6 +1746,14 @@ Generate 6 diverse related ideas. Connect to key themes when relevant.`;
       });
     }
     setSelectedNodeId(key);
+    // On a touch screen the detail panel used to open only through the
+    // browser's emulated hover, which fires once per tile. After the panel
+    // was closed, tapping the same tile again showed nothing. A tap now
+    // opens the panel itself.
+    if (isTouchDevice) {
+      setHoveredNodeId(key);
+      setInspectedNodeId(key);
+    }
     announcer.announceNodeSelected(node.text);
 
     const hasEmptyNeighbors = DIRECTIONS.some(dir => {

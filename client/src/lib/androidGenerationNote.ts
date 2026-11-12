@@ -31,14 +31,14 @@ export function androidGenerationNote(aicore: AICore, gemma: Gemma): string {
   const gemmaPossible =
     gemma?.ready === true || gemma?.downloadAvailable === true;
   if (aicore?.available) {
-    return `Gemini Nano is ready through Android AICore, so tiles are written on this phone. ${
+    return `Gemini Nano is ready through Android AICore, so tiles are written on this device. ${
       gemmaPossible
         ? "If it cannot answer, the app tries the verified Gemma model, then the Idea Tiles server."
         : "If it cannot answer, the request goes to the Idea Tiles server."
     } ${ARTIFACT_SENTENCE}`;
   }
   if (gemma?.ready) {
-    return `The verified Gemma model is installed in private storage, so tiles are written on this phone. If it cannot answer, the request goes to the Idea Tiles server. ${ARTIFACT_SENTENCE}`;
+    return `The verified Gemma model is installed in private storage, so tiles are written on this device. If it cannot answer, the request goes to the Idea Tiles server. ${ARTIFACT_SENTENCE}`;
   }
   const reason =
     aicore?.reason || gemma?.reason || "No on-device model is ready.";
@@ -54,7 +54,7 @@ export function androidServerNotice(
   gemma: Gemma
 ): string | undefined {
   if (androidLocalModelReady(aicore, gemma)) return undefined;
-  return "No on-device model is ready on this phone. Your text is sent to the Idea Tiles server to write the tiles. Details are in Settings.";
+  return "No on-device model is ready on this device. Your text is sent to the Idea Tiles server to write the tiles. Details are in Settings.";
 }
 
 /** Artifact Studio confirmation step, on every client that uses the server. */
