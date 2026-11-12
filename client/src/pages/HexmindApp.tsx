@@ -82,6 +82,7 @@ import {
 import { sanitizeJson } from "@/lib/sanitize";
 import { saveBlob } from "@/lib/saveBlob";
 import { buildBoardSvg } from "@/lib/boardExport";
+import { BACK_PRIORITY, useBackHandler } from "@/lib/backNavigation";
 import {
   ARTIFACT_SERVER_NOTICE,
   androidServerNotice,
@@ -1096,9 +1097,12 @@ Generate 6 diverse related ideas. Connect to key themes when relevant.`;
       if (!preFetchedBranches && !isIos()) {
         // Other platforms continue through their configured transport; native
         // Mac uses the provider selected in its native settings.
-        toast.warning("On-device returned unparseable output — using cloud", {
-          duration: 2500,
-        });
+        toast.warning(
+          "The on-device model gave an unusable answer. Using the server.",
+          {
+            duration: 2500,
+          }
+        );
       }
     }
 
@@ -1866,6 +1870,13 @@ Generate 6 diverse related ideas. Connect to key themes when relevant.`;
 
   const exportAsPNG = () => exportAsRaster("png");
   const exportAsJPG = () => exportAsRaster("jpg");
+
+  // Android Back closes the tile detail panel when nothing else is open.
+  useBackHandler(!!inspectedNodeId, BACK_PRIORITY.panel, () => {
+    setInspectedNodeId(null);
+    setHoveredNodeId(null);
+    return true;
+  });
 
   // ── Computed values ─────────────────────────────────────────────────────
   const hoveredNode = hoveredNodeId ? nodes[hoveredNodeId] : null;

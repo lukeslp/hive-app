@@ -18,6 +18,7 @@ import { getLoginUrl } from "./const";
 import { getTrpcUrl, isCapacitor, isNativeMac } from "@/lib/platform";
 import { BootErrorBoundary } from "@/lib/BootErrorBoundary";
 import { recordReviewSession } from "@/lib/reviewPrompt";
+import { handleBack } from "@/lib/backNavigation";
 import "./index.css";
 
 if (isCapacitor()) {
@@ -60,6 +61,13 @@ if (isCapacitor()) {
               invalidateFoundationModelsCache()
           );
         }
+      });
+      // Android Back: close whatever is open; with nothing open, leave the
+      // app the way Back from a home screen does. Without a listener the
+      // shell only walks WebView history, which this app does not have, so
+      // Back did nothing. iOS never sends this event.
+      CapacitorApp.addListener("backButton", () => {
+        if (!handleBack()) void CapacitorApp.minimizeApp();
       });
       CapacitorApp.addListener("appUrlOpen", event => {
         try {

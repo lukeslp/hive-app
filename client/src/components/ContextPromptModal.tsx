@@ -18,6 +18,7 @@
 import { useRef, useEffect, useState, useCallback } from "react";
 import { Sparkles, Zap, X } from "@/lib/icons";
 import { haptics } from "@/lib/haptics";
+import { BACK_PRIORITY, useBackHandler } from "@/lib/backNavigation";
 
 interface ContextPromptModalProps {
   isOpen: boolean;
@@ -108,6 +109,12 @@ export const ContextPromptModal = ({
 
   const hasChips = !!(suggestedAnswers && suggestedAnswers.length > 0);
 
+  // Android Back closes the prompt, the same as Cancel.
+  useBackHandler(isOpen, BACK_PRIORITY.prompt, () => {
+    onClose();
+    return true;
+  });
+
   // Dismiss when clicking outside the content area
   const handleBackdropClick = useCallback(
     (e: React.MouseEvent | React.TouchEvent) => {
@@ -188,7 +195,7 @@ export const ContextPromptModal = ({
           <div
             className="flex flex-wrap justify-center gap-2 mb-4"
             role="group"
-            aria-label="Suggested answers — tap to use as a starting point, then edit"
+            aria-label="Suggested answers. Tap one to use it as a starting point, then edit."
           >
             {suggestedAnswers!.map(chip => {
               const isSelected = selectedChip === chip;
@@ -202,7 +209,7 @@ export const ContextPromptModal = ({
                               ${
                                 isSelected
                                   ? "bg-purple-500/70 text-white border border-purple-400/60"
-                                  : "bg-white/[0.1] text-white/90 border border-white/[0.2] hover:bg-white/[0.14] hover:border-white/[0.3]"
+                                  : "bg-zinc-800/90 text-white/90 border border-white/20 hover:bg-zinc-700/90 hover:border-white/30"
                               }`}
                   aria-pressed={isSelected}
                 >
@@ -222,9 +229,9 @@ export const ContextPromptModal = ({
             onChange={e => setResponse(e.target.value)}
             onKeyDown={handleKeyDown}
             placeholder={hasChips ? "Or type your own answer..." : placeholder}
-            className="w-full px-5 py-4 bg-white/[0.08] border border-white/[0.12] rounded-2xl
+            className="w-full px-5 py-4 bg-zinc-900/90 border border-white/20 rounded-2xl
                        text-white/90 text-base sm:text-lg placeholder:text-white/45
-                       focus:outline-none focus:border-white/25 focus:bg-white/[0.1]
+                       focus:outline-none focus:border-white/40 focus:bg-zinc-900
                        transition-all duration-200 backdrop-blur-md"
             autoComplete="off"
             autoCorrect="off"

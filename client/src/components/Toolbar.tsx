@@ -33,6 +33,7 @@ import {
   Users,
 } from "@/lib/icons";
 import { NODE_TYPES } from "@/lib/nodeTypes";
+import { BACK_PRIORITY, useBackHandler } from "@/lib/backNavigation";
 import { WorkspaceModeControl } from "@/components/WorkspaceModeControl";
 import type { WorkspaceMode } from "@shared/workspaceDocument";
 
@@ -150,6 +151,28 @@ export const Toolbar = ({
     return () => window.removeEventListener("keydown", onKey);
   }, [expanded, filesMenuOpen, filterMenuOpen]);
 
+  // Android Back: menus first, then search, then the bar itself.
+  useBackHandler(
+    expanded || filesMenuOpen || filterMenuOpen || isSearchOpen,
+    BACK_PRIORITY.toolbar,
+    () => {
+      if (filesMenuOpen || filterMenuOpen) {
+        setFilesMenuOpen(false);
+        setFilterMenuOpen(false);
+        return true;
+      }
+      if (isSearchOpen) {
+        onCloseSearch();
+        return true;
+      }
+      if (expanded) {
+        collapse();
+        return true;
+      }
+      return false;
+    }
+  );
+
   // Click-away collapses the topbar (but never closes via canvas pan).
   useEffect(() => {
     if (!expanded) return;
@@ -182,10 +205,14 @@ export const Toolbar = ({
         paddingTop: "max(0.5rem, env(safe-area-inset-top, 0px))",
       }}
     >
+      {/* `relative` here is the anchor for the two menus on phone widths:
+          their own wrappers are positioned only from `sm` up, so on a phone
+          a menu opens from the bar's left edge and stays on screen. Anchored
+          to its button it ran off the right edge. */}
       <div
         ref={barRef}
         aria-label="Board controls"
-        className={`pointer-events-auto interactive-ui bg-card/85 backdrop-blur-xl border border-border/70 shadow-2xl rounded-full transition-all duration-200 box-border ${
+        className={`relative pointer-events-auto interactive-ui bg-card/85 backdrop-blur-xl border border-border/70 shadow-2xl rounded-full transition-all duration-200 box-border ${
           expanded
             ? "flex flex-row items-center gap-1 px-1.5 sm:px-2 py-0.5"
             : /* Exact square: button + p-1 + 1px border each side (44+8+2=54, 48+8+2=58).
@@ -251,10 +278,10 @@ export const Toolbar = ({
             {nodeCount > 0 && generationsThisSession > 0 && (
               <span
                 className="hidden sm:flex items-center gap-1 px-2 text-[11px] text-muted-foreground tabular-nums"
-                title={`${generationsThisSession} AI generation${
+                title={`${generationsThisSession} generation${
                   generationsThisSession === 1 ? "" : "s"
                 } this session`}
-                aria-label={`${generationsThisSession} AI generations this session`}
+                aria-label={`${generationsThisSession} generations this session`}
               >
                 <Zap className="w-3 h-3 text-yellow-400/80" />
                 {generationsThisSession}
@@ -318,7 +345,7 @@ export const Toolbar = ({
             </Tooltip>
 
             {/* Files & Sharing */}
-            <div className="relative">
+            <div className="sm:relative">
               <Tooltip>
                 <TooltipTrigger asChild>
                   <button
@@ -342,7 +369,7 @@ export const Toolbar = ({
               {filesMenuOpen && (
                 <div
                   data-toolbar-popover
-                  className="absolute top-full left-0 mt-2 bg-card/95 backdrop-blur-xl border border-border/70 rounded-2xl shadow-2xl z-40 min-w-[220px] py-1 animate-in fade-in slide-in-from-top-2 duration-150"
+                  className="absolute top-full left-0 mt-2 bg-card/95 backdrop-blur-xl border border-border/70 rounded-2xl shadow-2xl z-40 min-w-[220px] max-w-[calc(100vw-1rem)] max-h-[calc(100dvh-6rem)] overflow-y-auto py-1 animate-in fade-in slide-in-from-top-2 duration-150"
                   onKeyDown={e => {
                     if (e.key === "Escape") setFilesMenuOpen(false);
                   }}
@@ -446,7 +473,7 @@ export const Toolbar = ({
             </div>
 
             {/* Filter (per-type + key themes) */}
-            <div className="relative">
+            <div className="sm:relative">
               <Tooltip>
                 <TooltipTrigger asChild>
                   <button
@@ -472,7 +499,7 @@ export const Toolbar = ({
               {filterMenuOpen && (
                 <div
                   data-toolbar-popover
-                  className="absolute top-full left-0 mt-2 bg-card/95 backdrop-blur-xl border border-border/70 rounded-2xl shadow-2xl z-40 min-w-[220px] py-1 animate-in fade-in slide-in-from-top-2 duration-150"
+                  className="absolute top-full left-0 mt-2 bg-card/95 backdrop-blur-xl border border-border/70 rounded-2xl shadow-2xl z-40 min-w-[220px] max-w-[calc(100vw-1rem)] max-h-[calc(100dvh-6rem)] overflow-y-auto py-1 animate-in fade-in slide-in-from-top-2 duration-150"
                   onKeyDown={e => {
                     if (e.key === "Escape") setFilterMenuOpen(false);
                   }}
