@@ -81,6 +81,7 @@ import {
 } from "@/lib/foundationModelsPlugin";
 import { sanitizeJson } from "@/lib/sanitize";
 import { saveBlob } from "@/lib/saveBlob";
+import { buildBoardSvg } from "@/lib/boardExport";
 import { validateBranches } from "@/lib/clarificationValidator";
 import { BRANCH_SET_SCHEMA } from "@/lib/branchSchema";
 import {
@@ -1756,12 +1757,18 @@ Generate 6 diverse related ideas. Connect to key themes when relevant.`;
   // ── Export ──────────────────────────────────────────────────────────────
   // All exports go through saveBlob: browsers download, Mac opens a native
   // save panel, and Capacitor writes to Documents before showing iOS sharing.
+  //
+  // The picture is drawn from the tile data by buildBoardSvg. The tiles on
+  // screen are HTML, which an <svg> wrapper cannot carry, so copying the
+  // canvas markup produced blank shapes.
   const exportAsImage = async () => {
     haptics.medium();
-    const svgContent = document.getElementById("hex-canvas-layer")?.innerHTML;
-    if (!svgContent) return;
-    const fullSvg = `<svg xmlns="http://www.w3.org/2000/svg" width="2000" height="2000" viewBox="-1000 -1000 2000 2000"><style>text { font-family: sans-serif; fill: white; } path { stroke: gray; fill: #222; }</style><g transform="translate(0,0)">${svgContent}</g></svg>`;
-    const blob = new Blob([fullSvg], { type: "image/svg+xml" });
+    const picture = buildBoardSvg(nodes);
+    if (!picture) {
+      toast.info("Add a tile before exporting.");
+      return;
+    }
+    const blob = new Blob([picture.svg], { type: "image/svg+xml" });
     try {
       await saveBlob(
         blob,
@@ -1777,35 +1784,42 @@ Generate 6 diverse related ideas. Connect to key themes when relevant.`;
     }
   };
 
-  // PNG and JPG share one raster pipeline: render the SVG layer onto an
-  // opaque dark canvas, then encode. The opaque background fill is what
-  // makes JPEG (no alpha channel) safe here.
+  // PNG and JPG share one raster pipeline: draw the board SVG onto an
+  // opaque canvas, then encode. The picture has its own opaque background,
+  // which is what makes JPEG (no alpha channel) safe here.
   const exportAsRaster = (format: "png" | "jpg") => {
     haptics.medium();
     const label = format.toUpperCase();
     const mime = format === "jpg" ? "image/jpeg" : "image/png";
-    const svgContent = document.getElementById("hex-canvas-layer")?.innerHTML;
-    if (!svgContent) return;
-    const fullSvg = `<svg xmlns="http://www.w3.org/2000/svg" width="2000" height="2000" viewBox="-1000 -1000 2000 2000"><style>text { font-family: sans-serif; fill: white; } path { stroke: gray; fill: #222; }</style><g transform="translate(0,0)">${svgContent}</g></svg>`;
+    const picture = buildBoardSvg(nodes);
+    if (!picture) {
+      toast.info("Add a tile before exporting.");
+      return;
+    }
     const canvas = document.createElement("canvas");
-    canvas.width = 2000;
-    canvas.height = 2000;
+    canvas.width = picture.width;
+    canvas.height = picture.height;
     const ctx = canvas.getContext("2d");
-    if (!ctx) return;
-    ctx.fillStyle = "#0a0a0a";
-    ctx.fillRect(0, 0, 2000, 2000);
+    if (!ctx) {
+      toast.error(`${label} export failed: this device could not draw it.`);
+      return;
+    }
+    ctx.fillStyle = "#12141a";
+    ctx.fillRect(0, 0, picture.width, picture.height);
     const img = new Image();
-    const svgBlob = new Blob([fullSvg], {
+    const svgBlob = new Blob([picture.svg], {
       type: "image/svg+xml;charset=utf-8",
     });
     const url = URL.createObjectURL(svgBlob);
     img.onload = () => {
-      ctx.drawImage(img, 0, 0);
+      ctx.drawImage(img, 0, 0, picture.width, picture.height);
       URL.revokeObjectURL(url);
       canvas.toBlob(
         async blob => {
           if (!blob) {
-            toast.error(`${label} export failed — couldn't encode the canvas.`);
+            toast.error(
+              `${label} export failed: the image could not be encoded.`
+            );
             return;
           }
           try {
@@ -1827,11 +1841,10 @@ Generate 6 diverse related ideas. Connect to key themes when relevant.`;
       );
     };
     img.onerror = () => {
-      // SVG-as-Image rasterization can silently fail on certain SVG features
-      // (foreignObject, complex filters). Without this handler the user
-      // taps Export and nothing happens.
+      // Without this handler a failed draw looks like a button that does
+      // nothing.
       URL.revokeObjectURL(url);
-      toast.error(`${label} export failed — SVG rasterization rejected.`);
+      toast.error(`${label} export failed: the board could not be drawn.`);
     };
     img.src = url;
   };
@@ -2109,7 +2122,7 @@ Generate 6 diverse related ideas. Connect to key themes when relevant.`;
                   ? {
                       ...sessions.sphereProjection,
                       camera: {
-                      ...sessions.sphereProjection.camera,
+                        ...sessions.sphereProjection.camera,
                         position: [0, 0.75, 12.5],
                         target: [0, 0.75, 0],
                       },
