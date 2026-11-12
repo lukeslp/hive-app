@@ -5,6 +5,9 @@
  */
 import type { CapacitorConfig } from "@capacitor/cli";
 
+const isAndroidSync =
+  process.env.CAPACITOR_APP_ID?.trim() === "app.ideatiles.android";
+
 const config: CapacitorConfig = {
   appId: process.env.CAPACITOR_APP_ID?.trim() || "app.hexmind.ios",
   appName: "Idea Tiles",
@@ -24,6 +27,10 @@ const config: CapacitorConfig = {
     },
   },
   plugins: {
+    // Android only: the window behind the system bars is painted the dark
+    // canvas color (res/values/styles.xml), so ask for light status and navigation
+    // icons. The iOS sync leaves the plugin at its default.
+    ...(isAndroidSync ? { SystemBars: { style: "DARK" } } : {}),
     // Patch fetch + XMLHttpRequest in the WebView to route through
     // native HTTP. Bypasses WKWebView's CORS entirely — the live
     // hivemind server's preflight response only includes

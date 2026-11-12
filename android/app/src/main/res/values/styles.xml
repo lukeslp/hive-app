@@ -13,6 +13,13 @@
         <item name="windowActionBar">false</item>
         <item name="windowNoTitle">true</item>
         <item name="android:background">@null</item>
+        <!-- The app draws a dark canvas. Android 15 and later show the window
+             background behind the transparent status and navigation bars, and
+             Capacitor paints the decor view with this value, so a light
+             default left white strips above and below the board. The color
+             matches the canvas in client/src/pages/HexmindApp.tsx; the light
+             bar icons that go with it are set in capacitor.config.ts. -->
+        <item name="android:windowBackground">@color/appCanvas</item>
     </style>
 
 
