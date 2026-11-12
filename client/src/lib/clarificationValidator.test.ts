@@ -165,3 +165,40 @@ describe("validateBranches", () => {
     expect(result).toHaveLength(6);
   });
 });
+
+describe("clarification fields a model returns out of range", () => {
+  it("drops a category outside the four the saved board accepts", () => {
+    const result = validateClarification({
+      shouldAskClarifyingQuestion: true,
+      clarifyingQuestion: "What matters most to you?",
+      // Seen from the hosted service on Android 1.3.3.
+      userInputCategory: "priority" as unknown as "goal",
+      suggestedAnswers: ["Cost", "Speed"],
+    });
+    expect(result.shouldAskClarifyingQuestion).toBe(true);
+    expect(result.clarifyingQuestion).toBe("What matters most to you?");
+    expect(result.userInputCategory).toBeUndefined();
+    expect(result.suggestedAnswers).toEqual(["Cost", "Speed"]);
+  });
+
+  it("keeps the first five suggested answers", () => {
+    const result = validateClarification({
+      shouldAskClarifyingQuestion: true,
+      clarifyingQuestion: "What's your budget?",
+      userInputCategory: "constraint",
+      suggestedAnswers: ["1", "2", "3", "4", "5", "6"],
+    });
+    expect(result.userInputCategory).toBe("constraint");
+    expect(result.suggestedAnswers).toEqual(["1", "2", "3", "4", "5"]);
+  });
+
+  it("also cleans a branch that does not ask a question", () => {
+    const result = validateClarification({
+      shouldAskClarifyingQuestion: false,
+      userInputCategory: "none" as unknown as "goal",
+      suggestedAnswers: [],
+    });
+    expect(result.userInputCategory).toBeUndefined();
+    expect(result.suggestedAnswers).toBeUndefined();
+  });
+});
