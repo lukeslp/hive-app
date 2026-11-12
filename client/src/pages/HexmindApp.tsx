@@ -83,6 +83,12 @@ import {
 import { sanitizeJson } from "@/lib/sanitize";
 import { saveBlob } from "@/lib/saveBlob";
 import { buildBoardSvg } from "@/lib/boardExport";
+import { ReportDialog } from "@/components/ReportDialog";
+import {
+  readReportedTiles,
+  reportedTileId,
+  writeReportedTiles,
+} from "@/lib/contentReport";
 import { readAutosaveInfo } from "@/lib/autosaveInfo";
 import { BACK_PRIORITY, useBackHandler } from "@/lib/backNavigation";
 import {
@@ -1891,6 +1897,41 @@ Generate 6 diverse related ideas. Connect to key themes when relevant.`;
   const exportAsPNG = () => exportAsRaster("png");
   const exportAsJPG = () => exportAsRaster("jpg");
 
+  // ── Reported tiles ──────────────────────────────────────────────────────
+  // A reported tile's text is hidden on this device until the person shows
+  // it again. See lib/contentReport.ts for why this is not in the board.
+  const [reportNodeKey, setReportNodeKey] = useState<string | null>(null);
+  const [reportedTileIds, setReportedTileIds] = useState<string[]>(() =>
+    readReportedTiles()
+  );
+  const reportBoardId = sessions.artifactBoardId;
+  const hiddenTextNodes = useMemo(() => {
+    const hidden = new Set<string>();
+    if (reportedTileIds.length === 0) return hidden;
+    const reported = new Set(reportedTileIds);
+    for (const [key, node] of Object.entries(nodes)) {
+      if (reported.has(reportedTileId(reportBoardId, key, node))) {
+        hidden.add(key);
+      }
+    }
+    return hidden;
+  }, [nodes, reportBoardId, reportedTileIds]);
+  const hideReportedTile = (key: string) => {
+    const node = nodes[key];
+    if (!node) return;
+    setReportedTileIds(current =>
+      writeReportedTiles([...current, reportedTileId(reportBoardId, key, node)])
+    );
+  };
+  const showReportedTile = (key: string) => {
+    const node = nodes[key];
+    if (!node) return;
+    const id = reportedTileId(reportBoardId, key, node);
+    setReportedTileIds(current =>
+      writeReportedTiles(current.filter(item => item !== id))
+    );
+  };
+
   // Android Back closes the tile detail panel when nothing else is open.
   useBackHandler(!!inspectedNodeId, BACK_PRIORITY.panel, () => {
     setInspectedNodeId(null);
@@ -2277,6 +2318,7 @@ Generate 6 diverse related ideas. Connect to key themes when relevant.`;
               autoExpandingNodes={autoExpandingNodes}
               generatingNeighbors={generatingNeighbors}
               answeredAskNodes={answeredAskNodes}
+              hiddenTextNodes={hiddenTextNodes}
               draggedNodeId={draggedNodeId}
               dropTargetId={dropTargetId}
               mergeAnimationKey={mergeAnimationKey}
@@ -2437,6 +2479,15 @@ Generate 6 diverse related ideas. Connect to key themes when relevant.`;
           nodeId={inspectedNodeId}
           isLoading={loadingNodes.has(inspectedNodeId)}
           onClose={() => setInspectedNodeId(null)}
+          // The root tile is the person's own words; the rest came from a
+          // language model (or were edited from what it wrote).
+          onReport={
+            nodes[inspectedNodeId].type === "root"
+              ? undefined
+              : () => setReportNodeKey(inspectedNodeId)
+          }
+          isTextHidden={hiddenTextNodes.has(inspectedNodeId)}
+          onShowText={() => showReportedTile(inspectedNodeId)}
           onEdit={() => {
             setEditingNodeId(inspectedNodeId);
             setEditTitle(nodes[inspectedNodeId].text);
@@ -2467,6 +2518,17 @@ Generate 6 diverse related ideas. Connect to key themes when relevant.`;
       )}
 
       {/* ── Modals ─────────────────────────────────────────────────────── */}
+
+      <ReportDialog
+        isOpen={!!reportNodeKey && !!nodes[reportNodeKey]}
+        kind="tile"
+        title={reportNodeKey ? (nodes[reportNodeKey]?.text ?? "") : ""}
+        body={reportNodeKey ? (nodes[reportNodeKey]?.description ?? "") : ""}
+        onClose={() => setReportNodeKey(null)}
+        onReported={() => {
+          if (reportNodeKey) hideReportedTile(reportNodeKey);
+        }}
+      />
 
       {rindModeAvailable && (
         <WorkspaceLaunchDialog

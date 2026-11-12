@@ -3,7 +3,8 @@
  * Minimalist design: title, type icon, description, and action row
  */
 
-import { Edit3, RefreshCw, Info, Star, X, Loader2 } from "@/lib/icons";
+import React from "react";
+import { Edit3, RefreshCw, Info, Star, X, Loader2, Flag } from "@/lib/icons";
 import { NODE_TYPES } from "@/lib/nodeTypes";
 import type { HexNode } from "@/types/hivemind";
 
@@ -16,6 +17,12 @@ interface InspectPanelProps {
   onRefresh: () => void;
   onAddContextInfo: (e: React.MouseEvent) => void;
   onToggleKeyTheme: () => void;
+  /** Opens the report form. Omitted for tiles the person wrote. */
+  onReport?: () => void;
+  /** True when the person reported this tile and its text is hidden. */
+  isTextHidden?: boolean;
+  /** Shows a reported tile's text again. */
+  onShowText?: () => void;
 }
 
 export const InspectPanel = ({
@@ -27,6 +34,9 @@ export const InspectPanel = ({
   onRefresh,
   onAddContextInfo,
   onToggleKeyTheme,
+  onReport,
+  isTextHidden = false,
+  onShowText,
 }: InspectPanelProps) => {
   const style = NODE_TYPES[node.type] || NODE_TYPES.default;
   const Icon = style.icon;
@@ -35,7 +45,11 @@ export const InspectPanel = ({
     <div
       className="fixed bottom-3 left-3 right-3 sm:right-auto z-50 sm:w-[320px] pointer-events-auto animate-in slide-in-from-bottom-2 duration-200"
       role="complementary"
-      aria-label={`Details for ${node.text}`}
+      aria-label={
+        isTextHidden
+          ? "Details for a reported tile"
+          : `Details for ${node.text}`
+      }
     >
       <div className="bg-card/95 backdrop-blur-lg border border-border rounded-xl shadow-lg p-4 pointer-events-auto">
         {/* Compact header: icon + title + star + close */}
@@ -46,7 +60,7 @@ export const InspectPanel = ({
             <Icon className={`w-4 h-4 ${style.color}`} />
           </div>
           <h2 className="text-base font-semibold text-foreground flex-1 min-w-0 truncate">
-            {node.text}
+            {isTextHidden ? "Reported tile" : node.text}
           </h2>
           {/* Star toggle — filled when key theme */}
           <button
@@ -77,8 +91,24 @@ export const InspectPanel = ({
           </button>
         </div>
 
+        {isTextHidden && (
+          <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
+            <p className="text-sm text-muted-foreground leading-snug">
+              You reported this tile. Its text is hidden on this device.
+            </p>
+            {onShowText && (
+              <button
+                onClick={onShowText}
+                className="min-h-11 rounded-md border border-border px-3 text-sm text-foreground hover:bg-accent transition-colors"
+              >
+                Show text
+              </button>
+            )}
+          </div>
+        )}
+
         {/* Description — compact, max 3 lines */}
-        {node.description && (
+        {!isTextHidden && node.description && (
           <p className="text-sm text-muted-foreground leading-snug line-clamp-3 mb-3">
             {node.description}
           </p>
@@ -93,7 +123,7 @@ export const InspectPanel = ({
         )}
 
         {/* Context info — subtle inline */}
-        {node.contextInfo && (
+        {!isTextHidden && node.contextInfo && (
           <p className="text-xs text-blue-400/80 mb-3 line-clamp-2">
             <Info className="w-3 h-3 inline mr-1 -mt-0.5" />
             {node.contextInfo}
@@ -140,6 +170,16 @@ export const InspectPanel = ({
           >
             <Info className="w-3.5 h-3.5" aria-hidden="true" />
           </button>
+          {onReport && !isTextHidden && (
+            <button
+              onClick={onReport}
+              className="p-1.5 rounded-md text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
+              title="Report"
+              aria-label="Report this tile"
+            >
+              <Flag className="w-3.5 h-3.5" aria-hidden="true" />
+            </button>
+          )}
           <span className="text-[10px] text-muted-foreground/50 ml-auto uppercase tracking-wider">
             {node.type}
           </span>

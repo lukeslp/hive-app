@@ -2,6 +2,7 @@ import React, { useEffect, useMemo, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Modal } from "@/components/Modal";
 import { StaticArtifactPreview } from "@/components/StaticArtifactPreview";
+import { ReportDialog } from "@/components/ReportDialog";
 import { extractArtifactContext } from "@/lib/artifactContext";
 import type { ArtifactContextSourceNode } from "@/lib/artifactContext";
 import {
@@ -178,6 +179,9 @@ export function ArtifactStudio({
     () => new Set()
   );
   const [activeAction, setActiveAction] = useState<ArtifactAction | null>(null);
+  // Reporting an artifact hides its preview here until the person shows it.
+  const [reportOpen, setReportOpen] = useState(false);
+  const [hiddenArtifactId, setHiddenArtifactId] = useState<string | null>(null);
   const abortController = useRef<AbortController | null>(null);
   const actionOperation = useRef<ArtifactActionOperation | null>(null);
 
@@ -190,6 +194,8 @@ export function ArtifactStudio({
     setArtifact(null);
     setMessage(null);
     setCloudImageFileIds(new Set());
+    setReportOpen(false);
+    setHiddenArtifactId(null);
 
     return () => {
       actionOperation.current = null;
@@ -679,13 +685,32 @@ export function ArtifactStudio({
         {stage === "result" && artifact && (
           <section className="space-y-4">
             <div>
-              <h3 className="font-semibold">{artifact.title}</h3>
+              <h3 className="font-semibold">
+                {hiddenArtifactId === artifact.id
+                  ? "Reported artifact"
+                  : artifact.title}
+              </h3>
               <p className="text-xs text-muted-foreground">
                 {artifact.kind} · {artifact.files.length} file
                 {artifact.files.length === 1 ? "" : "s"}
               </p>
             </div>
-            <ArtifactResultPreview artifact={artifact} />
+            {hiddenArtifactId === artifact.id ? (
+              <div className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-border p-3">
+                <p className="text-sm text-muted-foreground">
+                  You reported this artifact. Its text is hidden on this device.
+                </p>
+                <Button
+                  variant="outline"
+                  className="min-h-11"
+                  onClick={() => setHiddenArtifactId(null)}
+                >
+                  Show text
+                </Button>
+              </div>
+            ) : (
+              <ArtifactResultPreview artifact={artifact} />
+            )}
             {cloudSync &&
               artifact.files.some(file =>
                 file.mimeType.startsWith("image/")
@@ -752,6 +777,15 @@ export function ArtifactStudio({
               </p>
             )}
             <div className="flex flex-wrap justify-end gap-2">
+              {hiddenArtifactId !== artifact.id && (
+                <Button
+                  variant="outline"
+                  disabled={activeAction !== null}
+                  onClick={() => setReportOpen(true)}
+                >
+                  Report
+                </Button>
+              )}
               <Button
                 variant="outline"
                 disabled={activeAction !== null}
@@ -785,6 +819,16 @@ export function ArtifactStudio({
           </section>
         )}
       </div>
+      <ReportDialog
+        isOpen={reportOpen && !!artifact}
+        kind="artifact"
+        title={artifact?.title ?? ""}
+        body={(artifact && previewFile(artifact)?.content) || ""}
+        onClose={() => setReportOpen(false)}
+        onReported={() => {
+          if (artifact) setHiddenArtifactId(artifact.id);
+        }}
+      />
     </Modal>
   );
 }

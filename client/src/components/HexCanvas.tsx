@@ -51,6 +51,11 @@ interface HexCanvasProps {
    * the parent from the contextHistory map.
    */
   answeredAskNodes: Set<string>;
+  /**
+   * Node keys whose text the person reported and has not chosen to show
+   * again. Their title is replaced by "Reported" on the canvas.
+   */
+  hiddenTextNodes?: Set<string>;
   draggedNodeId: string | null;
   dropTargetId: string | null;
   mergeAnimationKey: string | null;
@@ -99,6 +104,8 @@ const HexTile = React.memo<{
   isMergeAnimating: boolean;
   /** True for ~700ms after the tile is created/regenerated/merged. */
   isFreshlyGenerated: boolean;
+  /** True when the person reported this tile and its text is hidden. */
+  isTextHidden: boolean;
   scale: number;
   strokeWidth: number;
   zIndex: number;
@@ -137,6 +144,7 @@ const HexTile = React.memo<{
     isDimmed,
     isMergeAnimating,
     isFreshlyGenerated,
+    isTextHidden,
     scale,
     strokeWidth,
     zIndex,
@@ -190,7 +198,7 @@ const HexTile = React.memo<{
         <div
           tabIndex={0}
           role="button"
-          aria-label={`${node.text}, ${node.type} node, level ${node.depth}${node.pinned ? ", pinned" : ""}${node.isKeyTheme ? ", key theme" : ""}${isAsking ? ", needs clarification" : ""}. ${isTouchDevice ? "Tap" : "Click"} to ${isAsking ? "answer a question before expanding" : "expand"}. ${isTouchDevice ? "Long press" : "Right-click"} for actions.`}
+          aria-label={`${isTextHidden ? "Reported tile, text hidden" : node.text}, ${node.type} node, level ${node.depth}${node.pinned ? ", pinned" : ""}${node.isKeyTheme ? ", key theme" : ""}${isAsking ? ", needs clarification" : ""}. ${isTouchDevice ? "Tap" : "Click"} to ${isAsking ? "answer a question before expanding" : "expand"}. ${isTouchDevice ? "Long press" : "Right-click"} for actions.`}
           onKeyDown={e => onNodeKeyDown(e, nodeKey, node)}
           draggable={!node.pinned && node.type !== "root"}
           onDragStart={onDragStart}
@@ -373,7 +381,7 @@ const HexTile = React.memo<{
                   )}
                 </div>
                 <span className="text-hex-node font-bold line-clamp-4 text-center text-foreground break-normal [overflow-wrap:break-word] [text-wrap:balance] [hyphens:auto]">
-                  {node.text}
+                  {isTextHidden ? "Reported" : node.text}
                 </span>
                 {/* "Ask" pill — third non-color channel per WCAG 1.4.1. Only
                   renders when the tile is genuinely asking; cleared on
@@ -443,6 +451,7 @@ const HexTile = React.memo<{
       prevProps.isDropTarget === nextProps.isDropTarget &&
       prevProps.isDimmed === nextProps.isDimmed &&
       prevProps.isMergeAnimating === nextProps.isMergeAnimating &&
+      prevProps.isTextHidden === nextProps.isTextHidden &&
       prevProps.scale === nextProps.scale &&
       prevProps.strokeWidth === nextProps.strokeWidth &&
       prevProps.zIndex === nextProps.zIndex &&
@@ -505,6 +514,7 @@ export const HexCanvas = React.memo<HexCanvasProps>(
     autoExpandingNodes,
     generatingNeighbors,
     answeredAskNodes,
+    hiddenTextNodes,
     draggedNodeId,
     dropTargetId,
     mergeAnimationKey,
@@ -829,6 +839,7 @@ export const HexCanvas = React.memo<HexCanvasProps>(
               isDimmed={isDimmed}
               isMergeAnimating={mergeAnimationKey === key}
               isFreshlyGenerated={freshlyGeneratedNodes?.has(key) ?? false}
+              isTextHidden={hiddenTextNodes?.has(key) ?? false}
               scale={scale}
               strokeWidth={strokeWidth}
               zIndex={zIndex}
@@ -926,6 +937,7 @@ export const HexCanvas = React.memo<HexCanvasProps>(
       // contextHistory keys change (parent useMemo), so reference equality
       // is the right check.
       prevProps.answeredAskNodes === nextProps.answeredAskNodes &&
+      prevProps.hiddenTextNodes === nextProps.hiddenTextNodes &&
       // Fresh-tile flash relies on a new Set reference from the parent
       // each time markFreshlyGenerated runs add/clear. Reference equality
       // catches both phases (flash on, flash off) and skips the diff

@@ -161,3 +161,42 @@ describe("Artifact Studio options that depend on the host", () => {
     ).toBeNull();
   });
 });
+
+describe("Reporting a generated artifact", () => {
+  it("opens the report form, then hides the text until it is shown again", async () => {
+    generateTextForCurrentPlatform.mockResolvedValue({
+      text: "# Launch brief\n\nShip carefully.",
+      provider: "gemini",
+      viaNativeMac: false,
+    });
+    const assign = vi.fn();
+    Object.defineProperty(window, "location", {
+      configurable: true,
+      value: {
+        ...window.location,
+        set href(url: string) {
+          assign(url);
+        },
+      },
+    });
+    renderStudio(webServices());
+    startGeneration();
+
+    fireEvent.click(await screen.findByRole("button", { name: "Report" }));
+    expect(screen.getByText("Report this artifact")).toBeTruthy();
+    fireEvent.click(screen.getByLabelText("False or misleading"));
+    fireEvent.click(screen.getByRole("button", { name: "Send report" }));
+
+    expect(assign).toHaveBeenCalledTimes(1);
+    expect(decodeURIComponent(assign.mock.calls[0][0])).toContain(
+      "Ship carefully."
+    );
+    fireEvent.click(screen.getByRole("button", { name: "Done" }));
+
+    expect(screen.queryByText(/Ship carefully/)).toBeNull();
+    expect(screen.getByText(/You reported this artifact/)).toBeTruthy();
+    expect(screen.queryByRole("button", { name: "Report" })).toBeNull();
+    fireEvent.click(screen.getByRole("button", { name: "Show text" }));
+    expect(screen.getByText(/Ship carefully/)).toBeTruthy();
+  });
+});
