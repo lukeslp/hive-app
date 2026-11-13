@@ -304,10 +304,7 @@ export default function HexmindApp() {
   // prompt whenever no on-device model can answer.
   const serverNotice =
     isCapacitor() && getPlatform() === "android"
-      ? androidServerNotice(
-          providerSettings.androidAICoreStatus,
-          providerSettings.androidGemmaStatus
-        )
+      ? androidServerNotice(providerSettings.androidAICoreStatus)
       : undefined;
   const webArtifactServices = useMemo(
     () =>
@@ -2804,9 +2801,8 @@ Generate 6 diverse related ideas. Connect to key themes when relevant.`;
         serverProviders={providerSettings.serverProviders}
         appleIntelligenceAvailable={providerSettings.appleIntelligenceAvailable}
         visibleProviders={providerSettings.visibleProviders}
-        androidGemmaStatus={providerSettings.androidGemmaStatus}
         androidAICoreStatus={providerSettings.androidAICoreStatus}
-        androidGemmaDownload={providerSettings.androidGemmaDownload}
+        androidModelDownload={providerSettings.androidModelDownload}
         isDownloadingAndroidModel={providerSettings.isDownloadingAndroidModel}
         downloadAndroidModel={providerSettings.downloadAndroidModel}
         workspaceMode={workspaceMode}

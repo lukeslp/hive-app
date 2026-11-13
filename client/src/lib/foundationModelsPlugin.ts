@@ -1,11 +1,11 @@
 /**
- * File Purpose: Dispatch native generation to Apple Foundation Models, Android AICore, or Gemma.
+ * File Purpose: Dispatch native generation to Apple Foundation Models or Android AICore.
  * Primary Components: Availability checks, timeout envelope, platform bridge routing.
  * I/O: Accepts prompts and returns local text or null so callers can apply policy.
  *
- * Android only reports local success after the native layer confirms a
- * checksum-verified Gemma model. A missing model returns null, and Android
- * callers explicitly continue to the existing cloud proxy.
+ * Android only reports local success when AICore has Gemini Nano ready and
+ * returns text. Anything else returns null, and Android callers explicitly
+ * continue to the existing server proxy.
  *
  * On non-iOS platforms (including web) these methods exist as no-ops that
  * always report unavailable — the caller should guard with `getPlatform()`.
@@ -15,7 +15,6 @@ import { registerPlugin } from "@capacitor/core";
 import { toast } from "sonner";
 import { getPlatform } from "./platform";
 import { AICore } from "./aicorePlugin";
-import { Gemma } from "./gemmaPlugin";
 
 export interface FMGenerateOptions {
   /** User prompt. */
@@ -235,22 +234,20 @@ async function runWithBridge(
 }
 
 /** Build a single text prompt for the Android local runtime, which has no separate system field. */
-export function buildGemmaPrompt(opts: FMGenerateOptions): string {
+export function buildAndroidPrompt(opts: FMGenerateOptions): string {
   return opts.systemPrompt?.trim()
     ? `Instructions:\n${opts.systemPrompt.trim()}\n\nRequest:\n${opts.prompt.trim()}`
     : opts.prompt.trim();
 }
 
 /**
- * Android has an explicit ordered local path: AICore (Gemini Nano) first,
- * then the separately configured checksum-verified Gemma runtime. Returning
- * null deliberately leaves the existing caller-owned cloud fallback unchanged.
+ * Android has one local path: Gemini Nano through AICore. Returning null
+ * deliberately leaves the existing caller-owned server fallback unchanged.
  */
 async function runAndroidOnDevice(
   opts: OnDeviceFirstOptions
 ): Promise<{ text: string } | null> {
-  const aicore = await runAndroidAICore(opts);
-  return aicore ?? runAndroidGemma(opts);
+  return runAndroidAICore(opts);
 }
 
 /**
@@ -264,11 +261,13 @@ async function runAndroidAICore(
   try {
     const status = await AICore.getStatus();
     if (!status.available) {
-      console.info(`[AICore] ${status.reason || status.state}; trying Gemma.`);
+      console.info(
+        `[AICore] ${status.reason || status.state}; using the server.`
+      );
       return null;
     }
   } catch (error) {
-    console.warn("[AICore] Status probe failed; trying Gemma:", error);
+    console.warn("[AICore] Status probe failed; using the server:", error);
     return null;
   }
 
@@ -291,69 +290,13 @@ async function runAndroidAICore(
 
   try {
     const result = await Promise.race([
-      AICore.generate({ prompt: buildGemmaPrompt(opts), requestId }),
+      AICore.generate({ prompt: buildAndroidPrompt(opts), requestId }),
       timeoutPromise,
     ]);
     return result.text.trim() ? { text: result.text } : null;
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
-    console.warn("[AICore] Local inference failed; trying Gemma:", message);
-    return null;
-  } finally {
-    if (timeoutHandle !== undefined) clearTimeout(timeoutHandle);
-  }
-}
-
-/**
- * Run Android Gemma only when the native plugin confirms the expected model
- * was checksum-verified in private storage. Absence is normal: return null so
- * Android callers use cloud, without claiming on-device processing occurred.
- */
-async function runAndroidGemma(
-  opts: OnDeviceFirstOptions
-): Promise<{ text: string } | null> {
-  try {
-    const status = await Gemma.isModelReady();
-    if (!status.ready || !status.verified) {
-      console.info(
-        `[Gemma] ${status.reason || "Verified model absent"} Using cloud fallback.`
-      );
-      return null;
-    }
-  } catch (error) {
-    console.warn("[Gemma] Status probe failed; using cloud fallback:", error);
-    return null;
-  }
-
-  const timeoutMs = opts.timeoutMs ?? 60000;
-  let timeoutHandle: ReturnType<typeof setTimeout> | undefined;
-  const timeoutPromise = new Promise<never>((_, reject) => {
-    timeoutHandle = setTimeout(
-      () => reject(new Error(`Gemma timeout after ${timeoutMs}ms`)),
-      timeoutMs
-    );
-  });
-
-  if (!opts.silentDiagnostics) {
-    toast.info("✦ Trying verified on-device model…", { duration: 800 });
-  }
-
-  try {
-    const result = await Promise.race([
-      Gemma.generate({
-        prompt: buildGemmaPrompt(opts),
-        temperature: opts.temperature,
-        maxTokens: opts.maxTokens,
-      }),
-      timeoutPromise,
-    ]);
-    return result.text.trim() ? { text: result.text } : null;
-  } catch (error) {
-    const message = error instanceof Error ? error.message : String(error);
-    console.warn("[Gemma] Local inference failed; using cloud fallback:", message);
-    if (!opts.silentDiagnostics) {
-      toast.warning("The on-device model could not answer. Using the server.", { duration: 2500 });
-    }
+    console.warn("[AICore] Local inference failed; using the server:", message);
     return null;
   } finally {
     if (timeoutHandle !== undefined) clearTimeout(timeoutHandle);

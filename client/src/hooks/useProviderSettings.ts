@@ -1,6 +1,6 @@
 /**
  * File Purpose: Manage local/cloud generation availability and provider settings.
- * Primary Components: Apple probe, Android AICore/Gemma delivery, cloud configuration.
+ * Primary Components: Apple probe, Android AICore delivery, cloud configuration.
  * I/O: Reads local preferences, probes native bridges/server, persists settings.
  */
 
@@ -10,11 +10,6 @@ import { buildApiUrl } from "@/lib/api";
 import { isCapacitor, getPlatform, isIos } from "@/lib/platform";
 import { FoundationModels } from "@/lib/foundationModelsPlugin";
 import { AICore, type AICoreStatus } from "@/lib/aicorePlugin";
-import {
-  Gemma,
-  type GemmaModelStatus,
-  type GemmaDownloadResult,
-} from "@/lib/gemmaPlugin";
 
 export type Provider =
   | "apple"
@@ -135,11 +130,16 @@ export interface UseProviderSettingsReturn {
   appleIntelligenceAvailable: boolean;
   /** Filtered provider list — drops `iosOnly: true` entries on non-Capacitor builds. */
   visibleProviders: ProviderConfig[];
-  androidGemmaStatus: GemmaModelStatus | null;
   androidAICoreStatus: AICoreStatus | null;
-  androidGemmaDownload: GemmaDownloadResult | null;
+  androidModelDownload: AndroidModelDownload | null;
   isDownloadingAndroidModel: boolean;
   downloadAndroidModel: () => Promise<void>;
+}
+
+/** The outcome of asking Android AICore to fetch Gemini Nano. */
+export interface AndroidModelDownload {
+  success: boolean;
+  reason?: string;
 }
 
 const LOCKED_CLOUD_PROVIDER: Provider = "openai";
@@ -165,30 +165,12 @@ export function useProviderSettings(): UseProviderSettingsReturn {
 
   const [serverProviders, setServerProviders] =
     useState<ServerProviderInfo | null>(null);
-  const [androidGemmaStatus, setAndroidGemmaStatus] =
-    useState<GemmaModelStatus | null>(null);
   const [androidAICoreStatus, setAndroidAICoreStatus] =
     useState<AICoreStatus | null>(null);
-  const [androidGemmaDownload, setAndroidGemmaDownload] =
-    useState<GemmaDownloadResult | null>(null);
+  const [androidModelDownload, setAndroidModelDownload] =
+    useState<AndroidModelDownload | null>(null);
   const [isDownloadingAndroidModel, setIsDownloadingAndroidModel] =
     useState(false);
-
-  const probeAndroidGemma = useCallback(async () => {
-    if (!isCapacitor() || getPlatform() !== "android") return;
-    try {
-      setAndroidGemmaStatus(await Gemma.isModelReady());
-    } catch {
-      setAndroidGemmaStatus({
-        ready: false,
-        verified: false,
-        model: "gemma-3n-e2b-it-int4",
-        downloadAvailable: false,
-        cloudFallback: true,
-        reason: "The Android model service is unavailable.",
-      });
-    }
-  }, []);
 
   const probeAndroidAICore = useCallback(async () => {
     if (!isCapacitor() || getPlatform() !== "android") return;
@@ -209,38 +191,29 @@ export function useProviderSettings(): UseProviderSettingsReturn {
   const downloadAndroidModel = useCallback(async () => {
     if (!isCapacitor() || getPlatform() !== "android") return;
     setIsDownloadingAndroidModel(true);
-    setAndroidGemmaDownload(null);
+    setAndroidModelDownload(null);
     try {
-      const aicore = await AICore.getStatus();
-      if (aicore.downloadable) {
-        const result = await AICore.download();
-        setAndroidAICoreStatus(result);
-        setAndroidGemmaDownload({
-          success: result.available,
-          verified: result.available,
-          model: result.model,
-          cloudFallback: !result.available,
-          reason: result.reason,
-        });
-      } else {
-        setAndroidGemmaDownload(await Gemma.downloadModel());
-      }
+      const result = await AICore.download();
+      setAndroidAICoreStatus(result);
+      setAndroidModelDownload({
+        success: result.available,
+        reason: result.reason,
+      });
     } catch (error) {
-      setAndroidGemmaDownload({
+      setAndroidModelDownload({
         success: false,
-        verified: false,
-        cloudFallback: true,
-        reason: error instanceof Error ? error.message : "Model download failed.",
+        reason:
+          error instanceof Error ? error.message : "Model download failed.",
       });
     } finally {
       setIsDownloadingAndroidModel(false);
-      await Promise.all([probeAndroidAICore(), probeAndroidGemma()]);
+      await probeAndroidAICore();
     }
-  }, [probeAndroidAICore, probeAndroidGemma]);
+  }, [probeAndroidAICore]);
 
   useEffect(() => {
-    void Promise.all([probeAndroidAICore(), probeAndroidGemma()]);
-  }, [probeAndroidAICore, probeAndroidGemma]);
+    void probeAndroidAICore();
+  }, [probeAndroidAICore]);
 
   // Probe Foundation Models availability on mount, on app foreground,
   // and — when the framework reports a *transient* unavailability
@@ -467,9 +440,8 @@ export function useProviderSettings(): UseProviderSettingsReturn {
     serverProviders,
     appleIntelligenceAvailable,
     visibleProviders,
-    androidGemmaStatus,
     androidAICoreStatus,
-    androidGemmaDownload,
+    androidModelDownload,
     isDownloadingAndroidModel,
     downloadAndroidModel,
   };

@@ -1,5 +1,15 @@
 # Changelog
 
+## 2026-11-13
+
+### Removed
+
+- Removed the Android LiteRT-LM Gemma runtime, its Capacitor bridge, the model
+  download and checksum code, and the Settings text and button that offered
+  it. No released build had a model URL configured, so the path could not run,
+  and the runtime was about half the Android download. Android generation is
+  now AICore Gemini Nano, then the hosted service.
+
 ## 2026-08-08
 
 ### Added
