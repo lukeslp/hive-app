@@ -84,6 +84,7 @@ import { sanitizeJson } from "@/lib/sanitize";
 import { saveBlob } from "@/lib/saveBlob";
 import { buildBoardSvg } from "@/lib/boardExport";
 import { ReportDialog } from "@/components/ReportDialog";
+import { withHiddenTilesMasked, withoutHiddenTiles } from "@/lib/reportedTiles";
 import {
   readReportedTiles,
   reportedTileId,
@@ -1808,7 +1809,9 @@ Generate 6 diverse related ideas. Connect to key themes when relevant.`;
   // canvas markup produced blank shapes.
   const exportAsImage = async () => {
     haptics.medium();
-    const picture = buildBoardSvg(nodes);
+    const picture = buildBoardSvg(
+      withHiddenTilesMasked(nodes, hiddenTextNodes)
+    );
     if (!picture) {
       toast.info("Add a tile before exporting.");
       return;
@@ -1836,7 +1839,9 @@ Generate 6 diverse related ideas. Connect to key themes when relevant.`;
     haptics.medium();
     const label = format.toUpperCase();
     const mime = format === "jpg" ? "image/jpeg" : "image/png";
-    const picture = buildBoardSvg(nodes);
+    const picture = buildBoardSvg(
+      withHiddenTilesMasked(nodes, hiddenTextNodes)
+    );
     if (!picture) {
       toast.info("Add a tile before exporting.");
       return;
@@ -1916,6 +1921,10 @@ Generate 6 diverse related ideas. Connect to key themes when relevant.`;
     }
     return hidden;
   }, [nodes, reportBoardId, reportedTileIds]);
+  const artifactNodes = useMemo(
+    () => withoutHiddenTiles(nodes, hiddenTextNodes),
+    [nodes, hiddenTextNodes]
+  );
   const hideReportedTile = (key: string) => {
     const node = nodes[key];
     if (!node) return;
@@ -2653,7 +2662,8 @@ Generate 6 diverse related ideas. Connect to key themes when relevant.`;
           isOpen={showArtifactStudio}
           onClose={() => setShowArtifactStudio(false)}
           boardId={sessions.artifactBoardId}
-          nodes={nodes}
+          // A reported tile whose text is hidden is not sent to the server.
+          nodes={artifactNodes}
           selectedNodeIds={selectedNodeId ? [selectedNodeId] : []}
           branchRootNodeId={selectedNodeId}
           services={
