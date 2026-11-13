@@ -119,6 +119,7 @@ export const Toolbar = ({
   const [filesMenuOpen, setFilesMenuOpen] = useState(false);
   const [filterMenuOpen, setFilterMenuOpen] = useState(false);
   const barRef = useRef<HTMLDivElement | null>(null);
+  const loadInputRef = useRef<HTMLInputElement | null>(null);
 
   const hasFilterActive = !!filterType || showOnlyKeyThemes;
 
@@ -193,7 +194,7 @@ export const Toolbar = ({
   }, [expanded]);
 
   const iconBtn =
-    "h-10 w-10 sm:h-11 sm:w-11 flex items-center justify-center rounded-full text-foreground/80 hover:text-foreground hover:bg-accent/70 transition-colors disabled:opacity-30 disabled:cursor-not-allowed";
+    "h-11 w-11 flex items-center justify-center rounded-full text-foreground/80 hover:text-foreground hover:bg-accent/70 transition-colors disabled:opacity-30 disabled:cursor-not-allowed";
 
   return (
     <header
@@ -379,7 +380,7 @@ export const Toolbar = ({
                       onShowSessions();
                       setFilesMenuOpen(false);
                     }}
-                    className="w-full flex items-center gap-3 px-4 py-2.5 text-sm hover:bg-accent text-foreground"
+                    className="w-full flex items-center gap-3 px-4 py-2.5 min-h-11 text-sm hover:bg-accent text-foreground"
                   >
                     <FolderOpen className="w-4 h-4 text-muted-foreground" />
                     Sessions
@@ -390,7 +391,7 @@ export const Toolbar = ({
                         onShowArtifactStudio();
                         setFilesMenuOpen(false);
                       }}
-                      className="w-full flex items-center gap-3 px-4 py-2.5 text-sm hover:bg-accent text-foreground"
+                      className="w-full flex items-center gap-3 px-4 py-2.5 min-h-11 text-sm hover:bg-accent text-foreground"
                     >
                       <Sparkles className="w-4 h-4 text-muted-foreground" />
                       Artifact Studio
@@ -402,32 +403,42 @@ export const Toolbar = ({
                       onExportSession();
                       setFilesMenuOpen(false);
                     }}
-                    className="w-full flex items-center gap-3 px-4 py-2.5 text-sm hover:bg-accent text-foreground"
+                    className="w-full flex items-center gap-3 px-4 py-2.5 min-h-11 text-sm hover:bg-accent text-foreground"
                   >
                     <Download className="w-4 h-4 text-muted-foreground" />
                     Save (JSON)
                   </button>
-                  <label className="w-full flex items-center gap-3 px-4 py-2.5 text-sm hover:bg-accent text-foreground cursor-pointer">
+                  {/* A real button, so a screen reader and a keyboard can
+                      activate it. As a <label> around a hidden file input it
+                      was read out as plain text with no action. */}
+                  <button
+                    type="button"
+                    onClick={() => loadInputRef.current?.click()}
+                    className="w-full flex items-center gap-3 px-4 py-2.5 min-h-11 text-sm hover:bg-accent text-foreground"
+                  >
                     <Upload className="w-4 h-4 text-muted-foreground" />
                     Load (JSON)
-                    <input
-                      type="file"
-                      accept=".json"
-                      className="hidden"
-                      onChange={e => {
-                        if (e.target.files?.[0])
-                          onImportSession(e.target.files[0]);
-                        setFilesMenuOpen(false);
-                      }}
-                    />
-                  </label>
+                  </button>
+                  <input
+                    ref={loadInputRef}
+                    tabIndex={-1}
+                    aria-hidden="true"
+                    type="file"
+                    accept=".json"
+                    className="hidden"
+                    onChange={e => {
+                      if (e.target.files?.[0])
+                        onImportSession(e.target.files[0]);
+                      setFilesMenuOpen(false);
+                    }}
+                  />
                   <div className="h-px bg-border my-1" />
                   <button
                     onClick={() => {
                       onExportPNG();
                       setFilesMenuOpen(false);
                     }}
-                    className="w-full flex items-center gap-3 px-4 py-2.5 text-sm hover:bg-accent text-foreground"
+                    className="w-full flex items-center gap-3 px-4 py-2.5 min-h-11 text-sm hover:bg-accent text-foreground"
                   >
                     <Download className="w-4 h-4 text-muted-foreground" />
                     Export PNG
@@ -437,7 +448,7 @@ export const Toolbar = ({
                       onExportJPG();
                       setFilesMenuOpen(false);
                     }}
-                    className="w-full flex items-center gap-3 px-4 py-2.5 text-sm hover:bg-accent text-foreground"
+                    className="w-full flex items-center gap-3 px-4 py-2.5 min-h-11 text-sm hover:bg-accent text-foreground"
                   >
                     <Download className="w-4 h-4 text-muted-foreground" />
                     Export JPG
@@ -447,7 +458,7 @@ export const Toolbar = ({
                       onExportSVG();
                       setFilesMenuOpen(false);
                     }}
-                    className="w-full flex items-center gap-3 px-4 py-2.5 text-sm hover:bg-accent text-foreground"
+                    className="w-full flex items-center gap-3 px-4 py-2.5 min-h-11 text-sm hover:bg-accent text-foreground"
                   >
                     <Download className="w-4 h-4 text-muted-foreground" />
                     Export SVG
@@ -461,7 +472,7 @@ export const Toolbar = ({
                           setFilesMenuOpen(false);
                         }}
                         disabled={nodeCount === 0}
-                        className="w-full flex items-center gap-3 px-4 py-2.5 text-sm hover:bg-accent text-foreground disabled:opacity-50 disabled:cursor-not-allowed"
+                        className="w-full flex items-center gap-3 px-4 py-2.5 min-h-11 text-sm hover:bg-accent text-foreground disabled:opacity-50 disabled:cursor-not-allowed"
                       >
                         <Share2 className="w-4 h-4 text-muted-foreground" />
                         Share link
@@ -509,7 +520,7 @@ export const Toolbar = ({
                       onToggleKeyThemes();
                       setFilterMenuOpen(false);
                     }}
-                    className="w-full flex items-center gap-3 px-4 py-2.5 text-sm hover:bg-accent text-foreground"
+                    className="w-full flex items-center gap-3 px-4 py-2.5 min-h-11 text-sm hover:bg-accent text-foreground"
                   >
                     <Sparkles
                       className={`w-4 h-4 ${
@@ -530,7 +541,7 @@ export const Toolbar = ({
                       onSetFilterType(null);
                       setFilterMenuOpen(false);
                     }}
-                    className={`w-full flex items-center gap-3 px-4 py-2.5 text-sm hover:bg-accent ${
+                    className={`w-full flex items-center gap-3 px-4 py-2.5 min-h-11 text-sm hover:bg-accent ${
                       !filterType
                         ? "text-foreground font-medium"
                         : "text-muted-foreground"
@@ -551,7 +562,7 @@ export const Toolbar = ({
                             onSetFilterType(type.id);
                             setFilterMenuOpen(false);
                           }}
-                          className={`w-full flex items-center gap-3 px-4 py-2.5 text-sm hover:bg-accent ${
+                          className={`w-full flex items-center gap-3 px-4 py-2.5 min-h-11 text-sm hover:bg-accent ${
                             isActive
                               ? "text-foreground font-medium bg-accent/40"
                               : "text-muted-foreground"

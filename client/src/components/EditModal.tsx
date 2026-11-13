@@ -62,9 +62,10 @@ export const EditModal = ({
             Title
           </label>
           <Input
+            aria-label="Title"
             value={editTitle}
             onChange={e => setEditTitle(e.target.value)}
-            className="bg-secondary border-border text-foreground"
+            className="min-h-11 bg-secondary border-border text-foreground"
             autoFocus
           />
         </div>
@@ -73,6 +74,7 @@ export const EditModal = ({
             Description
           </label>
           <textarea
+            aria-label="Description"
             value={editDesc}
             onChange={e => setEditDesc(e.target.value)}
             className="w-full bg-secondary border border-border rounded-md p-3 text-sm text-neutral-300 h-24 resize-none outline-none focus:border-indigo-500"
@@ -92,7 +94,8 @@ export const EditModal = ({
                   <button
                     key={type.id}
                     onClick={() => onChangeType(type.id)}
-                    className={`flex items-center gap-2 p-2 rounded-lg border transition-all ${
+                    aria-pressed={node.type === type.id}
+                    className={`flex items-center gap-2 p-2 min-h-11 rounded-lg border transition-all ${
                       node.type === type.id
                         ? "bg-accent border-white/30 text-foreground"
                         : "bg-accent/50 border-transparent text-muted-foreground hover:bg-accent"
@@ -109,7 +112,7 @@ export const EditModal = ({
         {/* Regenerate-on-edit toggle. When checked, save also triggers
             generateNeighbors with forceRefresh=true so the tile's six
             children get rebuilt against the new title/description/type. */}
-        <label className="flex items-start gap-2 mt-1 cursor-pointer select-none group">
+        <label className="flex items-start gap-2 mt-1 min-h-11 cursor-pointer select-none group">
           <input
             type="checkbox"
             checked={regenerateNeighbors}
@@ -128,7 +131,7 @@ export const EditModal = ({
           </span>
         </label>
 
-        <div className="flex justify-end gap-2 mt-2">
+        <div className="flex flex-wrap justify-end gap-2 mt-2">
           <Button variant="ghost" onClick={onClose}>
             Cancel
           </Button>

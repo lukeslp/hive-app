@@ -65,10 +65,10 @@ export const InspectPanel = ({
           {/* Star toggle — filled when key theme */}
           <button
             onClick={onToggleKeyTheme}
-            className={`p-1.5 rounded-lg transition-colors flex-shrink-0 ${
+            className={`min-h-11 min-w-11 flex items-center justify-center rounded-lg transition-colors flex-shrink-0 ${
               node.isKeyTheme
                 ? "text-amber-400"
-                : "text-muted-foreground/40 hover:text-amber-400"
+                : "text-muted-foreground hover:text-amber-400"
             }`}
             title={node.isKeyTheme ? "Remove key idea" : "Mark as key idea"}
             aria-label={
@@ -83,7 +83,7 @@ export const InspectPanel = ({
           </button>
           <button
             onClick={onClose}
-            className="p-1.5 rounded-lg text-muted-foreground/40 hover:text-foreground transition-colors flex-shrink-0"
+            className="min-h-11 min-w-11 flex items-center justify-center rounded-lg text-muted-foreground hover:text-foreground transition-colors flex-shrink-0"
             title="Close"
             aria-label="Close panel"
           >
@@ -131,10 +131,10 @@ export const InspectPanel = ({
         )}
 
         {/* Action row — small icon buttons */}
-        <div className="flex items-center gap-1 border-t border-border/50 pt-2.5">
+        <div className="flex items-center gap-0.5 border-t border-border/50 pt-1">
           <button
             onClick={onEdit}
-            className="p-1.5 rounded-md text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
+            className="min-h-11 min-w-11 flex items-center justify-center rounded-md text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
             title="Edit"
             aria-label="Edit node"
           >
@@ -143,7 +143,7 @@ export const InspectPanel = ({
           <button
             onClick={onRefresh}
             disabled={isLoading}
-            className="p-1.5 rounded-md text-muted-foreground hover:text-cyan-400 hover:bg-cyan-500/10 transition-colors disabled:opacity-50"
+            className="min-h-11 min-w-11 flex items-center justify-center rounded-md text-muted-foreground hover:text-cyan-400 hover:bg-cyan-500/10 transition-colors disabled:opacity-50"
             title="Regenerate"
             aria-label="Refresh node"
           >
@@ -158,7 +158,7 @@ export const InspectPanel = ({
           </button>
           <button
             onClick={onAddContextInfo}
-            className={`p-1.5 rounded-md transition-colors ${
+            className={`min-h-11 min-w-11 flex items-center justify-center rounded-md transition-colors ${
               node.contextInfo
                 ? "text-blue-400"
                 : "text-muted-foreground hover:text-blue-400 hover:bg-blue-500/10"
@@ -173,14 +173,14 @@ export const InspectPanel = ({
           {onReport && !isTextHidden && (
             <button
               onClick={onReport}
-              className="p-1.5 rounded-md text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
+              className="min-h-11 min-w-11 flex items-center justify-center rounded-md text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
               title="Report"
               aria-label="Report this tile"
             >
               <Flag className="w-3.5 h-3.5" aria-hidden="true" />
             </button>
           )}
-          <span className="text-[10px] text-muted-foreground/50 ml-auto uppercase tracking-wider">
+          <span className="text-[11px] text-muted-foreground ml-auto uppercase tracking-wider">
             {node.type}
           </span>
         </div>

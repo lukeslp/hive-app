@@ -263,6 +263,7 @@ export const SettingsModal = ({
                 </p>
               </div>
               <Switch
+                aria-label="Auto-Save"
                 checked={enableAutoSave}
                 onCheckedChange={setEnableAutoSave}
               />
@@ -436,6 +437,7 @@ export const SettingsModal = ({
                   </Label>
                   <div className="space-y-2">
                     <Slider
+                      thumbLabel="Generation Creativity"
                       value={[creativity]}
                       onValueChange={val => setCreativity(val[0])}
                       min={0}
@@ -458,6 +460,7 @@ export const SettingsModal = ({
                   </Label>
                   <div className="space-y-2">
                     <Slider
+                      thumbLabel="Cross-Pollination"
                       value={[bridgingIntensity]}
                       onValueChange={val => setBridgingIntensity(val[0])}
                       min={0}
@@ -488,6 +491,7 @@ export const SettingsModal = ({
                     </p>
                   </div>
                   <Switch
+                    aria-label="Smart Expansion"
                     checked={enableSmartExpansion}
                     onCheckedChange={setEnableSmartExpansion}
                   />

@@ -210,7 +210,7 @@ export const ContextPromptModal = ({
                   key={chip}
                   type="button"
                   onClick={() => handleChipTap(chip)}
-                  className={`px-3 py-1.5 rounded-full text-sm font-light
+                  className={`px-4 min-h-11 rounded-full text-sm font-light
                               transition-all duration-150 backdrop-blur-md
                               ${
                                 isSelected
@@ -234,6 +234,7 @@ export const ContextPromptModal = ({
             value={response}
             onChange={e => setResponse(e.target.value)}
             onKeyDown={handleKeyDown}
+            aria-label={heading}
             placeholder={hasChips ? "Or type your own answer..." : placeholder}
             className="w-full pl-5 pr-14 py-4 bg-zinc-900/90 border border-white/20 rounded-2xl
                        text-white/90 text-base sm:text-lg placeholder:text-white/45
@@ -248,7 +249,7 @@ export const ContextPromptModal = ({
           <button
             onClick={handleSubmit}
             disabled={!response.trim()}
-            className={`absolute right-2 top-1/2 -translate-y-1/2 p-2.5 rounded-xl
+            className={`absolute right-1.5 top-1/2 -translate-y-1/2 h-11 w-11 flex items-center justify-center rounded-xl
                        transition-all duration-200 ${
                          response.trim()
                            ? "bg-purple-500/80 text-white hover:bg-purple-500 scale-100"

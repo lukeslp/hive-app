@@ -509,7 +509,7 @@ export function ArtifactStudio({
                   setScopeKind(event.target.value as ArtifactScope["kind"]);
                   setMessage(null);
                 }}
-                className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm"
+                className="w-full min-h-11 rounded-md border border-border bg-background px-3 py-2 text-sm"
               >
                 <option value="board">Whole board</option>
                 <option value="branch" disabled={!branchRootNodeId}>

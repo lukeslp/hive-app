@@ -398,7 +398,7 @@ export const OnboardingTour: React.FC<OnboardingTourProps> = ({
                       via the prompt → generate flow that ran moments ago. */}
                   <button
                     onClick={handleTutorialSkip}
-                    className="text-white/25 text-xs font-light hover:text-white/40 transition-colors"
+                    className="min-h-11 px-2 text-white/70 text-sm hover:text-white/90 transition-colors"
                   >
                     Skip rest
                   </button>
