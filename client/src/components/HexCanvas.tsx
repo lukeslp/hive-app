@@ -200,7 +200,12 @@ const HexTile = React.memo<{
           role="button"
           aria-label={`${isTextHidden ? "Reported tile, text hidden" : node.text}, ${node.type} node, level ${node.depth}${node.pinned ? ", pinned" : ""}${node.isKeyTheme ? ", key theme" : ""}${isAsking ? ", needs clarification" : ""}. ${isTouchDevice ? "Tap" : "Click"} to ${isAsking ? "answer a question before expanding" : "expand"}. ${isTouchDevice ? "Long press" : "Right-click"} for actions.`}
           onKeyDown={e => onNodeKeyDown(e, nodeKey, node)}
-          draggable={!node.pinned && node.type !== "root"}
+          // Mouse only. On a touch screen a draggable element starts the
+          // browser's own drag about a second into a long press, which
+          // cancels the touch: the tile had been picked up by useTouchDrag,
+          // its label stayed on screen, and the merge never happened if the
+          // finger paused before moving. Touch uses useTouchDrag alone.
+          draggable={!isTouchDevice && !node.pinned && node.type !== "root"}
           onDragStart={onDragStart}
           onDragEnd={onDragEnd}
           onDragOver={onDragOver}
