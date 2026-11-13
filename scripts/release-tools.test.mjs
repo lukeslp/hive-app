@@ -176,6 +176,17 @@ test("public privacy copy covers each native Mac data path and artifact sync con
   assert.ok(privacy.includes("They are not used for tracking or advertising"));
 });
 
+test("public privacy copy describes the Android hosted path as the app behaves", () => {
+  const privacy = fs
+    .readFileSync(path.join(root, "client/public/privacy.html"), "utf8")
+    .replace(/\s+/g, " ");
+  // Artifact Studio calls the hosted transport directly on Android, and the
+  // only disclosure of the local-then-hosted ladder is the Settings panel.
+  assert.ok(privacy.includes("Artifact Studio on Android always uses the hosted path"));
+  assert.ok(privacy.includes("Settings shows whether a local runtime is ready"));
+  assert.ok(!privacy.includes("identifies this fallback before"));
+});
+
 test("Mac target compiles the existing Idea Tiles artwork as its app icon", () => {
   const catalog = path.join(root, "macos/IdeaTiles/Assets.xcassets");
   const contents = path.join(catalog, "AppIcon.appiconset/Contents.json");

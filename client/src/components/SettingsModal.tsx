@@ -37,6 +37,7 @@ import type {
 } from "@/hooks/useProviderSettings";
 import type { GemmaDownloadResult, GemmaModelStatus } from "@/lib/gemmaPlugin";
 import type { AICoreStatus } from "@/lib/aicorePlugin";
+import { androidGenerationNote } from "@/lib/androidGenerationNote";
 import { getPlatform, isCapacitor, isIos, isNativeMac } from "@/lib/platform";
 import { APP_DISPLAY_NAME } from "@shared/appBrand";
 import type { WorkspaceMode } from "@shared/workspaceDocument";
@@ -178,7 +179,7 @@ export const SettingsModal = ({
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
       <DialogContent className="bg-background/95 backdrop-blur-xl border-border/70 max-w-2xl max-h-[90vh] overflow-hidden flex flex-col rounded-3xl shadow-2xl">
-        <DialogHeader>
+        <DialogHeader className="shrink-0 border-b border-border/60 pb-3">
           <DialogTitle className="text-foreground">Settings</DialogTitle>
         </DialogHeader>
 
@@ -262,6 +263,7 @@ export const SettingsModal = ({
                 </p>
               </div>
               <Switch
+                aria-label="Auto-Save"
                 checked={enableAutoSave}
                 onCheckedChange={setEnableAutoSave}
               />
@@ -355,11 +357,10 @@ export const SettingsModal = ({
                 aria-live="polite"
               >
                 <p className="text-muted-foreground">
-                  {androidAICoreStatus?.available
-                    ? "Gemini Nano is ready through Android AICore. Generation tries it first, then the verified Gemma model when installed, before the managed cloud service."
-                    : androidGemmaStatus?.ready
-                      ? "The verified Gemma model is installed in private device storage. Gemini Nano through Android AICore is checked first; if neither local path can run, the request uses the managed cloud service."
-                      : `${androidAICoreStatus?.reason || androidGemmaStatus?.reason || "No local Android model is ready."} Generation tries AICore, then Gemma, then the managed cloud service. Prompts leave the device only for the cloud fallback.`}
+                  {androidGenerationNote(
+                    androidAICoreStatus,
+                    androidGemmaStatus
+                  )}
                 </p>
                 {!androidAICoreStatus?.available &&
                   !androidGemmaStatus?.ready &&
@@ -436,6 +437,7 @@ export const SettingsModal = ({
                   </Label>
                   <div className="space-y-2">
                     <Slider
+                      thumbLabel="Generation Creativity"
                       value={[creativity]}
                       onValueChange={val => setCreativity(val[0])}
                       min={0}
@@ -458,6 +460,7 @@ export const SettingsModal = ({
                   </Label>
                   <div className="space-y-2">
                     <Slider
+                      thumbLabel="Cross-Pollination"
                       value={[bridgingIntensity]}
                       onValueChange={val => setBridgingIntensity(val[0])}
                       min={0}
@@ -488,6 +491,7 @@ export const SettingsModal = ({
                     </p>
                   </div>
                   <Switch
+                    aria-label="Smart Expansion"
                     checked={enableSmartExpansion}
                     onCheckedChange={setEnableSmartExpansion}
                   />

@@ -60,6 +60,7 @@ export {
   Shield,
   ChevronUp,
   AlertTriangle,
+  Flag,
   Server,
   MoreHorizontal,
   Cloud,

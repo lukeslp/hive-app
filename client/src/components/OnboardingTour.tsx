@@ -13,6 +13,7 @@
 
 import React, { useState, useEffect, useCallback, useMemo } from "react";
 import { TOUR_COMPLETED_KEY } from "@/lib/hexConstants";
+import { BACK_PRIORITY, useBackHandler } from "@/lib/backNavigation";
 
 interface OnboardingTourProps {
   showTutorial: boolean;
@@ -157,7 +158,7 @@ function getTutorialSteps(isTouch: boolean): TutorialStep[] {
         </svg>
       ),
       title: "Combine tiles",
-      body: `${drag} one hex onto another to merge them. The AI synthesizes both ideas into something new.`,
+      body: `${drag} one hex onto another to merge them. The language model combines both ideas into a new one.`,
     },
     {
       icon: (
@@ -178,7 +179,7 @@ function getTutorialSteps(isTouch: boolean): TutorialStep[] {
         </svg>
       ),
       title: "Start new threads",
-      body: `${doubleTap} empty space to plant a fresh idea anywhere \u2014 no need to connect everything.`,
+      body: `${doubleTap} empty space to plant a fresh idea anywhere. Not everything has to connect.`,
     },
     {
       icon: (
@@ -200,7 +201,7 @@ function getTutorialSteps(isTouch: boolean): TutorialStep[] {
         </svg>
       ),
       title: "Navigate freely",
-      body: `${panAction}. Star key ideas to guide the AI. ${isTouch ? "" : "Press H for shortcuts."}`.trim(),
+      body: `${panAction}. Star key ideas to steer what gets generated. ${isTouch ? "" : "Press H for shortcuts."}`.trim(),
     },
     {
       icon: (
@@ -218,7 +219,7 @@ function getTutorialSteps(isTouch: boolean): TutorialStep[] {
         </svg>
       ),
       title: "Smart expansion",
-      body: `Some tiles are rich enough that the AI auto-expands them on its own — watch for the pulse animation. You can turn this off in Settings.`,
+      body: `Some tiles expand on their own when there is enough to say. Watch for the pulse. You can turn this off in Settings.`,
     },
   ];
 }
@@ -298,6 +299,12 @@ export const OnboardingTour: React.FC<OnboardingTourProps> = ({
       setPhase("done");
     }, 500);
   }, [onTutorialComplete]);
+
+  // Android Back skips the tour, the same as "Skip rest".
+  useBackHandler(phase === "tutorial" && !fadeOut, BACK_PRIORITY.tour, () => {
+    handleTutorialSkip();
+    return true;
+  });
 
   // Nothing to render in waiting or done phases
   if (phase === "done" || phase === "waiting") return null;
@@ -391,7 +398,7 @@ export const OnboardingTour: React.FC<OnboardingTourProps> = ({
                       via the prompt → generate flow that ran moments ago. */}
                   <button
                     onClick={handleTutorialSkip}
-                    className="text-white/25 text-xs font-light hover:text-white/40 transition-colors"
+                    className="min-h-11 px-2 text-white/70 text-sm hover:text-white/90 transition-colors"
                   >
                     Skip rest
                   </button>

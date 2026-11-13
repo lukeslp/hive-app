@@ -2,6 +2,7 @@ import React, { useEffect, useMemo, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Modal } from "@/components/Modal";
 import { StaticArtifactPreview } from "@/components/StaticArtifactPreview";
+import { ReportDialog } from "@/components/ReportDialog";
 import { extractArtifactContext } from "@/lib/artifactContext";
 import type { ArtifactContextSourceNode } from "@/lib/artifactContext";
 import {
@@ -10,6 +11,7 @@ import {
   getArtifactRecipe,
   suggestArtifactRecipes,
 } from "@/lib/artifactRecipes";
+import type { ArtifactRecipe } from "@/lib/artifactRecipes";
 import type {
   ArtifactGenerationProgress,
   ArtifactImageAttachment,
@@ -48,6 +50,17 @@ export interface ArtifactStudioProps {
     imageFileIds: string[]
   ) => Promise<{ remoteId: string }>;
   onCloudSignIn?: () => Promise<void>;
+  /**
+   * Image recipes need the native Mac host (Image Playground). Everywhere
+   * else they can only fail, so the caller turns them off. Default true so
+   * the Mac path and existing callers are unchanged.
+   */
+  imageRecipesAvailable?: boolean;
+  /**
+   * Shown on the confirmation step when generating sends the board text to
+   * a server, so the person knows before anything leaves the device.
+   */
+  generationNotice?: string;
 }
 
 export class ArtifactCloudSyncError extends Error {
@@ -150,6 +163,8 @@ export function ArtifactStudio({
   onAttachImage,
   cloudSync,
   onCloudSignIn,
+  imageRecipesAvailable = true,
+  generationNotice,
 }: ArtifactStudioProps) {
   const [scopeKind, setScopeKind] = useState<ArtifactScope["kind"]>("board");
   const [recipeId, setRecipeId] = useState("brief");
@@ -164,6 +179,9 @@ export function ArtifactStudio({
     () => new Set()
   );
   const [activeAction, setActiveAction] = useState<ArtifactAction | null>(null);
+  // Reporting an artifact hides its preview here until the person shows it.
+  const [reportOpen, setReportOpen] = useState(false);
+  const [hiddenArtifactId, setHiddenArtifactId] = useState<string | null>(null);
   const abortController = useRef<AbortController | null>(null);
   const actionOperation = useRef<ArtifactActionOperation | null>(null);
 
@@ -176,6 +194,8 @@ export function ArtifactStudio({
     setArtifact(null);
     setMessage(null);
     setCloudImageFileIds(new Set());
+    setReportOpen(false);
+    setHiddenArtifactId(null);
 
     return () => {
       actionOperation.current = null;
@@ -206,8 +226,31 @@ export function ArtifactStudio({
     }
     return { semanticIdByRendererKey, rendererKeyBySemanticId };
   }, [nodes]);
-  const suggestions = useMemo(() => suggestArtifactRecipes(context), [context]);
-  const recipe = getArtifactRecipe(recipeId) ?? ARTIFACT_RECIPES[0];
+  const recipeAllowed = (kind: ArtifactRecipe["kind"]) =>
+    imageRecipesAvailable || kind !== "image";
+  const suggestions = useMemo(
+    () =>
+      suggestArtifactRecipes(context).filter(
+        suggestion =>
+          imageRecipesAvailable || suggestion.recipe.kind !== "image"
+      ),
+    [context, imageRecipesAvailable]
+  );
+  const recipeGroups = useMemo(
+    () =>
+      ARTIFACT_RECIPE_GROUPS.map(group => ({
+        ...group,
+        recipes: group.recipes.filter(
+          item => imageRecipesAvailable || item.kind !== "image"
+        ),
+      })).filter(group => group.recipes.length > 0),
+    [imageRecipesAvailable]
+  );
+  const selectedRecipe = getArtifactRecipe(recipeId);
+  const recipe =
+    selectedRecipe && recipeAllowed(selectedRecipe.kind)
+      ? selectedRecipe
+      : ARTIFACT_RECIPES[0];
 
   const closeStudio = () => {
     actionOperation.current = null;
@@ -466,7 +509,7 @@ export function ArtifactStudio({
                   setScopeKind(event.target.value as ArtifactScope["kind"]);
                   setMessage(null);
                 }}
-                className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm"
+                className="w-full min-h-11 rounded-md border border-border bg-background px-3 py-2 text-sm"
               >
                 <option value="board">Whole board</option>
                 <option value="branch" disabled={!branchRootNodeId}>
@@ -512,7 +555,7 @@ export function ArtifactStudio({
             )}
 
             <section className="space-y-3">
-              {ARTIFACT_RECIPE_GROUPS.map(group => (
+              {recipeGroups.map(group => (
                 <div key={group.id}>
                   <h3 className="mb-1 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
                     {group.label}
@@ -560,7 +603,7 @@ export function ArtifactStudio({
               />
             </section>
 
-            <div className="flex justify-end gap-2">
+            <div className="flex flex-wrap justify-end gap-2">
               <Button variant="outline" onClick={closeStudio}>
                 Cancel
               </Button>
@@ -585,8 +628,13 @@ export function ArtifactStudio({
                 {context.includedNodeCount === 1 ? "" : "s"} in the {scope.kind}{" "}
                 scope? Review the result before saving or exporting it.
               </p>
+              {generationNotice && (
+                <p className="mt-2 text-sm text-muted-foreground">
+                  {generationNotice}
+                </p>
+              )}
             </div>
-            <div className="flex justify-end gap-2">
+            <div className="flex flex-wrap justify-end gap-2">
               <Button variant="outline" onClick={() => setStage("configure")}>
                 Back
               </Button>
@@ -637,13 +685,32 @@ export function ArtifactStudio({
         {stage === "result" && artifact && (
           <section className="space-y-4">
             <div>
-              <h3 className="font-semibold">{artifact.title}</h3>
+              <h3 className="font-semibold">
+                {hiddenArtifactId === artifact.id
+                  ? "Reported artifact"
+                  : artifact.title}
+              </h3>
               <p className="text-xs text-muted-foreground">
                 {artifact.kind} · {artifact.files.length} file
                 {artifact.files.length === 1 ? "" : "s"}
               </p>
             </div>
-            <ArtifactResultPreview artifact={artifact} />
+            {hiddenArtifactId === artifact.id ? (
+              <div className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-border p-3">
+                <p className="text-sm text-muted-foreground">
+                  You reported this artifact. Its text is hidden on this device.
+                </p>
+                <Button
+                  variant="outline"
+                  className="min-h-11"
+                  onClick={() => setHiddenArtifactId(null)}
+                >
+                  Show text
+                </Button>
+              </div>
+            ) : (
+              <ArtifactResultPreview artifact={artifact} />
+            )}
             {cloudSync &&
               artifact.files.some(file =>
                 file.mimeType.startsWith("image/")
@@ -710,6 +777,15 @@ export function ArtifactStudio({
               </p>
             )}
             <div className="flex flex-wrap justify-end gap-2">
+              {hiddenArtifactId !== artifact.id && (
+                <Button
+                  variant="outline"
+                  disabled={activeAction !== null}
+                  onClick={() => setReportOpen(true)}
+                >
+                  Report
+                </Button>
+              )}
               <Button
                 variant="outline"
                 disabled={activeAction !== null}
@@ -743,6 +819,16 @@ export function ArtifactStudio({
           </section>
         )}
       </div>
+      <ReportDialog
+        isOpen={reportOpen && !!artifact}
+        kind="artifact"
+        title={artifact?.title ?? ""}
+        body={(artifact && previewFile(artifact)?.content) || ""}
+        onClose={() => setReportOpen(false)}
+        onReported={() => {
+          if (artifact) setHiddenArtifactId(artifact.id);
+        }}
+      />
     </Modal>
   );
 }

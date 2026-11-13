@@ -35,7 +35,7 @@ export const ConfirmationModal = ({
           </DialogDescription>
         </DialogHeader>
         <div className="flex flex-col gap-4">
-          <div className="flex justify-end gap-2">
+          <div className="flex flex-wrap justify-end gap-2">
             <Button variant="ghost" onClick={onClose}>
               Cancel
             </Button>

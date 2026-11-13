@@ -42,7 +42,7 @@ export const FloatingActionBar = ({
         <button
           onClick={onRefresh}
           disabled={isLoading}
-          className={`p-2 rounded-lg transition-colors ${isLoading ? "opacity-50" : "text-muted-foreground hover:text-cyan-400 hover:bg-cyan-500/20"}`}
+          className={`min-h-11 min-w-11 flex items-center justify-center rounded-lg transition-colors ${isLoading ? "opacity-50" : "text-muted-foreground hover:text-cyan-400 hover:bg-cyan-500/20"}`}
           title="Refresh node"
           aria-label="Refresh node"
         >
@@ -56,7 +56,7 @@ export const FloatingActionBar = ({
         {/* Mark as Key Theme */}
         <button
           onClick={onToggleKeyTheme}
-          className={`p-2 rounded-lg transition-colors ${
+          className={`min-h-11 min-w-11 flex items-center justify-center rounded-lg transition-colors ${
             node.isKeyTheme
               ? "text-amber-400 bg-amber-500/20"
               : "text-muted-foreground hover:text-amber-400 hover:bg-amber-500/20"

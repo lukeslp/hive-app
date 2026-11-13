@@ -19,6 +19,8 @@
  * goal?" passes because the possessive marks user-knowledge intent.
  */
 
+import { normalizeClarificationFields } from "@shared/workspaceDocument";
+
 /**
  * Minimum shape the validator needs. Any object carrying these optional
  * fields is acceptable — keeps the validator decoupled from the full
@@ -70,6 +72,27 @@ export function isFactualLookup(question: string): boolean {
 }
 
 /**
+ * The schema sent with the request asks for one of four categories and at
+ * most five suggested answers, but not every provider enforces it. A branch
+ * that comes back with "priority" or six answers would later be refused by
+ * the saved-board schema, so bring both fields into range here, before the
+ * branch becomes a tile.
+ */
+function withSavableClarificationFields<T extends ClarifiableBranch>(
+  branch: T
+): T {
+  if (
+    branch.userInputCategory === undefined &&
+    branch.suggestedAnswers === undefined
+  ) {
+    return branch;
+  }
+  const { userInputCategory, suggestedAnswers } =
+    normalizeClarificationFields(branch);
+  return { ...branch, userInputCategory, suggestedAnswers } as T;
+}
+
+/**
  * Run the validator on a single branch. Returns a (possibly-modified) copy.
  *
  * Mutation rules:
@@ -82,8 +105,9 @@ export function isFactualLookup(question: string): boolean {
  * - shouldAsk == true && question passes → returned unchanged.
  */
 export function validateClarification<T extends ClarifiableBranch>(
-  branch: T
+  input: T
 ): T {
+  const branch = withSavableClarificationFields(input);
   if (!branch.shouldAskClarifyingQuestion) return branch;
   if (!branch.clarifyingQuestion) {
     // Cast: spread + override on a generic narrows poorly in TS — we

@@ -90,7 +90,7 @@
   <body>
     <main>
       <h1>Idea Tiles Privacy Policy</h1>
-      <p class="meta">Last updated 8 August 2026</p>
+      <p class="meta">Last updated 12 November 2026</p>
 
       <p>
         Idea Tiles is a hexagonal mind-mapping tool from Bridge City Lab LLC. It
@@ -103,8 +103,15 @@
       <ul>
         <li>
           <strong>No tracking or advertising.</strong> No account is required
-          for local use. Idea Tiles has no advertising IDs, analytics SDKs, or
-          third-party crash reporting.
+          for local use. The native apps have no advertising IDs and no
+          third-party crash reporting. The iPhone, iPad, and Mac apps include no
+          analytics SDKs. The Android app includes Google ML Kit, which it uses
+          to reach the on-device model; ML Kit sends its own usage and
+          diagnostic data to Google, as described in
+          <a href="https://developers.google.com/ml-kit/android-data-disclosure"
+            >Google's ML Kit data disclosure</a
+          >. The ideatiles.app website counts page views with a first-party
+          counter at stats.dr.eamer.dev.
         </li>
         <li>
           <strong>Your boards stay on your device.</strong> They are saved to
@@ -177,10 +184,25 @@
       <p>
         The web and Android versions can send prompts and relevant board context
         to the Idea Tiles hosted generation endpoint. The service relays those
-        requests to its configured language-model provider. Android tries its
-        supported local runtimes first and uses the hosted path only when neither
-        local runtime is usable. The interface identifies this fallback before
-        the content leaves the device.
+        requests to its configured language-model provider. For tiles, merges,
+        and templates, Android tries its supported local runtimes first and uses
+        the hosted path only when neither local runtime is usable. Artifact
+        Studio on Android always uses the hosted path. Settings shows whether a
+        local runtime is ready. When none is, the Android app says under the
+        text box that your text will be sent to the server, and Artifact Studio
+        says the same on its confirmation step. The app does not ask for
+        permission before each request.
+      </p>
+
+      <h2>Reporting generated text</h2>
+      <p>
+        You can report a generated tile or artifact from inside the app. A
+        report is an email you send from your own email app to the contact
+        address below. It contains the text you reported, the reason you chose,
+        any note you added, and the app version. The app sends nothing until you
+        send that email. Reports are read by the developer and kept as ordinary
+        email. The app remembers on your device which tiles you reported, so it
+        can keep their text hidden until you choose to show it.
       </p>
 
       <h2>Artifact storage and optional sync</h2>
@@ -210,10 +232,11 @@
       <h2>Collaboration sessions</h2>
       <p>
         On the web and native Mac, you can invite others to a shared board via a
-        temporary collaboration link. While the session is open, board changes and presence cursors are
-        relayed through our WebSocket server so all participants stay in sync.
-        Session state is held in memory only and is discarded when the last
-        participant disconnects. We do not record or persist session content.
+        temporary collaboration link. While the session is open, board changes
+        and presence cursors are relayed through our WebSocket server so all
+        participants stay in sync. Session state is held in memory only and is
+        discarded when the last participant disconnects. We do not record or
+        persist session content.
       </p>
 
       <h2>Permissions on iOS</h2>

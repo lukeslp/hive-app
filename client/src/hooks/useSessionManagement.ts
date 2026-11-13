@@ -30,6 +30,7 @@ import {
   mergeTilesSessionIntoWorkspace,
   migrateTilesSession,
   parseWorkspaceTransport,
+  repairTilesNodesForSave,
   switchWorkspaceMode,
   workspaceEnvelopeForBoard,
   workspaceImportFileSizeAllowed,
@@ -139,9 +140,14 @@ export function useSessionManagement({
   const cloudAutosaveFailureShown = useRef(false);
 
   const buildSessionData = useCallback(() => {
+    // Model output and merges are not bound by the saved-board schema; one
+    // out-of-range tile used to make every later save of the board throw.
+    const savableNodes = repairTilesNodesForSave(
+      nodes as unknown as Record<string, Record<string, unknown>>
+    );
     const legacy = {
       boardId: localBoardId,
-      nodes,
+      nodes: savableNodes,
       viewState,
       creativity,
       keyThemes: Object.keys(nodes).filter(key => nodes[key].isKeyTheme),
@@ -717,7 +723,7 @@ export function useSessionManagement({
       setCopied(true);
       setTimeout(() => setCopied(false), 2000);
     } catch {
-      toast.error("Couldn't copy the link — copy it from the field instead");
+      toast.error("Couldn't copy the link. Copy it from the field instead.");
     }
   }, [shareUrl]);
 

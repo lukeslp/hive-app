@@ -32,7 +32,10 @@ export const Modal = ({
       <DialogContent
         className={`bg-card border-border ${maxWidth} max-h-[90vh] overflow-hidden flex flex-col`}
       >
-        <DialogHeader>
+        {/* shrink-0: in a short viewport the header must keep its height.
+            Without it the flex column squeezed the header and the scrolling
+            content drew over the description. */}
+        <DialogHeader className="shrink-0 border-b border-border/60 pb-3">
           <DialogTitle className="text-foreground">{title}</DialogTitle>
           {description && (
             <DialogDescription className="text-muted-foreground">
@@ -45,7 +48,7 @@ export const Modal = ({
             </DialogDescription>
           )}
         </DialogHeader>
-        <div className="overflow-y-auto custom-scrollbar flex-1">
+        <div className="overflow-y-auto custom-scrollbar flex-1 min-h-0">
           {children}
         </div>
       </DialogContent>

@@ -1247,3 +1247,154 @@ export function mergeTilesSessionIntoWorkspace(
     metadata: { ...prior.metadata, ...migrated.metadata },
   });
 }
+
+const USER_INPUT_CATEGORIES = new Set([
+  "preference",
+  "constraint",
+  "situation",
+  "goal",
+]);
+const NODE_TYPE_VALUES = new Set<string>(nodeTypeSchema.options);
+const MAX_SUGGESTED_ANSWERS = 5;
+
+function clampString(value: unknown, maximum: number): string | undefined {
+  if (typeof value !== "string") return undefined;
+  return value.length > maximum ? value.slice(0, maximum) : value;
+}
+
+/**
+ * Coerce the two clarification fields a language model fills in freely to
+ * what the saved-board schema accepts: a category outside the four known
+ * values is dropped, and suggested answers are cut to five non-empty strings.
+ */
+export function normalizeClarificationFields(input: {
+  userInputCategory?: unknown;
+  suggestedAnswers?: unknown;
+}): {
+  userInputCategory?: "preference" | "constraint" | "situation" | "goal";
+  suggestedAnswers?: string[];
+} {
+  const category =
+    typeof input.userInputCategory === "string"
+      ? input.userInputCategory.trim().toLowerCase()
+      : "";
+  const answers = Array.isArray(input.suggestedAnswers)
+    ? input.suggestedAnswers
+        .filter((answer): answer is string => typeof answer === "string")
+        .map(answer => answer.trim().slice(0, MAX_TEXT))
+        .filter(answer => answer.length > 0)
+        .filter((answer, index, all) => all.indexOf(answer) === index)
+        .slice(0, MAX_SUGGESTED_ANSWERS)
+    : [];
+  return {
+    userInputCategory: USER_INPUT_CATEGORIES.has(category)
+      ? (category as "preference" | "constraint" | "situation" | "goal")
+      : undefined,
+    suggestedAnswers: answers.length > 0 ? answers : undefined,
+  };
+}
+
+/**
+ * Bring an in-memory tile map inside the limits of the saved-board schema
+ * without losing tiles.
+ *
+ * Tile text comes from a language model and from merges, and neither is
+ * bound by the schema. One out-of-range field used to make every later
+ * autosave of that board fail. This repairs the fields the schema is strict
+ * about: over-long text, an unknown type or clarification category, too many
+ * suggested answers, and references to tiles that no longer exist. Tiles
+ * that already fit are returned as the same objects.
+ */
+export function repairTilesNodesForSave<T extends Record<string, unknown>>(
+  nodes: Record<string, T>
+): Record<string, T> {
+  const keys = new Set(Object.keys(nodes));
+  const liveReferences = (value: unknown, self: string) =>
+    Array.isArray(value)
+      ? value
+          .filter(
+            (reference): reference is string =>
+              typeof reference === "string" &&
+              reference !== self &&
+              keys.has(reference)
+          )
+          .filter((reference, index, all) => all.indexOf(reference) === index)
+          .slice(0, MAX_RELATIONS_PER_NODE)
+      : undefined;
+  const sameList = (a: unknown, b: unknown[] | undefined) =>
+    Array.isArray(a) &&
+    b !== undefined &&
+    a.length === b.length &&
+    a.every((item, index) => item === b[index]);
+
+  let changed = false;
+  const repaired: Record<string, T> = {};
+  for (const [key, node] of Object.entries(nodes)) {
+    const patch: Record<string, unknown> = {};
+    const set = (field: string, value: unknown) => {
+      if (value === undefined) {
+        if (node[field] !== undefined) patch[field] = undefined;
+      } else if (node[field] !== value) {
+        patch[field] = value;
+      }
+    };
+
+    const text =
+      typeof node.text === "string" ? node.text.trim().slice(0, MAX_TEXT) : "";
+    set("text", text.trim() || "Untitled");
+    if (typeof node.type !== "string" || !NODE_TYPE_VALUES.has(node.type)) {
+      patch.type = "concept";
+    }
+    for (const field of [
+      "description",
+      "clarifyingQuestion",
+      "clarificationReasoning",
+      "contextInfo",
+    ]) {
+      if (node[field] !== undefined) {
+        set(field, clampString(node[field], MAX_DESCRIPTION));
+      }
+    }
+    if (typeof node.depth === "number" && Number.isFinite(node.depth)) {
+      set("depth", Math.min(MAX_DEPTH, Math.max(0, Math.trunc(node.depth))));
+    } else {
+      patch.depth = 0;
+    }
+    if (
+      node.shouldAskClarifyingQuestion !== undefined &&
+      typeof node.shouldAskClarifyingQuestion !== "boolean"
+    ) {
+      patch.shouldAskClarifyingQuestion = !!node.shouldAskClarifyingQuestion;
+    }
+
+    const clarification = normalizeClarificationFields(node);
+    set("userInputCategory", clarification.userInputCategory);
+    if (!sameList(node.suggestedAnswers, clarification.suggestedAnswers)) {
+      set("suggestedAnswers", clarification.suggestedAnswers);
+    }
+
+    if (
+      typeof node.parentId === "string" &&
+      (node.parentId === key || !keys.has(node.parentId))
+    ) {
+      patch.parentId = null;
+    }
+    for (const field of ["linkedContext", "relatedNodeKeys"]) {
+      if (node[field] === undefined) continue;
+      const live = liveReferences(node[field], key);
+      if (!sameList(node[field], live)) patch[field] = live;
+    }
+
+    if (Object.keys(patch).length === 0) {
+      repaired[key] = node;
+      continue;
+    }
+    changed = true;
+    const next: Record<string, unknown> = { ...node, ...patch };
+    for (const field of Object.keys(patch)) {
+      if (next[field] === undefined) delete next[field];
+    }
+    repaired[key] = next as T;
+  }
+  return changed ? repaired : nodes;
+}

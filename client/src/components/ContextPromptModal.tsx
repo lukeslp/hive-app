@@ -18,6 +18,7 @@
 import { useRef, useEffect, useState, useCallback } from "react";
 import { Sparkles, Zap, X } from "@/lib/icons";
 import { haptics } from "@/lib/haptics";
+import { BACK_PRIORITY, useBackHandler } from "@/lib/backNavigation";
 
 interface ContextPromptModalProps {
   isOpen: boolean;
@@ -35,6 +36,18 @@ interface ContextPromptModalProps {
    * then edit before submitting. If undefined or empty, no chips render.
    */
   suggestedAnswers?: string[];
+  /**
+   * One plain sentence shown under the input, used to say where the text
+   * goes when it will leave the device. Omit when nothing needs saying.
+   */
+  notice?: string;
+  /**
+   * An extra choice beside Dismiss, used on the first prompt to reopen the
+   * autosaved board.
+   */
+  secondaryAction?: { label: string; onClick: () => void };
+  /** Hide the "Enter to submit · Esc to close" hint on touch devices. */
+  hideKeyboardHint?: boolean;
 }
 
 export const ContextPromptModal = ({
@@ -47,6 +60,9 @@ export const ContextPromptModal = ({
   onClose,
   variant = "context",
   suggestedAnswers,
+  notice,
+  secondaryAction,
+  hideKeyboardHint = false,
 }: ContextPromptModalProps) => {
   const inputRef = useRef<HTMLInputElement>(null);
   const contentRef = useRef<HTMLDivElement>(null);
@@ -98,6 +114,12 @@ export const ContextPromptModal = ({
   );
 
   const hasChips = !!(suggestedAnswers && suggestedAnswers.length > 0);
+
+  // Android Back closes the prompt, the same as Cancel.
+  useBackHandler(isOpen, BACK_PRIORITY.prompt, () => {
+    onClose();
+    return true;
+  });
 
   // Dismiss when clicking outside the content area
   const handleBackdropClick = useCallback(
@@ -152,8 +174,10 @@ export const ContextPromptModal = ({
       // (above the keyboard) instead of behind it. 0 on web/desktop.
       style={{ paddingBottom: "var(--kb-h, 0px)" }}
     >
-      {/* Dimmed frosted backdrop */}
-      <div className="absolute inset-0 bg-black/60 backdrop-blur-sm pointer-events-none" />
+      {/* Dimmed frosted backdrop. The dim is strong enough on its own: on
+          Android WebView the blur is faint, and at 60% the question was
+          unreadable over the tile titles behind it. */}
+      <div className="absolute inset-0 bg-black/85 backdrop-blur-sm pointer-events-none" />
 
       {/* Content — centered, minimal */}
       <div
@@ -165,8 +189,8 @@ export const ContextPromptModal = ({
           id={headingId}
           className={`text-center mb-6 font-light tracking-wide ${
             isOnboarding
-              ? "text-white/70 text-2xl sm:text-3xl"
-              : "text-white/60 text-lg sm:text-xl"
+              ? "text-white/90 text-2xl sm:text-3xl"
+              : "text-white/90 text-lg sm:text-xl"
           }`}
         >
           {heading}
@@ -177,7 +201,7 @@ export const ContextPromptModal = ({
           <div
             className="flex flex-wrap justify-center gap-2 mb-4"
             role="group"
-            aria-label="Suggested answers — tap to use as a starting point, then edit"
+            aria-label="Suggested answers. Tap one to use it as a starting point, then edit."
           >
             {suggestedAnswers!.map(chip => {
               const isSelected = selectedChip === chip;
@@ -186,12 +210,12 @@ export const ContextPromptModal = ({
                   key={chip}
                   type="button"
                   onClick={() => handleChipTap(chip)}
-                  className={`px-3 py-1.5 rounded-full text-sm font-light
+                  className={`px-4 min-h-11 rounded-full text-sm font-light
                               transition-all duration-150 backdrop-blur-md
                               ${
                                 isSelected
                                   ? "bg-purple-500/70 text-white border border-purple-400/60"
-                                  : "bg-white/[0.06] text-white/75 border border-white/[0.12] hover:bg-white/[0.1] hover:border-white/[0.2]"
+                                  : "bg-zinc-800/90 text-white/90 border border-white/20 hover:bg-zinc-700/90 hover:border-white/30"
                               }`}
                   aria-pressed={isSelected}
                 >
@@ -210,10 +234,11 @@ export const ContextPromptModal = ({
             value={response}
             onChange={e => setResponse(e.target.value)}
             onKeyDown={handleKeyDown}
+            aria-label={heading}
             placeholder={hasChips ? "Or type your own answer..." : placeholder}
-            className="w-full px-5 py-4 bg-white/[0.08] border border-white/[0.12] rounded-2xl
-                       text-white/90 text-base sm:text-lg placeholder:text-white/25
-                       focus:outline-none focus:border-white/25 focus:bg-white/[0.1]
+            className="w-full pl-5 pr-14 py-4 bg-zinc-900/90 border border-white/20 rounded-2xl
+                       text-white/90 text-base sm:text-lg placeholder:text-white/45
+                       focus:outline-none focus:border-white/40 focus:bg-zinc-900
                        transition-all duration-200 backdrop-blur-md"
             autoComplete="off"
             autoCorrect="off"
@@ -224,7 +249,7 @@ export const ContextPromptModal = ({
           <button
             onClick={handleSubmit}
             disabled={!response.trim()}
-            className={`absolute right-2 top-1/2 -translate-y-1/2 p-2.5 rounded-xl
+            className={`absolute right-1.5 top-1/2 -translate-y-1/2 h-11 w-11 flex items-center justify-center rounded-xl
                        transition-all duration-200 ${
                          response.trim()
                            ? "bg-purple-500/80 text-white hover:bg-purple-500 scale-100"
@@ -236,16 +261,20 @@ export const ContextPromptModal = ({
           </button>
         </div>
 
+        {notice && (
+          <p className="mt-3 text-center text-xs text-white/70">{notice}</p>
+        )}
+
         {/* Subtle action hints */}
-        <div className="flex items-center justify-center gap-4 mt-4">
+        <div className="flex flex-wrap items-center justify-center gap-x-4 gap-y-1 mt-4">
           {!isOnboarding && (
             <button
               onClick={() => {
                 haptics.tap();
                 onSkip();
               }}
-              className="flex items-center gap-1.5 text-white/25 text-xs font-light
-                         hover:text-white/40 transition-colors"
+              className="flex items-center gap-1.5 min-h-11 px-2 text-white/70 text-sm
+                         hover:text-white/90 transition-colors"
             >
               <Zap className="w-3 h-3" />
               Skip
@@ -256,15 +285,29 @@ export const ContextPromptModal = ({
               haptics.tap();
               onClose();
             }}
-            className="flex items-center gap-1.5 text-white/25 text-xs font-light
-                       hover:text-white/40 transition-colors"
+            className="flex items-center gap-1.5 min-h-11 px-2 text-white/70 text-sm
+                       hover:text-white/90 transition-colors"
           >
             <X className="w-3 h-3" />
             {isOnboarding ? "Dismiss" : "Cancel"}
           </button>
-          <span className="text-white/15 text-xs font-light">
-            Enter to submit · Esc to close
-          </span>
+          {secondaryAction && (
+            <button
+              onClick={() => {
+                haptics.tap();
+                secondaryAction.onClick();
+              }}
+              className="flex items-center gap-1.5 min-h-11 px-2 text-white/90 text-sm underline underline-offset-4
+                         hover:text-white transition-colors"
+            >
+              {secondaryAction.label}
+            </button>
+          )}
+          {!hideKeyboardHint && (
+            <span className="text-white/40 text-xs font-light">
+              Enter to submit · Esc to close
+            </span>
+          )}
         </div>
       </div>
     </div>

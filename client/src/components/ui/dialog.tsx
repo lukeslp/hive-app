@@ -134,13 +134,13 @@ function DialogContent({
         {showCloseButton && (
           <DialogPrimitive.Close
             data-slot="dialog-close"
-            className="ring-offset-background focus:ring-ring data-[state=open]:bg-accent data-[state=open]:text-muted-foreground absolute right-4 rounded-xs opacity-70 transition-opacity hover:opacity-100 focus:ring-2 focus:ring-offset-2 focus:outline-hidden disabled:pointer-events-none [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4 p-2 -m-2"
+            className="ring-offset-background focus:ring-ring data-[state=open]:bg-accent data-[state=open]:text-muted-foreground absolute right-4 rounded-xs opacity-70 transition-opacity hover:opacity-100 focus:ring-2 focus:ring-offset-2 focus:outline-hidden disabled:pointer-events-none [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4 flex h-11 w-11 items-center justify-center -m-3"
             // Tap target hardened for iOS:
             // - top is shifted down by env(safe-area-inset-top) so the X
             //   isn't sitting under the Dynamic Island when a tall dialog
             //   is centered. max() ensures desktop floor of 1rem.
-            // - p-2 + -m-2 expands the hit target to ~40x40 (Apple HIG
-            //   minimum) without changing the visual icon size.
+            // - h-11 w-11 with -m-3 gives a 44x44 hit target without moving
+            //   the icon.
             style={{ top: "max(1rem, env(safe-area-inset-top, 0px))" }}
           >
             <XIcon />

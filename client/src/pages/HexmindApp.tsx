@@ -70,6 +70,7 @@ import {
   isCapacitor,
   getPlatform,
   isIos,
+  isOffline,
   supportsArtifactStudio,
   supportsHostedShareCreation,
   supportsLiveCollaboration,
@@ -81,6 +82,21 @@ import {
 } from "@/lib/foundationModelsPlugin";
 import { sanitizeJson } from "@/lib/sanitize";
 import { saveBlob } from "@/lib/saveBlob";
+import { buildBoardSvg } from "@/lib/boardExport";
+import { ReportDialog } from "@/components/ReportDialog";
+import { withHiddenTilesMasked, withoutHiddenTiles } from "@/lib/reportedTiles";
+import {
+  readReportedTiles,
+  reportedTileId,
+  writeReportedTiles,
+} from "@/lib/contentReport";
+import { readAutosaveInfo } from "@/lib/autosaveInfo";
+import { BACK_PRIORITY, useBackHandler } from "@/lib/backNavigation";
+import {
+  ARTIFACT_SERVER_NOTICE,
+  androidServerNotice,
+} from "@/lib/androidGenerationNote";
+import { getLoginUrl } from "@/const";
 import { validateBranches } from "@/lib/clarificationValidator";
 import { BRANCH_SET_SCHEMA } from "@/lib/branchSchema";
 import {
@@ -188,6 +204,7 @@ export default function HexmindApp() {
       (macArtifactHost
         ? hasMacArtifactStudioCapability(macArtifactHost.capabilities)
         : true));
+  const signInAvailable = !isCapacitor() && getLoginUrl() !== "";
   const hostedShareCreationAvailable = supportsHostedShareCreation();
   const liveCollaborationAvailable = supportsLiveCollaboration();
   const rindModeAvailable =
@@ -283,6 +300,15 @@ export default function HexmindApp() {
   // provider change — which is what provenance should follow anyway.
   const { getRequestHeaders: getProviderHeaders, provider: activeProvider } =
     providerSettings;
+  // On Android, say where the text goes before it is sent: shown under the
+  // prompt whenever no on-device model can answer.
+  const serverNotice =
+    isCapacitor() && getPlatform() === "android"
+      ? androidServerNotice(
+          providerSettings.androidAICoreStatus,
+          providerSettings.androidGemmaStatus
+        )
+      : undefined;
   const webArtifactServices = useMemo(
     () =>
       createWebArtifactStudioServices({
@@ -533,6 +559,14 @@ export default function HexmindApp() {
       return () => clearTimeout(timer);
     }
   }, [nodes, showOnboardingPrompt, showWorkspaceLaunchChoice]);
+
+  // A cold start opens on the first prompt, not the last board. The board
+  // is still in the autosave, so offer it right there; before this the only
+  // way back was Files, Sessions, Recover.
+  const lastBoardInfo = useMemo(
+    () => (showOnboardingPrompt ? readAutosaveInfo() : null),
+    [showOnboardingPrompt]
+  );
 
   // Theme & accessibility
   const { theme, toggleTheme } = useTheme();
@@ -1080,9 +1114,12 @@ Generate 6 diverse related ideas. Connect to key themes when relevant.`;
       if (!preFetchedBranches && !isIos()) {
         // Other platforms continue through their configured transport; native
         // Mac uses the provider selected in its native settings.
-        toast.warning("On-device returned unparseable output — using cloud", {
-          duration: 2500,
-        });
+        toast.warning(
+          "The on-device model gave an unusable answer. Using the server.",
+          {
+            duration: 2500,
+          }
+        );
       }
     }
 
@@ -1283,9 +1320,11 @@ Generate 6 diverse related ideas. Connect to key themes when relevant.`;
         });
         return;
       }
-      console.error("AI Error:", error);
+      console.error("Generation error:", error);
       toast.error(
-        "Could not generate neighbors. Empty slots were left untouched."
+        isOffline()
+          ? "You are offline. New tiles need a connection. Nothing was changed."
+          : "Could not generate neighbors. Empty slots were left untouched."
       );
     } finally {
       setLoadingNodes(prev => {
@@ -1714,6 +1753,14 @@ Generate 6 diverse related ideas. Connect to key themes when relevant.`;
       });
     }
     setSelectedNodeId(key);
+    // On a touch screen the detail panel used to open only through the
+    // browser's emulated hover, which fires once per tile. After the panel
+    // was closed, tapping the same tile again showed nothing. A tap now
+    // opens the panel itself.
+    if (isTouchDevice) {
+      setHoveredNodeId(key);
+      setInspectedNodeId(key);
+    }
     announcer.announceNodeSelected(node.text);
 
     const hasEmptyNeighbors = DIRECTIONS.some(dir => {
@@ -1756,12 +1803,20 @@ Generate 6 diverse related ideas. Connect to key themes when relevant.`;
   // ── Export ──────────────────────────────────────────────────────────────
   // All exports go through saveBlob: browsers download, Mac opens a native
   // save panel, and Capacitor writes to Documents before showing iOS sharing.
+  //
+  // The picture is drawn from the tile data by buildBoardSvg. The tiles on
+  // screen are HTML, which an <svg> wrapper cannot carry, so copying the
+  // canvas markup produced blank shapes.
   const exportAsImage = async () => {
     haptics.medium();
-    const svgContent = document.getElementById("hex-canvas-layer")?.innerHTML;
-    if (!svgContent) return;
-    const fullSvg = `<svg xmlns="http://www.w3.org/2000/svg" width="2000" height="2000" viewBox="-1000 -1000 2000 2000"><style>text { font-family: sans-serif; fill: white; } path { stroke: gray; fill: #222; }</style><g transform="translate(0,0)">${svgContent}</g></svg>`;
-    const blob = new Blob([fullSvg], { type: "image/svg+xml" });
+    const picture = buildBoardSvg(
+      withHiddenTilesMasked(nodes, hiddenTextNodes)
+    );
+    if (!picture) {
+      toast.info("Add a tile before exporting.");
+      return;
+    }
+    const blob = new Blob([picture.svg], { type: "image/svg+xml" });
     try {
       await saveBlob(
         blob,
@@ -1777,35 +1832,44 @@ Generate 6 diverse related ideas. Connect to key themes when relevant.`;
     }
   };
 
-  // PNG and JPG share one raster pipeline: render the SVG layer onto an
-  // opaque dark canvas, then encode. The opaque background fill is what
-  // makes JPEG (no alpha channel) safe here.
+  // PNG and JPG share one raster pipeline: draw the board SVG onto an
+  // opaque canvas, then encode. The picture has its own opaque background,
+  // which is what makes JPEG (no alpha channel) safe here.
   const exportAsRaster = (format: "png" | "jpg") => {
     haptics.medium();
     const label = format.toUpperCase();
     const mime = format === "jpg" ? "image/jpeg" : "image/png";
-    const svgContent = document.getElementById("hex-canvas-layer")?.innerHTML;
-    if (!svgContent) return;
-    const fullSvg = `<svg xmlns="http://www.w3.org/2000/svg" width="2000" height="2000" viewBox="-1000 -1000 2000 2000"><style>text { font-family: sans-serif; fill: white; } path { stroke: gray; fill: #222; }</style><g transform="translate(0,0)">${svgContent}</g></svg>`;
+    const picture = buildBoardSvg(
+      withHiddenTilesMasked(nodes, hiddenTextNodes)
+    );
+    if (!picture) {
+      toast.info("Add a tile before exporting.");
+      return;
+    }
     const canvas = document.createElement("canvas");
-    canvas.width = 2000;
-    canvas.height = 2000;
+    canvas.width = picture.width;
+    canvas.height = picture.height;
     const ctx = canvas.getContext("2d");
-    if (!ctx) return;
-    ctx.fillStyle = "#0a0a0a";
-    ctx.fillRect(0, 0, 2000, 2000);
+    if (!ctx) {
+      toast.error(`${label} export failed: this device could not draw it.`);
+      return;
+    }
+    ctx.fillStyle = "#12141a";
+    ctx.fillRect(0, 0, picture.width, picture.height);
     const img = new Image();
-    const svgBlob = new Blob([fullSvg], {
+    const svgBlob = new Blob([picture.svg], {
       type: "image/svg+xml;charset=utf-8",
     });
     const url = URL.createObjectURL(svgBlob);
     img.onload = () => {
-      ctx.drawImage(img, 0, 0);
+      ctx.drawImage(img, 0, 0, picture.width, picture.height);
       URL.revokeObjectURL(url);
       canvas.toBlob(
         async blob => {
           if (!blob) {
-            toast.error(`${label} export failed — couldn't encode the canvas.`);
+            toast.error(
+              `${label} export failed: the image could not be encoded.`
+            );
             return;
           }
           try {
@@ -1827,17 +1891,62 @@ Generate 6 diverse related ideas. Connect to key themes when relevant.`;
       );
     };
     img.onerror = () => {
-      // SVG-as-Image rasterization can silently fail on certain SVG features
-      // (foreignObject, complex filters). Without this handler the user
-      // taps Export and nothing happens.
+      // Without this handler a failed draw looks like a button that does
+      // nothing.
       URL.revokeObjectURL(url);
-      toast.error(`${label} export failed — SVG rasterization rejected.`);
+      toast.error(`${label} export failed: the board could not be drawn.`);
     };
     img.src = url;
   };
 
   const exportAsPNG = () => exportAsRaster("png");
   const exportAsJPG = () => exportAsRaster("jpg");
+
+  // ── Reported tiles ──────────────────────────────────────────────────────
+  // A reported tile's text is hidden on this device until the person shows
+  // it again. See lib/contentReport.ts for why this is not in the board.
+  const [reportNodeKey, setReportNodeKey] = useState<string | null>(null);
+  const [reportedTileIds, setReportedTileIds] = useState<string[]>(() =>
+    readReportedTiles()
+  );
+  const reportBoardId = sessions.artifactBoardId;
+  const hiddenTextNodes = useMemo(() => {
+    const hidden = new Set<string>();
+    if (reportedTileIds.length === 0) return hidden;
+    const reported = new Set(reportedTileIds);
+    for (const [key, node] of Object.entries(nodes)) {
+      if (reported.has(reportedTileId(reportBoardId, key, node))) {
+        hidden.add(key);
+      }
+    }
+    return hidden;
+  }, [nodes, reportBoardId, reportedTileIds]);
+  const artifactNodes = useMemo(
+    () => withoutHiddenTiles(nodes, hiddenTextNodes),
+    [nodes, hiddenTextNodes]
+  );
+  const hideReportedTile = (key: string) => {
+    const node = nodes[key];
+    if (!node) return;
+    setReportedTileIds(current =>
+      writeReportedTiles([...current, reportedTileId(reportBoardId, key, node)])
+    );
+  };
+  const showReportedTile = (key: string) => {
+    const node = nodes[key];
+    if (!node) return;
+    const id = reportedTileId(reportBoardId, key, node);
+    setReportedTileIds(current =>
+      writeReportedTiles(current.filter(item => item !== id))
+    );
+  };
+
+  // Android Back closes the tile detail panel when nothing else is open.
+  useBackHandler(!!inspectedNodeId, BACK_PRIORITY.panel, () => {
+    setInspectedNodeId(null);
+    setHoveredNodeId(null);
+    return true;
+  });
 
   // ── Computed values ─────────────────────────────────────────────────────
   const hoveredNode = hoveredNodeId ? nodes[hoveredNodeId] : null;
@@ -1985,7 +2094,15 @@ Generate 6 diverse related ideas. Connect to key themes when relevant.`;
         onUndo={handleUndo}
         onRedo={handleRedo}
         onToggleSearch={() => {
-          search.setIsSearchOpen(!search.isSearchOpen);
+          if (search.isSearchOpen) {
+            // Closing from the toolbar button clears the query, the same as
+            // the X in the search bar. It used to hide the bar and leave
+            // the board dimmed by a search nobody could see.
+            search.setIsSearchOpen(false);
+            search.setSearchQuery("");
+            return;
+          }
+          search.setIsSearchOpen(true);
           setTimeout(() => search.searchInputRef.current?.focus(), 50);
         }}
         onSearchChange={search.setSearchQuery}
@@ -2109,7 +2226,7 @@ Generate 6 diverse related ideas. Connect to key themes when relevant.`;
                   ? {
                       ...sessions.sphereProjection,
                       camera: {
-                      ...sessions.sphereProjection.camera,
+                        ...sessions.sphereProjection.camera,
                         position: [0, 0.75, 12.5],
                         target: [0, 0.75, 0],
                       },
@@ -2210,6 +2327,7 @@ Generate 6 diverse related ideas. Connect to key themes when relevant.`;
               autoExpandingNodes={autoExpandingNodes}
               generatingNeighbors={generatingNeighbors}
               answeredAskNodes={answeredAskNodes}
+              hiddenTextNodes={hiddenTextNodes}
               draggedNodeId={draggedNodeId}
               dropTargetId={dropTargetId}
               mergeAnimationKey={mergeAnimationKey}
@@ -2294,10 +2412,12 @@ Generate 6 diverse related ideas. Connect to key themes when relevant.`;
           </div>
         </div>
 
-        {/* Floating Action Bar */}
+        {/* Floating Action Bar. Hidden while a question prompt is open:
+            it sat above the prompt's dim and read as part of the prompt. */}
         {workspaceMode === "tiles" &&
           hoveredNode &&
           hoveredNodeId &&
+          !showContextPrompt &&
           !editingNodeId && (
             <FloatingActionBar
               node={hoveredNode}
@@ -2362,12 +2482,21 @@ Generate 6 diverse related ideas. Connect to key themes when relevant.`;
         )}
 
       {/* Inspect Panel */}
-      {inspectedNodeId && nodes[inspectedNodeId] && (
+      {inspectedNodeId && nodes[inspectedNodeId] && !showContextPrompt && (
         <InspectPanel
           node={nodes[inspectedNodeId]}
           nodeId={inspectedNodeId}
           isLoading={loadingNodes.has(inspectedNodeId)}
           onClose={() => setInspectedNodeId(null)}
+          // The root tile is the person's own words; the rest came from a
+          // language model (or were edited from what it wrote).
+          onReport={
+            nodes[inspectedNodeId].type === "root"
+              ? undefined
+              : () => setReportNodeKey(inspectedNodeId)
+          }
+          isTextHidden={hiddenTextNodes.has(inspectedNodeId)}
+          onShowText={() => showReportedTile(inspectedNodeId)}
           onEdit={() => {
             setEditingNodeId(inspectedNodeId);
             setEditTitle(nodes[inspectedNodeId].text);
@@ -2398,6 +2527,17 @@ Generate 6 diverse related ideas. Connect to key themes when relevant.`;
       )}
 
       {/* ── Modals ─────────────────────────────────────────────────────── */}
+
+      <ReportDialog
+        isOpen={!!reportNodeKey && !!nodes[reportNodeKey]}
+        kind="tile"
+        title={reportNodeKey ? (nodes[reportNodeKey]?.text ?? "") : ""}
+        body={reportNodeKey ? (nodes[reportNodeKey]?.description ?? "") : ""}
+        onClose={() => setReportNodeKey(null)}
+        onReported={() => {
+          if (reportNodeKey) hideReportedTile(reportNodeKey);
+        }}
+      />
 
       {rindModeAvailable && (
         <WorkspaceLaunchDialog
@@ -2470,6 +2610,20 @@ Generate 6 diverse related ideas. Connect to key themes when relevant.`;
         isOpen={showOnboardingPrompt}
         question="What are you thinking about?"
         variant="onboarding"
+        secondaryAction={
+          lastBoardInfo
+            ? {
+                label: `Open last board (${lastBoardInfo.nodeCount} tile${lastBoardInfo.nodeCount === 1 ? "" : "s"})`,
+                onClick: () => {
+                  setShowOnboardingPrompt(false);
+                  setOnboardingResponse("");
+                  sessions.loadAutosave();
+                },
+              }
+            : undefined
+        }
+        notice={serverNotice}
+        hideKeyboardHint={isTouchDevice}
         response={onboardingResponse}
         setResponse={setOnboardingResponse}
         onGenerate={() => {
@@ -2508,7 +2662,8 @@ Generate 6 diverse related ideas. Connect to key themes when relevant.`;
           isOpen={showArtifactStudio}
           onClose={() => setShowArtifactStudio(false)}
           boardId={sessions.artifactBoardId}
-          nodes={nodes}
+          // A reported tile whose text is hidden is not sent to the server.
+          nodes={artifactNodes}
           selectedNodeIds={selectedNodeId ? [selectedNodeId] : []}
           branchRootNodeId={selectedNodeId}
           services={
@@ -2517,7 +2672,17 @@ Generate 6 diverse related ideas. Connect to key themes when relevant.`;
           beforeExport={sessions.flushNativeWorkspace}
           onAttachImage={attachArtifactImage}
           cloudSync={isAuthenticated ? syncArtifactToCloud : undefined}
-          onCloudSignIn={!isAuthenticated ? login : undefined}
+          // Offer sign-in only where it can work. Capacitor builds have no
+          // sign-in route, and there the button could only answer "Hosted
+          // sign-in is not configured."
+          onCloudSignIn={
+            !isAuthenticated && signInAvailable ? login : undefined
+          }
+          // Image recipes run through Apple Image Playground in the Mac app.
+          imageRecipesAvailable={!!macArtifactHost}
+          generationNotice={
+            macArtifactHost ? undefined : ARTIFACT_SERVER_NOTICE
+          }
         />
       )}
 
@@ -2563,6 +2728,8 @@ Generate 6 diverse related ideas. Connect to key themes when relevant.`;
         isOpen={showContextPrompt}
         question={clarifyingPromptText}
         suggestedAnswers={clarifyingNode?.suggestedAnswers}
+        notice={serverNotice}
+        hideKeyboardHint={isTouchDevice}
         response={contextResponse}
         setResponse={setContextResponse}
         onGenerate={() => {
@@ -2687,6 +2854,8 @@ Generate 6 diverse related ideas. Connect to key themes when relevant.`;
       <ContextPromptModal
         isOpen={!!pendingClusterCoords}
         question="What's your new idea?"
+        notice={serverNotice}
+        hideKeyboardHint={isTouchDevice}
         response={newClusterResponse}
         setResponse={setNewClusterResponse}
         onGenerate={() => {
@@ -2706,6 +2875,7 @@ Generate 6 diverse related ideas. Connect to key themes when relevant.`;
       <ContextPromptModal
         isOpen={!!contextInfoNodeId}
         question="Add context or notes for this node"
+        hideKeyboardHint={isTouchDevice}
         response={contextInfoResponse}
         setResponse={setContextInfoResponse}
         onGenerate={() => {

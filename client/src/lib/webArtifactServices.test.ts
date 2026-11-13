@@ -138,6 +138,26 @@ describe("generator", () => {
     expect(generateTextForCurrentPlatform).not.toHaveBeenCalled();
   });
 
+  it("says what to try when the server returns no text", async () => {
+    generateTextForCurrentPlatform.mockRejectedValue(
+      new Error("API returned no content")
+    );
+    const services = createWebArtifactStudioServices(deps());
+    await expect(run(services, "svg-asset").promise).rejects.toThrow(
+      /returned nothing for this svg asset.*Try a smaller scope/
+    );
+  });
+
+  it("passes other failures through unchanged", async () => {
+    generateTextForCurrentPlatform.mockRejectedValue(
+      new Error("OpenAI rate limit reached.")
+    );
+    const services = createWebArtifactStudioServices(deps());
+    await expect(run(services, "report").promise).rejects.toThrow(
+      "OpenAI rate limit reached."
+    );
+  });
+
   it("rejects an empty model response instead of saving a blank artifact", async () => {
     generateTextForCurrentPlatform.mockResolvedValue({
       text: "   ",

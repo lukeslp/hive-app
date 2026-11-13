@@ -33,6 +33,7 @@ import {
   Users,
 } from "@/lib/icons";
 import { NODE_TYPES } from "@/lib/nodeTypes";
+import { BACK_PRIORITY, useBackHandler } from "@/lib/backNavigation";
 import { WorkspaceModeControl } from "@/components/WorkspaceModeControl";
 import type { WorkspaceMode } from "@shared/workspaceDocument";
 
@@ -118,6 +119,7 @@ export const Toolbar = ({
   const [filesMenuOpen, setFilesMenuOpen] = useState(false);
   const [filterMenuOpen, setFilterMenuOpen] = useState(false);
   const barRef = useRef<HTMLDivElement | null>(null);
+  const loadInputRef = useRef<HTMLInputElement | null>(null);
 
   const hasFilterActive = !!filterType || showOnlyKeyThemes;
 
@@ -150,6 +152,28 @@ export const Toolbar = ({
     return () => window.removeEventListener("keydown", onKey);
   }, [expanded, filesMenuOpen, filterMenuOpen]);
 
+  // Android Back: menus first, then search, then the bar itself.
+  useBackHandler(
+    expanded || filesMenuOpen || filterMenuOpen || isSearchOpen,
+    BACK_PRIORITY.toolbar,
+    () => {
+      if (filesMenuOpen || filterMenuOpen) {
+        setFilesMenuOpen(false);
+        setFilterMenuOpen(false);
+        return true;
+      }
+      if (isSearchOpen) {
+        onCloseSearch();
+        return true;
+      }
+      if (expanded) {
+        collapse();
+        return true;
+      }
+      return false;
+    }
+  );
+
   // Click-away collapses the topbar (but never closes via canvas pan).
   useEffect(() => {
     if (!expanded) return;
@@ -170,7 +194,7 @@ export const Toolbar = ({
   }, [expanded]);
 
   const iconBtn =
-    "h-10 w-10 sm:h-11 sm:w-11 flex items-center justify-center rounded-full text-foreground/80 hover:text-foreground hover:bg-accent/70 transition-colors disabled:opacity-30 disabled:cursor-not-allowed";
+    "h-11 w-11 flex items-center justify-center rounded-full text-foreground/80 hover:text-foreground hover:bg-accent/70 transition-colors disabled:opacity-30 disabled:cursor-not-allowed";
 
   return (
     <header
@@ -182,10 +206,14 @@ export const Toolbar = ({
         paddingTop: "max(0.5rem, env(safe-area-inset-top, 0px))",
       }}
     >
+      {/* `relative` here is the anchor for the two menus on phone widths:
+          their own wrappers are positioned only from `sm` up, so on a phone
+          a menu opens from the bar's left edge and stays on screen. Anchored
+          to its button it ran off the right edge. */}
       <div
         ref={barRef}
         aria-label="Board controls"
-        className={`pointer-events-auto interactive-ui bg-card/85 backdrop-blur-xl border border-border/70 shadow-2xl rounded-full transition-all duration-200 box-border ${
+        className={`relative pointer-events-auto interactive-ui bg-card/85 backdrop-blur-xl border border-border/70 shadow-2xl rounded-full transition-all duration-200 box-border ${
           expanded
             ? "flex flex-row items-center gap-1 px-1.5 sm:px-2 py-0.5"
             : /* Exact square: button + p-1 + 1px border each side (44+8+2=54, 48+8+2=58).
@@ -251,10 +279,10 @@ export const Toolbar = ({
             {nodeCount > 0 && generationsThisSession > 0 && (
               <span
                 className="hidden sm:flex items-center gap-1 px-2 text-[11px] text-muted-foreground tabular-nums"
-                title={`${generationsThisSession} AI generation${
+                title={`${generationsThisSession} generation${
                   generationsThisSession === 1 ? "" : "s"
                 } this session`}
-                aria-label={`${generationsThisSession} AI generations this session`}
+                aria-label={`${generationsThisSession} generations this session`}
               >
                 <Zap className="w-3 h-3 text-yellow-400/80" />
                 {generationsThisSession}
@@ -318,7 +346,7 @@ export const Toolbar = ({
             </Tooltip>
 
             {/* Files & Sharing */}
-            <div className="relative">
+            <div className="sm:relative">
               <Tooltip>
                 <TooltipTrigger asChild>
                   <button
@@ -342,7 +370,7 @@ export const Toolbar = ({
               {filesMenuOpen && (
                 <div
                   data-toolbar-popover
-                  className="absolute top-full left-0 mt-2 bg-card/95 backdrop-blur-xl border border-border/70 rounded-2xl shadow-2xl z-40 min-w-[220px] py-1 animate-in fade-in slide-in-from-top-2 duration-150"
+                  className="absolute top-full left-0 mt-2 bg-card/95 backdrop-blur-xl border border-border/70 rounded-2xl shadow-2xl z-40 min-w-[220px] max-w-[calc(100vw-1rem)] max-h-[calc(100dvh-6rem)] overflow-y-auto py-1 animate-in fade-in slide-in-from-top-2 duration-150"
                   onKeyDown={e => {
                     if (e.key === "Escape") setFilesMenuOpen(false);
                   }}
@@ -352,7 +380,7 @@ export const Toolbar = ({
                       onShowSessions();
                       setFilesMenuOpen(false);
                     }}
-                    className="w-full flex items-center gap-3 px-4 py-2.5 text-sm hover:bg-accent text-foreground"
+                    className="w-full flex items-center gap-3 px-4 py-2.5 min-h-11 text-sm hover:bg-accent text-foreground"
                   >
                     <FolderOpen className="w-4 h-4 text-muted-foreground" />
                     Sessions
@@ -363,7 +391,7 @@ export const Toolbar = ({
                         onShowArtifactStudio();
                         setFilesMenuOpen(false);
                       }}
-                      className="w-full flex items-center gap-3 px-4 py-2.5 text-sm hover:bg-accent text-foreground"
+                      className="w-full flex items-center gap-3 px-4 py-2.5 min-h-11 text-sm hover:bg-accent text-foreground"
                     >
                       <Sparkles className="w-4 h-4 text-muted-foreground" />
                       Artifact Studio
@@ -375,32 +403,42 @@ export const Toolbar = ({
                       onExportSession();
                       setFilesMenuOpen(false);
                     }}
-                    className="w-full flex items-center gap-3 px-4 py-2.5 text-sm hover:bg-accent text-foreground"
+                    className="w-full flex items-center gap-3 px-4 py-2.5 min-h-11 text-sm hover:bg-accent text-foreground"
                   >
                     <Download className="w-4 h-4 text-muted-foreground" />
                     Save (JSON)
                   </button>
-                  <label className="w-full flex items-center gap-3 px-4 py-2.5 text-sm hover:bg-accent text-foreground cursor-pointer">
+                  {/* A real button, so a screen reader and a keyboard can
+                      activate it. As a <label> around a hidden file input it
+                      was read out as plain text with no action. */}
+                  <button
+                    type="button"
+                    onClick={() => loadInputRef.current?.click()}
+                    className="w-full flex items-center gap-3 px-4 py-2.5 min-h-11 text-sm hover:bg-accent text-foreground"
+                  >
                     <Upload className="w-4 h-4 text-muted-foreground" />
                     Load (JSON)
-                    <input
-                      type="file"
-                      accept=".json"
-                      className="hidden"
-                      onChange={e => {
-                        if (e.target.files?.[0])
-                          onImportSession(e.target.files[0]);
-                        setFilesMenuOpen(false);
-                      }}
-                    />
-                  </label>
+                  </button>
+                  <input
+                    ref={loadInputRef}
+                    tabIndex={-1}
+                    aria-hidden="true"
+                    type="file"
+                    accept=".json"
+                    className="hidden"
+                    onChange={e => {
+                      if (e.target.files?.[0])
+                        onImportSession(e.target.files[0]);
+                      setFilesMenuOpen(false);
+                    }}
+                  />
                   <div className="h-px bg-border my-1" />
                   <button
                     onClick={() => {
                       onExportPNG();
                       setFilesMenuOpen(false);
                     }}
-                    className="w-full flex items-center gap-3 px-4 py-2.5 text-sm hover:bg-accent text-foreground"
+                    className="w-full flex items-center gap-3 px-4 py-2.5 min-h-11 text-sm hover:bg-accent text-foreground"
                   >
                     <Download className="w-4 h-4 text-muted-foreground" />
                     Export PNG
@@ -410,7 +448,7 @@ export const Toolbar = ({
                       onExportJPG();
                       setFilesMenuOpen(false);
                     }}
-                    className="w-full flex items-center gap-3 px-4 py-2.5 text-sm hover:bg-accent text-foreground"
+                    className="w-full flex items-center gap-3 px-4 py-2.5 min-h-11 text-sm hover:bg-accent text-foreground"
                   >
                     <Download className="w-4 h-4 text-muted-foreground" />
                     Export JPG
@@ -420,7 +458,7 @@ export const Toolbar = ({
                       onExportSVG();
                       setFilesMenuOpen(false);
                     }}
-                    className="w-full flex items-center gap-3 px-4 py-2.5 text-sm hover:bg-accent text-foreground"
+                    className="w-full flex items-center gap-3 px-4 py-2.5 min-h-11 text-sm hover:bg-accent text-foreground"
                   >
                     <Download className="w-4 h-4 text-muted-foreground" />
                     Export SVG
@@ -434,7 +472,7 @@ export const Toolbar = ({
                           setFilesMenuOpen(false);
                         }}
                         disabled={nodeCount === 0}
-                        className="w-full flex items-center gap-3 px-4 py-2.5 text-sm hover:bg-accent text-foreground disabled:opacity-50 disabled:cursor-not-allowed"
+                        className="w-full flex items-center gap-3 px-4 py-2.5 min-h-11 text-sm hover:bg-accent text-foreground disabled:opacity-50 disabled:cursor-not-allowed"
                       >
                         <Share2 className="w-4 h-4 text-muted-foreground" />
                         Share link
@@ -446,7 +484,7 @@ export const Toolbar = ({
             </div>
 
             {/* Filter (per-type + key themes) */}
-            <div className="relative">
+            <div className="sm:relative">
               <Tooltip>
                 <TooltipTrigger asChild>
                   <button
@@ -472,7 +510,7 @@ export const Toolbar = ({
               {filterMenuOpen && (
                 <div
                   data-toolbar-popover
-                  className="absolute top-full left-0 mt-2 bg-card/95 backdrop-blur-xl border border-border/70 rounded-2xl shadow-2xl z-40 min-w-[220px] py-1 animate-in fade-in slide-in-from-top-2 duration-150"
+                  className="absolute top-full left-0 mt-2 bg-card/95 backdrop-blur-xl border border-border/70 rounded-2xl shadow-2xl z-40 min-w-[220px] max-w-[calc(100vw-1rem)] max-h-[calc(100dvh-6rem)] overflow-y-auto py-1 animate-in fade-in slide-in-from-top-2 duration-150"
                   onKeyDown={e => {
                     if (e.key === "Escape") setFilterMenuOpen(false);
                   }}
@@ -482,7 +520,7 @@ export const Toolbar = ({
                       onToggleKeyThemes();
                       setFilterMenuOpen(false);
                     }}
-                    className="w-full flex items-center gap-3 px-4 py-2.5 text-sm hover:bg-accent text-foreground"
+                    className="w-full flex items-center gap-3 px-4 py-2.5 min-h-11 text-sm hover:bg-accent text-foreground"
                   >
                     <Sparkles
                       className={`w-4 h-4 ${
@@ -503,7 +541,7 @@ export const Toolbar = ({
                       onSetFilterType(null);
                       setFilterMenuOpen(false);
                     }}
-                    className={`w-full flex items-center gap-3 px-4 py-2.5 text-sm hover:bg-accent ${
+                    className={`w-full flex items-center gap-3 px-4 py-2.5 min-h-11 text-sm hover:bg-accent ${
                       !filterType
                         ? "text-foreground font-medium"
                         : "text-muted-foreground"
@@ -524,7 +562,7 @@ export const Toolbar = ({
                             onSetFilterType(type.id);
                             setFilterMenuOpen(false);
                           }}
-                          className={`w-full flex items-center gap-3 px-4 py-2.5 text-sm hover:bg-accent ${
+                          className={`w-full flex items-center gap-3 px-4 py-2.5 min-h-11 text-sm hover:bg-accent ${
                             isActive
                               ? "text-foreground font-medium bg-accent/40"
                               : "text-muted-foreground"

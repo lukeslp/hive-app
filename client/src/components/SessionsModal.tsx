@@ -19,8 +19,7 @@ import {
   X,
   Upload,
 } from "@/lib/icons";
-import { AUTOSAVE_KEY } from "@/lib/hexConstants";
-import { parseWorkspaceTransport } from "@shared/workspaceDocument";
+import { readAutosaveInfo } from "@/lib/autosaveInfo";
 
 interface SavedSession {
   id: string | number;
@@ -67,28 +66,7 @@ export const SessionsModal = ({
   const [renamingId, setRenamingId] = useState<number | null>(null);
   const [renameValue, setRenameValue] = useState("");
 
-  const getAutosaveInfo = () => {
-    try {
-      const autosave = localStorage.getItem(AUTOSAVE_KEY);
-      if (autosave) {
-        const data = JSON.parse(autosave);
-        const envelope = parseWorkspaceTransport(data.workspaceEnvelope ?? data);
-        if (envelope.workspace.graph.nodes.length > 0) {
-          return {
-            nodeCount: envelope.workspace.graph.nodes.length,
-            timestamp: typeof data.timestamp === "number" && Number.isFinite(data.timestamp)
-              ? data.timestamp
-              : null,
-          };
-        }
-      }
-    } catch {
-      return null;
-    }
-    return null;
-  };
-
-  const autosaveInfo = getAutosaveInfo();
+  const autosaveInfo = readAutosaveInfo();
 
   const startRename = (id: number, currentName: string) => {
     setRenamingId(id);
@@ -150,14 +128,15 @@ export const SessionsModal = ({
                   Auto-saved Session
                 </p>
                 <p className="text-xs text-muted-foreground">
-                  {autosaveInfo.nodeCount} nodes • {autosaveInfo.timestamp !== null
+                  {autosaveInfo.nodeCount} nodes •{" "}
+                  {autosaveInfo.timestamp !== null
                     ? `Last saved: ${new Date(autosaveInfo.timestamp).toLocaleString()}`
                     : "Stored on this device"}
                 </p>
               </div>
               <Button
                 onClick={onLoadAutosave}
-                className="bg-amber-600 hover:bg-amber-500 text-foreground"
+                className="min-h-11 bg-amber-600 hover:bg-amber-500 text-foreground"
                 size="sm"
               >
                 <Clock className="w-4 h-4 mr-2" /> Recover
@@ -172,7 +151,8 @@ export const SessionsModal = ({
             value={sessionName}
             onChange={e => setSessionName(e.target.value)}
             placeholder="New session name..."
-            className="flex-1 bg-secondary border-border"
+            aria-label="New session name"
+            className="flex-1 min-h-11 bg-secondary border-border"
           />
           <Button
             onClick={() => {
@@ -180,7 +160,7 @@ export const SessionsModal = ({
               setSessionName("");
             }}
             disabled={nodeCount === 0 || isSaving}
-            className="bg-indigo-600 hover:bg-indigo-500"
+            className="min-h-11 bg-indigo-600 hover:bg-indigo-500"
           >
             <Save className="w-4 h-4 mr-2" />{" "}
             {isSaving ? "Saving..." : "Save New"}
@@ -291,8 +271,9 @@ export const SessionsModal = ({
                             onClick={() =>
                               startRename(session.id as number, session.name)
                             }
-                            className="text-muted-foreground hover:text-foreground h-8 w-8 p-0"
+                            className="text-muted-foreground hover:text-foreground h-11 w-11 p-0"
                             title="Rename"
+                            aria-label="Rename session"
                           >
                             <Edit3 className="w-3.5 h-3.5" />
                           </Button>
@@ -305,8 +286,9 @@ export const SessionsModal = ({
                               onSave(session.name, session.id as number)
                             }
                             disabled={isSaving || nodeCount === 0}
-                            className="text-blue-400 hover:text-blue-300 h-8 w-8 p-0"
+                            className="text-blue-400 hover:text-blue-300 h-11 w-11 p-0"
                             title="Overwrite with current board"
+                            aria-label="Overwrite with current board"
                           >
                             <Upload className="w-3.5 h-3.5" />
                           </Button>
@@ -316,7 +298,7 @@ export const SessionsModal = ({
                             variant="ghost"
                             size="sm"
                             onClick={() => onLoad(session.id, session.isCloud)}
-                            className="text-indigo-400 hover:text-indigo-300"
+                            className="min-h-11 text-indigo-400 hover:text-indigo-300"
                           >
                             Load
                           </Button>
@@ -325,7 +307,8 @@ export const SessionsModal = ({
                           variant="ghost"
                           size="sm"
                           onClick={() => onDelete(session.id, session.isCloud)}
-                          className="text-red-400 hover:text-red-300 h-8 w-8 p-0"
+                          className="text-red-400 hover:text-red-300 h-11 w-11 p-0"
+                          aria-label={`Delete session ${session.name}`}
                         >
                           <Trash2 className="w-4 h-4" />
                         </Button>

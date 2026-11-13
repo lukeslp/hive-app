@@ -44,6 +44,9 @@ export interface WebArtifactServiceDeps {
   exportFile?: typeof exportArtifactFile;
 }
 
+/** The message macGeneration throws when the server sends no text. */
+const EMPTY_ANSWER = "API returned no content";
+
 const SYSTEM_PROMPT =
   "You produce a single finished artifact from a brainstorming board. " +
   "Return only the artifact content, with no preamble, no explanation, and no " +
@@ -133,7 +136,9 @@ export function createWebArtifactStudioServices(
         const prompt = [
           recipe.instructions,
           formatInstruction(recipe.kind),
-          request.instructions ? `Additional direction: ${request.instructions}` : "",
+          request.instructions
+            ? `Additional direction: ${request.instructions}`
+            : "",
           "",
           "Board context:",
           request.context,
@@ -158,6 +163,18 @@ export function createWebArtifactStudioServices(
           },
           headers: deps.getRequestHeaders(),
           signal,
+        }).catch((error: unknown) => {
+          // The hosted service answers a request it could not finish inside
+          // its output limit with no text at all. Seen with SVG asset and
+          // Static web prototype on a whole board; the same recipe on one
+          // tile came back fine. Say what to try instead of the bare
+          // "API returned no content".
+          if (error instanceof Error && error.message === EMPTY_ANSWER) {
+            throw new Error(
+              `The server returned nothing for this ${recipe.label.toLowerCase()}. Larger artifacts can run past its size limit. Try a smaller scope, such as the current branch or one tile.`
+            );
+          }
+          throw error;
         });
 
         throwIfAborted(signal);
@@ -218,7 +235,7 @@ export function createWebArtifactStudioServices(
         // works, and says what to do about it.
         if (!(await save(manifest))) {
           throw new Error(
-            "This artifact could not be stored locally. Export it before closing — private browsing and some in-app browsers block local storage."
+            "This artifact could not be stored locally. Export it before closing. Private browsing and some in-app browsers block local storage."
           );
         }
         return manifest;

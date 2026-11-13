@@ -8,7 +8,7 @@
  * event callbacks (critical for Chrome mobile).
  */
 
-import { useRef, useCallback, useState } from "react";
+import { useRef, useCallback, useEffect, useState } from "react";
 import { HEX_WIDTH } from "@/lib/hexConstants";
 import type { HexNode, ViewState } from "@/types/hivemind";
 import { haptics } from "@/lib/haptics";
@@ -239,6 +239,29 @@ export function useTouchDrag({
 
     resetDrag();
   }, [cancelLongPress, resetDrag]);
+
+  // Safety net: a touch that ends where the tile cannot hear it (the system
+  // cancels it, or the finger lifts after the tile re-rendered) used to leave
+  // the dragged tile's name label on screen until another tile was tapped.
+  // While a drag is active, listen on the document and clear it. A normal
+  // drop is handled by the tile's own touchend first, so by the time the
+  // deferred check runs there is nothing left to clear.
+  useEffect(() => {
+    if (!state.isDragging) return;
+    const onCancel = () => resetDrag();
+    const onEnd = (event: TouchEvent) => {
+      if (event.touches.length > 0) return;
+      setTimeout(() => {
+        if (touchDragActiveRef.current) resetDrag();
+      }, 0);
+    };
+    document.addEventListener("touchcancel", onCancel);
+    document.addEventListener("touchend", onEnd);
+    return () => {
+      document.removeEventListener("touchcancel", onCancel);
+      document.removeEventListener("touchend", onEnd);
+    };
+  }, [state.isDragging, resetDrag, touchDragActiveRef]);
 
   return {
     touchDragState: state,

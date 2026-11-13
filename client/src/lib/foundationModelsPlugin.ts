@@ -352,7 +352,7 @@ async function runAndroidGemma(
     const message = error instanceof Error ? error.message : String(error);
     console.warn("[Gemma] Local inference failed; using cloud fallback:", message);
     if (!opts.silentDiagnostics) {
-      toast.warning("On-device unavailable — using cloud", { duration: 2500 });
+      toast.warning("The on-device model could not answer. Using the server.", { duration: 2500 });
     }
     return null;
   } finally {

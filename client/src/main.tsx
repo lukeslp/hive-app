@@ -18,6 +18,8 @@ import { getLoginUrl } from "./const";
 import { getTrpcUrl, isCapacitor, isNativeMac } from "@/lib/platform";
 import { BootErrorBoundary } from "@/lib/BootErrorBoundary";
 import { recordReviewSession } from "@/lib/reviewPrompt";
+import { handleBack } from "@/lib/backNavigation";
+import { applyHexTextCompensation } from "@/lib/textZoom";
 import "./index.css";
 
 if (isCapacitor()) {
@@ -61,6 +63,13 @@ if (isCapacitor()) {
           );
         }
       });
+      // Android Back: close whatever is open; with nothing open, leave the
+      // app the way Back from a home screen does. Without a listener the
+      // shell only walks WebView history, which this app does not have, so
+      // Back did nothing. iOS never sends this event.
+      CapacitorApp.addListener("backButton", () => {
+        if (!handleBack()) void CapacitorApp.minimizeApp();
+      });
       CapacitorApp.addListener("appUrlOpen", event => {
         try {
           const url = new URL(event.url);
@@ -81,6 +90,14 @@ if (isCapacitor()) {
       console.warn("Could not load @capacitor/app for URL handling", e);
     });
 }
+
+// Tile titles stop growing where they stop fitting; see lib/textZoom.ts.
+// Measured again when the app returns to the foreground, because the system
+// font size can change while it is in the background.
+applyHexTextCompensation();
+document.addEventListener("visibilitychange", () => {
+  if (!document.hidden) applyHexTextCompensation();
+});
 
 cp("main.tsx: bootstrap");
 

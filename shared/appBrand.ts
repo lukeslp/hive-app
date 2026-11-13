@@ -3,6 +3,13 @@
  * localStorage keys may still use legacy "hexmind"/"hexpand" identifiers.
  */
 export const APP_DISPLAY_NAME = "Idea Tiles";
+
+/**
+ * The marketing version, the same on every platform. Kept equal to
+ * package.json by a test (client/src/lib/contentReport.test.ts) and to the
+ * native projects by scripts/check-apple-versions.mjs.
+ */
+export const APP_VERSION = "1.3.3";
 export const APP_TAGLINE = "Brainstorm with local AI";
 
 /**

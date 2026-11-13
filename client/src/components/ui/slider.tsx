@@ -9,8 +9,12 @@ function Slider({
   value,
   min = 0,
   max = 100,
+  thumbLabel,
   ...props
-}: React.ComponentProps<typeof SliderPrimitive.Root>) {
+}: React.ComponentProps<typeof SliderPrimitive.Root> & {
+  /** Accessible name for the thumb, which is what a screen reader focuses. */
+  thumbLabel?: string;
+}) {
   const _values = React.useMemo(
     () =>
       Array.isArray(value)
@@ -51,7 +55,9 @@ function Slider({
         <SliderPrimitive.Thumb
           data-slot="slider-thumb"
           key={index}
-          className="border-primary ring-ring/50 block size-4 shrink-0 rounded-full border bg-white shadow-sm transition-[color,box-shadow] hover:ring-4 focus-visible:ring-4 focus-visible:outline-hidden disabled:pointer-events-none disabled:opacity-50"
+          aria-label={thumbLabel}
+          // The after: box widens the touch area to 44px around a 16px thumb.
+          className="relative after:absolute after:-inset-3.5 after:content-[''] border-primary ring-ring/50 block size-4 shrink-0 rounded-full border bg-white shadow-sm transition-[color,box-shadow] hover:ring-4 focus-visible:ring-4 focus-visible:outline-hidden disabled:pointer-events-none disabled:opacity-50"
         />
       ))}
     </SliderPrimitive.Root>
