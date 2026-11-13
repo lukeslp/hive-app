@@ -35,7 +35,7 @@ import type {
   ServerProviderInfo,
   ProviderConfig,
 } from "@/hooks/useProviderSettings";
-import type { GemmaDownloadResult, GemmaModelStatus } from "@/lib/gemmaPlugin";
+import type { AndroidModelDownload } from "@/hooks/useProviderSettings";
 import type { AICoreStatus } from "@/lib/aicorePlugin";
 import { androidGenerationNote } from "@/lib/androidGenerationNote";
 import { getPlatform, isCapacitor, isIos, isNativeMac } from "@/lib/platform";
@@ -73,9 +73,8 @@ export interface SettingsModalProps {
   serverProviders: ServerProviderInfo | null;
   appleIntelligenceAvailable: boolean;
   visibleProviders: ProviderConfig[];
-  androidGemmaStatus?: GemmaModelStatus | null;
   androidAICoreStatus?: AICoreStatus | null;
-  androidGemmaDownload?: GemmaDownloadResult | null;
+  androidModelDownload?: AndroidModelDownload | null;
   isDownloadingAndroidModel?: boolean;
   downloadAndroidModel?: () => Promise<void>;
   workspaceMode: WorkspaceMode;
@@ -123,9 +122,8 @@ export const SettingsModal = ({
   serverProviders,
   appleIntelligenceAvailable,
   visibleProviders,
-  androidGemmaStatus = null,
   androidAICoreStatus = null,
-  androidGemmaDownload = null,
+  androidModelDownload = null,
   isDownloadingAndroidModel = false,
   downloadAndroidModel,
   workspaceMode,
@@ -140,9 +138,7 @@ export const SettingsModal = ({
   const nativeMac = isNativeMac();
 
   const androidLocalAvailable =
-    androidNative &&
-    (androidAICoreStatus?.available === true ||
-      androidGemmaStatus?.ready === true);
+    androidNative && androidAICoreStatus?.available === true;
   const generationControlsAvailable =
     nativeMac ||
     androidLocalAvailable ||
@@ -346,10 +342,10 @@ export const SettingsModal = ({
                   Open Generation Settings
                 </Button>
               </div>
-            ) : androidNative && (androidAICoreStatus || androidGemmaStatus) ? (
+            ) : androidNative && androidAICoreStatus ? (
               <div
                 className={`space-y-3 rounded-lg border p-3 text-xs ${
-                  androidAICoreStatus?.available || androidGemmaStatus?.ready
+                  androidAICoreStatus.available
                     ? "border-emerald-500/20 bg-emerald-500/5"
                     : "border-amber-500/20 bg-amber-500/5"
                 }`}
@@ -357,15 +353,10 @@ export const SettingsModal = ({
                 aria-live="polite"
               >
                 <p className="text-muted-foreground">
-                  {androidGenerationNote(
-                    androidAICoreStatus,
-                    androidGemmaStatus
-                  )}
+                  {androidGenerationNote(androidAICoreStatus)}
                 </p>
-                {!androidAICoreStatus?.available &&
-                  !androidGemmaStatus?.ready &&
-                  (androidAICoreStatus?.downloadable ||
-                    androidGemmaStatus?.downloadAvailable) && (
+                {!androidAICoreStatus.available &&
+                  androidAICoreStatus.downloadable && (
                     <Button
                       type="button"
                       size="sm"
@@ -377,14 +368,12 @@ export const SettingsModal = ({
                     >
                       {isDownloadingAndroidModel
                         ? "Downloading…"
-                        : androidAICoreStatus?.downloadable
-                          ? "Download Gemini Nano"
-                          : "Download local Gemma model"}
+                        : "Download Gemini Nano"}
                     </Button>
                   )}
-                {androidGemmaDownload?.reason && (
+                {androidModelDownload?.reason && (
                   <p className="text-muted-foreground">
-                    {androidGemmaDownload.reason}
+                    {androidModelDownload.reason}
                   </p>
                 )}
               </div>

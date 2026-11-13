@@ -22,7 +22,7 @@ same board on an orbitable sphere and remembers its layout and camera position.
 | --- | --- | --- |
 | Web | Operator-configured OpenAI service | Tiles, Artifact Studio, snapshot links, collaboration, local exports |
 | iPhone and iPad | Apple Foundation Models on supported devices; no hosted fallback | Tiles and local exports; can open received snapshot links |
-| Android | AICore Gemini Nano, then an installed and verified Gemma model, then the hosted service | Tiles, Artifact Studio, local exports; can open received snapshot links |
+| Android | AICore Gemini Nano, then the hosted service | Tiles, Artifact Studio, local exports; can open received snapshot links |
 | Native Mac | Apple Foundation Models by default; optional configured providers | Tiles, experimental Rind, Artifact Studio, snapshot links, collaboration, local exports |
 
 Model availability depends on the device and its configuration. An unavailable
@@ -90,6 +90,5 @@ build, a signed installer, and a store release are separate results.
 
 Code and documentation are under the [MIT license](LICENSE), copyright Luke
 Steuber / Bridge City Lab LLC. Dependencies retain their own licenses; [third-party notices](THIRD_PARTY_NOTICES.md) preserve the hexasphere credit.
-Android Gemma weights are not included; their separate terms and distribution
-requirements apply to any model an operator supplies. The source does not
+The source does not
 include access to hosted services, provider accounts, or release-signing keys.

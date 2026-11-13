@@ -21,12 +21,11 @@ Last updated: 2026-08-10
 - Mobile readability pass: improved in-hex label wrapping behavior (balanced wrap, non-forced uppercase, reduced hard word-splitting) to avoid fragmented words in constrained tile geometry.
 - Hosted builds lock app-level provider selection to OpenAI and suppress provider-management UI in Settings.
 - Settings visual cohesion pass: shifted modal styling away from dense "admin panel" controls toward cleaner card/glass presentation aligned with the main canvas tone.
-- Android local generation now dispatches in order: ML Kit Prompt API through
-  AICore Gemini Nano, checksum-verified LiteRT-LM Gemma, then the existing
-  managed cloud fallback. The app-managed `.litertlm` artifact retains its
-  verified download, private no-backup storage, and atomic activation lifecycle;
-  AICore status and user-initiated model download are exposed through the
-  Capacitor bridge and Settings.
+- Android local generation dispatches in order: ML Kit Prompt API through
+  AICore Gemini Nano, then the existing managed cloud fallback. AICore status
+  and user-initiated model download are exposed through the Capacitor bridge
+  and Settings. (The LiteRT-LM Gemma step between them was removed on
+  2026-11-13; no released build had a model configured for it.)
 - Production restoration: Node now binds a fixed loopback port, unknown API
   routes return JSON 404 responses, and client-supplied Ollama routing and
   credentials are ignored to close the public SSRF boundary.

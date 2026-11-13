@@ -185,13 +185,13 @@
         The web and Android versions can send prompts and relevant board context
         to the Idea Tiles hosted generation endpoint. The service relays those
         requests to its configured language-model provider. For tiles, merges,
-        and templates, Android tries its supported local runtimes first and uses
-        the hosted path only when neither local runtime is usable. Artifact
-        Studio on Android always uses the hosted path. Settings shows whether a
-        local runtime is ready. When none is, the Android app says under the
-        text box that your text will be sent to the server, and Artifact Studio
-        says the same on its confirmation step. The app does not ask for
-        permission before each request.
+        and templates, Android tries its on-device model first and uses the
+        hosted path only when that model is not usable. Artifact Studio on
+        Android always uses the hosted path. Settings shows whether a local
+        runtime is ready. When none is, the Android app says under the text box
+        that your text will be sent to the server, and Artifact Studio says the
+        same on its confirmation step. The app does not ask for permission
+        before each request.
       </p>
 
       <h2>Reporting generated text</h2>

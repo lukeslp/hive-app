@@ -89,20 +89,11 @@ Android uses JDK 21, Gradle 8.14.3, and compile/target API 36. Its minimum API
 is 26. AICore checks Gemini Nano availability first; a model download starts
 only after the user requests it in Settings.
 
-The separate Gemma path expects a LiteRT-LM-compatible Gemma 3n E2B int4
-`.litertlm` artifact. Weights are not bundled or fetched anonymously from
-Hugging Face. An operator who has accepted the model's terms supplies an HTTPS
-URL and SHA-256 at build time:
-
-```bash
-export IDEA_TILES_GEMMA_MODEL_URL="https://models.example.com/gemma-3n-e2b-it-int4.litertlm"
-export IDEA_TILES_GEMMA_MODEL_SHA256="<64 lowercase hex characters>"
-pnpm cap:sync:android
-```
-
-The app downloads into private no-backup storage, verifies the checksum, and
-activates the file atomically. If neither local model can run, Android uses
-the hosted generation service. Settings explains this fallback.
+Gemini Nano through AICore is the only on-device path. The separate Gemma
+path and its LiteRT-LM runtime were removed on 2026-11-13: no released build
+had a model configured for it, and the runtime was about half the download.
+If Gemini Nano cannot run, Android uses the hosted generation service.
+Settings explains this, and so does the prompt before text is sent.
 
 Release signing uses `IDEA_TILES_KEYSTORE_FILE`,
 `IDEA_TILES_KEYSTORE_PASSWORD`, `IDEA_TILES_KEY_ALIAS`, and
