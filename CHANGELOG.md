@@ -1,5 +1,16 @@
 # Changelog
 
+## 2026-11-14 (unreleased)
+
+### Added
+
+- iPhone Duo: on the inner screen held sideways, the board takes the left page
+  and the tile inspector is docked on the right page, with a hint while no tile
+  is open. The toolbar and the tile action bar stay on the board's page, the
+  minimap sits at the foot of the inspector, and dialogs and notices open on the
+  right page, so nothing you can tap sits on the fold. Phone, iPad, Android, Mac
+  and ideatiles.app are unchanged. See [iPhone Duo](docs/iphone-duo.md).
+
 ## 2026-11-13
 
 ### Removed

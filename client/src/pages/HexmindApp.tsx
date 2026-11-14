@@ -129,6 +129,7 @@ import {
 } from "@/lib/hexConstants";
 import { hexToPixel, pixelToHex, hexDistance } from "@/lib/hexGrid";
 import { NODE_TYPES } from "@/lib/nodeTypes";
+import { useDuoSpread } from "@/lib/duoSpread";
 import {
   APP_STORE_SHOWCASE_NODES,
   getAppStoreShowcase,
@@ -416,6 +417,9 @@ export default function HexmindApp() {
   const [inspectedNodeId, setInspectedNodeId] = useState<string | null>(
     appStoreShowcase === "detail" ? "0,0" : null
   );
+  // iPhone Duo inner screen held sideways: the board on the left page, the
+  // inspect pane docked on the right page (lib/duoSpread). Null elsewhere.
+  const duoSpread = useDuoSpread();
   const [hoveredNodeId, setHoveredNodeId] = useState<string | null>(null);
   const isTouchDevice =
     typeof window !== "undefined" && "ontouchstart" in window;
@@ -1948,6 +1952,17 @@ Generate 6 diverse related ideas. Connect to key themes when relevant.`;
   // ── Computed values ─────────────────────────────────────────────────────
   const hoveredNode = hoveredNodeId ? nodes[hoveredNodeId] : null;
 
+  // On the Duo's left page, keep the action bar whole: the board ends at the
+  // fold. The bar starts at its x (its entry animation overrides the centering
+  // transform) and is about 110 px wide, so leave room for it either way.
+  const duoActionBarPosition = (position: { x: number; y: number }) =>
+    duoSpread
+      ? {
+          ...position,
+          x: Math.min(Math.max(position.x, 64), duoSpread.foldLeft - 120),
+        }
+      : position;
+
   const getNodeScreenPosition = (node: HexNode) => {
     const container = containerRef.current;
     if (!container) return { x: 0, y: 0 };
@@ -2052,6 +2067,52 @@ Generate 6 diverse related ideas. Connect to key themes when relevant.`;
 
     return lines;
   }, [visibleNodes, nodes]);
+
+  const inspectPanel =
+    inspectedNodeId && nodes[inspectedNodeId] && !showContextPrompt ? (
+      <InspectPanel
+        docked={!!duoSpread}
+        node={nodes[inspectedNodeId]}
+        nodeId={inspectedNodeId}
+        isLoading={loadingNodes.has(inspectedNodeId)}
+        onClose={() => setInspectedNodeId(null)}
+        // The root tile is the person's own words; the rest came from a
+        // language model (or were edited from what it wrote).
+        onReport={
+          nodes[inspectedNodeId].type === "root"
+            ? undefined
+            : () => setReportNodeKey(inspectedNodeId)
+        }
+        isTextHidden={hiddenTextNodes.has(inspectedNodeId)}
+        onShowText={() => showReportedTile(inspectedNodeId)}
+        onEdit={() => {
+          setEditingNodeId(inspectedNodeId);
+          setEditTitle(nodes[inspectedNodeId].text);
+          setEditDesc(nodes[inspectedNodeId].description || "");
+        }}
+        onRefresh={() => refreshSingleNode(nodes[inspectedNodeId])}
+        onAddContextInfo={() => {
+          setContextInfoNodeId(inspectedNodeId!);
+          setContextInfoResponse(nodes[inspectedNodeId!]?.contextInfo || "");
+        }}
+        onToggleKeyTheme={() => {
+          const id = inspectedNodeId;
+          if (!id) return;
+          const isNowKeyTheme = !nodes[id].isKeyTheme;
+          haptics.medium();
+          flushSync(() => {
+            commitNodes(prev => {
+              const cur = prev[id];
+              if (!cur) return prev;
+              return {
+                ...prev,
+                [id]: { ...cur, isKeyTheme: isNowKeyTheme },
+              };
+            });
+          });
+        }}
+      />
+    ) : null;
 
   // ── Render ──────────────────────────────────────────────────────────────
   return (
@@ -2205,6 +2266,7 @@ Generate 6 diverse related ideas. Connect to key themes when relevant.`;
             ? canvasHandlers.handleTouchEnd
             : undefined
         }
+        data-duo-region="board"
         className="relative flex-1 cursor-grab active:cursor-grabbing overflow-hidden bg-gradient-to-br from-background via-background to-muted/30 dark:from-[#12141a] dark:via-[#181b24] dark:to-[#1e222d]"
         style={{ touchAction: "none" }}
       >
@@ -2418,7 +2480,9 @@ Generate 6 diverse related ideas. Connect to key themes when relevant.`;
           !editingNodeId && (
             <FloatingActionBar
               node={hoveredNode}
-              position={getNodeScreenPosition(hoveredNode)}
+              position={duoActionBarPosition(
+                getNodeScreenPosition(hoveredNode)
+              )}
               onRefresh={() => refreshSingleNode(hoveredNode)}
               onToggleKeyTheme={() => {
                 const key = getNodeKey(hoveredNode.q, hoveredNode.r);
@@ -2478,49 +2542,26 @@ Generate 6 diverse related ideas. Connect to key themes when relevant.`;
           </div>
         )}
 
-      {/* Inspect Panel */}
-      {inspectedNodeId && nodes[inspectedNodeId] && !showContextPrompt && (
-        <InspectPanel
-          node={nodes[inspectedNodeId]}
-          nodeId={inspectedNodeId}
-          isLoading={loadingNodes.has(inspectedNodeId)}
-          onClose={() => setInspectedNodeId(null)}
-          // The root tile is the person's own words; the rest came from a
-          // language model (or were edited from what it wrote).
-          onReport={
-            nodes[inspectedNodeId].type === "root"
-              ? undefined
-              : () => setReportNodeKey(inspectedNodeId)
-          }
-          isTextHidden={hiddenTextNodes.has(inspectedNodeId)}
-          onShowText={() => showReportedTile(inspectedNodeId)}
-          onEdit={() => {
-            setEditingNodeId(inspectedNodeId);
-            setEditTitle(nodes[inspectedNodeId].text);
-            setEditDesc(nodes[inspectedNodeId].description || "");
+      {/* Inspect Panel: floating bottom-left, or docked on the Duo's right page
+          with a hint while no tile is open. */}
+      {duoSpread ? (
+        <aside
+          data-duo-region="inspect-page"
+          aria-label="Tile details"
+          className="absolute top-0 bottom-0 right-0 z-40 flex flex-col gap-3 overflow-y-auto border-l border-border bg-card/70 px-4 pb-48 backdrop-blur-lg"
+          style={{
+            width: `calc(100vw - ${duoSpread.foldRight}px)`,
+            paddingTop: "calc(env(safe-area-inset-top, 0px) + 16px)",
           }}
-          onRefresh={() => refreshSingleNode(nodes[inspectedNodeId])}
-          onAddContextInfo={() => {
-            setContextInfoNodeId(inspectedNodeId!);
-            setContextInfoResponse(nodes[inspectedNodeId!]?.contextInfo || "");
-          }}
-          onToggleKeyTheme={() => {
-            const id = inspectedNodeId;
-            if (!id) return;
-            const isNowKeyTheme = !nodes[id].isKeyTheme;
-            haptics.medium();
-            flushSync(() => {
-              commitNodes(prev => {
-                const cur = prev[id];
-                if (!cur) return prev;
-                return {
-                  ...prev,
-                  [id]: { ...cur, isKeyTheme: isNowKeyTheme },
-                };
-              });
-            });
-          }}
-        />
+        >
+          {inspectPanel ?? (
+            <p className="text-sm text-muted-foreground">
+              Select a tile to see its details here.
+            </p>
+          )}
+        </aside>
+      ) : (
+        inspectPanel
       )}
 
       {/* ── Modals ─────────────────────────────────────────────────────── */}
@@ -2818,7 +2859,10 @@ Generate 6 diverse related ideas. Connect to key themes when relevant.`;
       {workspaceMode === "tiles" &&
         Object.keys(nodes).length > 0 &&
         containerRef.current && (
-          <div className="absolute bottom-4 right-4 z-30 pointer-events-auto interactive-ui">
+          <div
+            data-duo-region="minimap"
+            className="absolute bottom-4 right-4 z-30 pointer-events-auto interactive-ui"
+          >
             <Minimap
               nodes={nodes}
               viewState={viewState}
