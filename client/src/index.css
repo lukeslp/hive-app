@@ -684,3 +684,23 @@
   animation: tap-ripple 3s ease-out infinite 0.6s;
   transform-origin: 32px 32px;
 }
+
+/* iPhone Duo inner screen held sideways (lib/duoSpread; iOS app only): the board
+   on the left page, the inspect pane docked on the right page, nothing to tap on
+   the fold. --duo-fold-left/right are viewport px. */
+html[data-tiles-spread] main[data-duo-region="board"] {
+  width: var(--duo-fold-left);
+}
+html[data-tiles-spread] header[data-duo-region="toolbar"] {
+  right: calc(100vw - var(--duo-fold-left));
+}
+html[data-tiles-spread] [data-duo-region="minimap"] {
+  z-index: 45;
+}
+html[data-tiles-spread] [data-slot="dialog-content"] {
+  left: calc((var(--duo-fold-right) + 100vw) / 2);
+  max-width: calc(100vw - var(--duo-fold-right) - 2rem);
+}
+html[data-tiles-spread] [data-sonner-toaster][data-x-position="center"] {
+  left: calc((var(--duo-fold-right) + 100vw) / 2) !important;
+}

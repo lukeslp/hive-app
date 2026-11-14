@@ -198,6 +198,7 @@ export const Toolbar = ({
 
   return (
     <header
+      data-duo-region="toolbar"
       className="absolute top-0 left-0 right-0 z-30 px-2 sm:px-4 pb-2 sm:pb-4 flex items-start justify-start pointer-events-none"
       style={{
         // env(safe-area-inset-top) is 0 on browsers without notches; on

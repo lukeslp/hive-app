@@ -19,7 +19,19 @@ import FoundationModels
 /// to `App.AppViewController` instead of the default
 /// `Capacitor.CAPBridgeViewController`.
 public class AppViewController: CAPBridgeViewController {
+    /// iPhone Duo: tells the page where the fold is (DuoBridge.swift plus the
+    /// bundled duo-fold.js shim), so the board and the inspect pane each take a
+    /// page on the inner screen held sideways.
+    private var duo: DuoBridge?
+
     public override func capacitorDidLoad() {
+        // Made here, on the web view's own configuration, before the first page
+        // loads. A bridge made in `webViewConfiguration(for:)` never reaches the
+        // page: Capacitor 8 swaps the user content controller after that hook.
+        if let webView {
+            duo = DuoBridge(configuration: webView.configuration)
+            duo?.attach(to: webView)
+        }
         bridge?.registerPluginInstance(FoundationModelsPlugin())
 
         // Pull-to-refresh on the WKWebView fires accidentally during the
@@ -42,5 +54,10 @@ public class AppViewController: CAPBridgeViewController {
             }
             #endif
         }
+    }
+
+    public override func viewDidLayoutSubviews() {
+        super.viewDidLayoutSubviews()
+        duo?.refresh()
     }
 }

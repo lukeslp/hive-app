@@ -1,6 +1,9 @@
 /**
  * InspectPanel - Compact node detail panel (bottom-left overlay)
  * Minimalist design: title, type icon, description, and action row
+ *
+ * `docked` renders the same panel filling its container instead of floating:
+ * the right page of iPhone Duo's two-page spread (see lib/duoSpread).
  */
 
 import React from "react";
@@ -23,6 +26,8 @@ interface InspectPanelProps {
   isTextHidden?: boolean;
   /** Shows a reported tile's text again. */
   onShowText?: () => void;
+  /** Fill the container (Duo right page) instead of floating bottom-left. */
+  docked?: boolean;
 }
 
 export const InspectPanel = ({
@@ -37,13 +42,18 @@ export const InspectPanel = ({
   onReport,
   isTextHidden = false,
   onShowText,
+  docked = false,
 }: InspectPanelProps) => {
   const style = NODE_TYPES[node.type] || NODE_TYPES.default;
   const Icon = style.icon;
 
   return (
     <div
-      className="fixed bottom-3 left-3 right-3 sm:right-auto z-50 sm:w-[320px] pointer-events-auto animate-in slide-in-from-bottom-2 duration-200"
+      className={
+        docked
+          ? "pointer-events-auto"
+          : "fixed bottom-3 left-3 right-3 sm:right-auto z-50 sm:w-[320px] pointer-events-auto animate-in slide-in-from-bottom-2 duration-200"
+      }
       role="complementary"
       aria-label={
         isTextHidden
