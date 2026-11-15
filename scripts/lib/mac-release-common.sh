@@ -5,7 +5,7 @@ set -euo pipefail
 IDEATILES_TEAM_ID="596T7J7FB6"
 IDEATILES_BUNDLE_ID="app.hexmind.ios"
 IDEATILES_VERSION="1.4.0"
-IDEATILES_BUILD="123"
+IDEATILES_BUILD="124"
 
 release_error() {
   echo "error: $*" >&2

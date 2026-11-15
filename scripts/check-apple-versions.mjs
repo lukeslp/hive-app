@@ -3,7 +3,7 @@ import path from "node:path";
 
 const EXPECTED_SEMANTIC_VERSION = "1.4.0";
 const EXPECTED_APPLE_VERSION = "1.4.0";
-const EXPECTED_APPLE_BUILD = "123";
+const EXPECTED_APPLE_BUILD = "124";
 // Android ships on its own train: 1.4.0 is an iOS release (iPhone Duo layout).
 const EXPECTED_ANDROID_VERSION = "1.3.3";
 const EXPECTED_ANDROID_CODE = "11008";

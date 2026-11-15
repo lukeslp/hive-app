@@ -1,6 +1,6 @@
 # iPhone Duo
 
-November 14, 2026. Shipped as iOS 1.4.0 (123); not yet uploaded.
+November 14, 2026. Shipped as iOS 1.4.0 (124). Build 123 was uploaded but not released: the status column covered the inspector.
 
 Store screenshots: `ios/fastlane/screenshots/iphone-duo-outer/`, captured with
 `scripts/capture-duo.sh` from a Debug build (the `-IdeaTilesShot` launch argument).
