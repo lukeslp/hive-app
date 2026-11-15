@@ -2548,10 +2548,13 @@ Generate 6 diverse related ideas. Connect to key themes when relevant.`;
         <aside
           data-duo-region="inspect-page"
           aria-label="Tile details"
-          className="absolute top-0 bottom-0 right-0 z-40 flex flex-col gap-3 overflow-y-auto border-l border-border bg-card/70 px-4 pb-48 backdrop-blur-lg"
+          className="absolute top-0 bottom-0 right-0 z-40 flex flex-col gap-3 overflow-y-auto border-l border-border bg-card/70 pl-4 pb-48 backdrop-blur-lg"
           style={{
             width: `calc(100vw - ${duoSpread.foldRight}px)`,
             paddingTop: "calc(env(safe-area-inset-top, 0px) + 16px)",
+            // The open Duo draws its clock and status icons as a column on the
+            // trailing edge; keep the pane's content clear of it.
+            paddingRight: "max(1rem, env(safe-area-inset-right, 0px))",
           }}
         >
           {inspectPanel ?? (

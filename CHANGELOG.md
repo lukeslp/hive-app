@@ -1,6 +1,6 @@
 # Changelog
 
-## 1.4.0 (iOS build 123, 2026-11-14)
+## 1.4.0 (iOS build 124, 2026-11-14)
 
 Apple version and build aligned for iOS and the native Mac project; only the iOS
 build is staged. Android stays on 1.3.3 (11008).
@@ -13,6 +13,12 @@ build is staged. Android stays on 1.3.3 (11008).
   minimap sits at the foot of the inspector, and dialogs and notices open on the
   right page, so nothing you can tap sits on the fold. Phone, iPad, Android, Mac
   and ideatiles.app are unchanged. See [iPhone Duo](docs/iphone-duo.md).
+
+### Fixed
+
+- iPhone Duo, inner screen held sideways: the inspector keeps clear of the clock
+  and status icons iOS draws on the trailing edge, so its close button and text
+  are no longer covered (build 124).
 
 ## 2026-11-13
 
