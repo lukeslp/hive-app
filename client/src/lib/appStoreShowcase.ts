@@ -19,9 +19,28 @@ const SHOWCASE_MODES = new Set<AppStoreShowcase>([
   "sphere",
 ]);
 
+declare global {
+  interface Window {
+    /** Set by the Debug-only iOS launch hook (-IdeaTilesShot <scene>). */
+    __ideaTilesShowcase?: string;
+  }
+}
+
+/**
+ * Showcase scenes: the dev server (?showcase=<scene>), or an iOS Debug build
+ * whose web payload was built with VITE_IDEATILES_SHOWCASE_HOOK=1 and launched
+ * with -IdeaTilesShot <scene> (ios/App/App/AppViewController.swift). A normal
+ * production build defines neither, so this returns null and the scenes are
+ * dropped from the bundle.
+ */
 export function getAppStoreShowcase(): AppStoreShowcase | null {
-  if (!import.meta.env.DEV || typeof window === "undefined") return null;
-  const value = new URLSearchParams(window.location.search).get("showcase");
+  const hook = import.meta.env.VITE_IDEATILES_SHOWCASE_HOOK === "1";
+  if ((!import.meta.env.DEV && !hook) || typeof window === "undefined") {
+    return null;
+  }
+  const value =
+    new URLSearchParams(window.location.search).get("showcase") ??
+    (hook ? (window.__ideaTilesShowcase ?? null) : null);
   return SHOWCASE_MODES.has(value as AppStoreShowcase)
     ? (value as AppStoreShowcase)
     : null;

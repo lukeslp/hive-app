@@ -1,4 +1,4 @@
-# App Store Pack — Idea Tiles 1.3.3
+# App Store Pack — Idea Tiles 1.4.0 (iOS)
 
 Release-ready metadata and screenshot inventory for the iOS/iPadOS and native macOS listings. The files in `ios/fastlane` and `macos/fastlane` are canonical; this document is the human review sheet.
 
@@ -6,7 +6,7 @@ Release-ready metadata and screenshot inventory for the iOS/iPadOS and native ma
 
 | Platform        | Version | Bundle ID         | Listing focus                                 |
 | --------------- | ------- | ----------------- | --------------------------------------------- |
-| iPhone and iPad | 1.3.3   | `app.hexmind.ios` | Private, on-device visual brainstorming       |
+| iPhone and iPad | 1.4.0   | `app.hexmind.ios` | Private, on-device visual brainstorming       |
 | Native Mac      | 1.3.3   | `app.hexmind.ios` | Turning mapped thinking into useful artifacts |
 
 Both apps are free, have no in-app purchase, and use Productivity as the primary category. The iOS app requires Apple Intelligence for model-assisted generation. The native Mac app can use Apple Foundation Models, configured cloud providers, or local Ollama models; its selected provider and privacy disclosure must remain visible before generation.
@@ -33,10 +33,11 @@ The complete description and version notes are in:
 
 The description accurately limits assisted generation to supported iPhone and iPad hardware with Apple Intelligence enabled. It promises no cloud fallback for iOS generation and identifies PNG, JPG, SVG, and JSON as the supported export formats.
 
-### iOS 1.3.3 version notes
+### iOS 1.4.0 version notes
 
-- Improves build reliability and compatibility.
-- Keeps the same private, on-device iPhone and iPad experience.
+- Held sideways on the inner screen, the board takes one page and the inspector the other.
+- Nothing you can tap sits on the fold.
+- Phone and iPad layouts are unchanged.
 
 ## Native Mac copy
 
