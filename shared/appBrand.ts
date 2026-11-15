@@ -9,7 +9,7 @@ export const APP_DISPLAY_NAME = "Idea Tiles";
  * package.json by a test (client/src/lib/contentReport.test.ts) and to the
  * native projects by scripts/check-apple-versions.mjs.
  */
-export const APP_VERSION = "1.3.3";
+export const APP_VERSION = "1.4.0";
 export const APP_TAGLINE = "Brainstorm with local AI";
 
 /**

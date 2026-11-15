@@ -1,9 +1,11 @@
 import fs from "node:fs";
 import path from "node:path";
 
-const EXPECTED_SEMANTIC_VERSION = "1.3.3";
-const EXPECTED_APPLE_VERSION = "1.3.3";
-const EXPECTED_APPLE_BUILD = "11";
+const EXPECTED_SEMANTIC_VERSION = "1.4.0";
+const EXPECTED_APPLE_VERSION = "1.4.0";
+const EXPECTED_APPLE_BUILD = "123";
+// Android ships on its own train: 1.4.0 is an iOS release (iPhone Duo layout).
+const EXPECTED_ANDROID_VERSION = "1.3.3";
 const EXPECTED_ANDROID_CODE = "11008";
 const EXPECTED_IOS_DEPLOYMENT_TARGET = "26.0";
 const APP_BUNDLE_ID = "app.hexmind.ios";
@@ -268,7 +270,7 @@ const androidGradle = read("android/app/build.gradle");
 expectOnly(
   "Android marketing version",
   uniqueMatches(androidGradle, /versionName\s+["']([^"']+)["']/g),
-  EXPECTED_SEMANTIC_VERSION
+  EXPECTED_ANDROID_VERSION
 );
 expectOnly(
   "Android version code",
@@ -311,7 +313,7 @@ for (const plist of ["ios/App/App/Info.plist", "macos/IdeaTiles/Info.plist"]) {
 expectEquivalentVersion("Apple marketing version", EXPECTED_APPLE_VERSION);
 
 console.log(
-  `Versions aligned: Apple ${EXPECTED_APPLE_VERSION}; package/Android ${EXPECTED_SEMANTIC_VERSION}; Apple build ${EXPECTED_APPLE_BUILD}; Android code ${EXPECTED_ANDROID_CODE}`
+  `Versions aligned: Apple ${EXPECTED_APPLE_VERSION}; package ${EXPECTED_SEMANTIC_VERSION}; Android ${EXPECTED_ANDROID_VERSION}; Apple build ${EXPECTED_APPLE_BUILD}; Android code ${EXPECTED_ANDROID_CODE}`
 );
 console.log(
   `Projects aligned: ${APP_BUNDLE_ID}; iOS ${EXPECTED_IOS_DEPLOYMENT_TARGET}+; native Mac distribution only; IdeaTiles.xcworkspace; Capacitor compatibility symlink valid`

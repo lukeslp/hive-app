@@ -1,4 +1,5 @@
 import Capacitor
+import WebKit
 
 #if canImport(FoundationModels)
 import FoundationModels
@@ -33,6 +34,20 @@ public class AppViewController: CAPBridgeViewController {
             duo?.attach(to: webView)
         }
         bridge?.registerPluginInstance(FoundationModelsPlugin())
+
+        #if DEBUG
+        // Store screenshots only (scripts/capture-duo.sh): `-IdeaTilesShot <scene>`
+        // picks a sample scene, so no taps are needed. The page honors it only when
+        // its payload was built with VITE_IDEATILES_SHOWCASE_HOOK=1. Compiled out of Release.
+        if let scene = UserDefaults.standard.string(forKey: "IdeaTilesShot"),
+           scene.range(of: "^[a-z]+$", options: .regularExpression) != nil,
+           let webView {
+            webView.configuration.userContentController.addUserScript(WKUserScript(
+                source: "window.__ideaTilesShowcase = '\(scene)';",
+                injectionTime: .atDocumentStart, forMainFrameOnly: true))
+            NSLog("IdeaTilesShot: %@", scene)
+        }
+        #endif
 
         // Pull-to-refresh on the WKWebView fires accidentally during the
         // expand-cascade animation when a user pans near the top edge.

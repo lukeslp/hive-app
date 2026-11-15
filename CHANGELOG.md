@@ -1,6 +1,9 @@
 # Changelog
 
-## 2026-11-14 (unreleased)
+## 1.4.0 (iOS build 123, 2026-11-14)
+
+Apple version and build aligned for iOS and the native Mac project; only the iOS
+build is staged. Android stays on 1.3.3 (11008).
 
 ### Added
 
