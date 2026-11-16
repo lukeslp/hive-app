@@ -40,7 +40,7 @@ Last updated: 2026-08-10
 
 ### 2) iOS Lifecycle and Stability
 
-- Finish the partially landed UIScene lifecycle migration (see status snapshot at the top of `MIGRATION_PLAN.md`): remove `UIMainStoryboardFile` once duplicate-ownership risk is mitigated, trim `AppDelegate`, implement `scene(_:willConnectTo:options:)` with deferred cold-start URL forwarding.
+- Finish the partially landed UIScene lifecycle migration: remove `UIMainStoryboardFile` once duplicate-ownership risk is mitigated, trim `AppDelegate`, implement `scene(_:willConnectTo:options:)` with deferred cold-start URL forwarding.
 - Verify splash behavior, deep-link handling, and plugin registration remain stable after the UIScene cleanup.
 - Keep iOS generation behavior aligned with privacy commitments (on-device only).
 
@@ -57,7 +57,6 @@ Last updated: 2026-08-10
   - `docs/RELEASE_REVIEW.md` — risk register
   - `NEXT_STEPS.md` — immediate operational checklist
   - `PROJECT_PLAN.md` — strategy and priorities
-  - `todo.md` — historical context
 
 ## `/team` Cleanup Policy
 
@@ -71,7 +70,7 @@ Use council runs intentionally:
 ## Near-Term Execution Queue
 
 1. Complete the build-8 real-hardware smoke and verify Mac App Privacy answers before deliberately submitting the staged iOS and Mac 1.3.2 versions using `docs/APP_STORE_PACK.md` + `docs/RELEASE_SPEC.md`.
-2. Land UIScene migration with verification pass (`MIGRATION_PLAN.md`).
+2. Land UIScene migration with verification pass.
 3. Optional: persist `/api/share` payloads beyond in-memory (if 404s after deploy hurt users).
 4. Phase 2: native live collab only as a deliberate project (WS host, UX, ASC copy).
 5. Add persistent storage for public shares before promising durable links.
